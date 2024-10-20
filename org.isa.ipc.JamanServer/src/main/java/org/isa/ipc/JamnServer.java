@@ -68,7 +68,7 @@ public class JamnServer {
 	}
 
 	private static final Logger LOG = Logger.getLogger(JamnServer.class.getName());
-	
+
 	public static final String LS = System.getProperty("line.separator");
 	public static final String CRLF = "\r\n";
 
@@ -176,7 +176,7 @@ public class JamnServer {
 	public Logger getLoggerFor(String pName) {
 		return Logger.getLogger(pName);
 	}
-	
+
 	/*********************************************************
 	 * <pre>
 	 * The customization methods for the server components.
@@ -196,14 +196,14 @@ public class JamnServer {
 		requestProcessor.addContentProvider(pId, pProvider);
 		return this;
 	}
-	
+
 	/**
 	 */
 	public JamnServer setContentProviderDispatcher(ContentProviderDispatcher pProviderDispatcher) {
 		requestProcessor.setContentProviderDispatcher(pProviderDispatcher);
 		return this;
 	}
-	
+
 	/**
 	 * Supplier for a customized server thread implementation.
 	 */
@@ -342,12 +342,14 @@ public class JamnServer {
 	}
 
 	/**
+	 * <pre>
+	 * You can add different content providers.
+	 * If there is more than one provider, 
+	 * a dispatcher must decide where requests are delegated to.
+	 * </pre>
 	 */
 	public static interface ContentProviderDispatcher {
 		/**
-		 * IMPORTANT HINT
-		 * Default is returning null = use default empty provider.
-		 * Anything other has to be implemented in a customer dispatcher.
 		 */
 		String getContentProviderIDFor(final Map<String, String> pRequestAttributes);
 	}
@@ -363,14 +365,18 @@ public class JamnServer {
 		protected Properties props = new Properties();
 		protected boolean isCORSEnabled = false;
 
+		// empty default provider dispatcher
 		protected ContentProviderDispatcher contentDispatcher = new ContentProviderDispatcher() {
 			@Override
 			public String getContentProviderIDFor(Map<String, String> pRequestAttributes) {
+				LOG.warning("WARNING - The empty DEFAULT ContentProvide-Dispatcher was invoked although there are ["+contentProviderMap.size()+"] provider registered."+LS+"Please add a dispatcher to avoid this message.");
 				return null;
 			}
-			
+
 		};
-		protected Map<String, ContentProvider> contentProvider = new HashMap<>();
+		// the available ContentProvider
+		protected Map<String, ContentProvider> contentProviderMap = new HashMap<>();
+		// an empty default provider
 		protected ContentProvider defaultContentProvider = new ContentProvider() {
 			@Override
 			public String createResponseContent(Map<String, String> pResponseAttributes, OutputStream pResponseContent,
@@ -391,10 +397,18 @@ public class JamnServer {
 		/**
 		 */
 		protected ContentProvider getContentProviderFor(final Map<String, String> pRequestAttributes) {
+			if (contentProviderMap.isEmpty()) {
+				return defaultContentProvider;
+			}
+			// to avoid the need for a dispatcher for only one provider
+			if (contentProviderMap.size() == 1) {
+				return contentProviderMap.values().iterator().next();
+			}
+			// else use dispatcher
 			String pProviderId = contentDispatcher.getContentProviderIDFor(pRequestAttributes);
-			return contentProvider.getOrDefault(pProviderId, defaultContentProvider);
+			return contentProviderMap.getOrDefault(pProviderId, defaultContentProvider);
 		}
-		
+
 		/**
 		 */
 		public void setContentProviderDispatcher(ContentProviderDispatcher pProviderDispatcher) {
@@ -405,7 +419,7 @@ public class JamnServer {
 		 */
 		@Override
 		public void addContentProvider(String pId, ContentProvider pProvider) {
-			contentProvider.put(pId, pProvider);
+			contentProviderMap.put(pId, pProvider);
 		}
 
 		/**

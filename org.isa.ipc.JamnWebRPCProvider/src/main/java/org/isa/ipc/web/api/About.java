@@ -18,7 +18,7 @@ import org.isa.ipc.JamnWebRPCProvider.Response;
  * However, you can easily adapt and change these construction rules based on annotation as you like.
  * </pre>
  */
-@WebRPCService(path = "/api/about", methods = { "GET", "POST" }, contentType = JamnWebRPCProvider.HTTPVAL_CONTENT_TYPE_JSON)
+@WebRPCService(path = "/api/about",	methods = { "GET", "POST" }, contentType = JamnWebRPCProvider.HTTPVAL_CONTENT_TYPE_JSON)
 public class About {
 
 	/**

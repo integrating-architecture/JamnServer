@@ -9,7 +9,6 @@ import java.io.OutputStream;
 import java.util.Map;
 
 import org.isa.ipc.JamnServer;
-import org.isa.ipc.JamnServer.ContentProviderDispatcher;
 import org.isa.ipc.http.HttpHeader;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,13 +35,7 @@ public class SampleCustomerContentProviderApp {
 	public static void main(String[] args) {
 		JamnServer lServer = new JamnServer();
 
-		String lProviderID = SampleContentProvider.class.getName();
-		lServer.addContentProvider(lProviderID, new SampleContentProvider());
-		lServer.setContentProviderDispatcher(new ContentProviderDispatcher() {
-			@Override
-			public String getContentProviderIDFor(Map<String, String> pRequestAttributes) {
-				return lProviderID;
-			}});
+		lServer.addContentProvider("SampleProvider", new SampleContentProvider());
 		lServer.getConfig().setCORSEnabled(true); // required for localhost communication via js fetch
 		lServer.start();
 	}

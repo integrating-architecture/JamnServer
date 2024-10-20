@@ -20,7 +20,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * <pre>
- * This class realizes a sample ContentProvider for web based RPC-Service calls with the JamnServer.
+ * This class realizes a sample web based RPC-Service Provider.
+ * 
+ * Via getJamnContentProvider it provides the plugin for the JamnServer.
  * 
  * A Service is implemented as a pojo class with annotations
  * - defining the web access properties
@@ -37,7 +39,11 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	protected static final ObjectMapper JSON = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
 
 	protected Map<String, RPCServiceObject> apiServices = new HashMap<>();
-	protected ContentProviderImpl providerImpl = new ContentProviderImpl();
+
+	/**
+	 * The actual JamnServer.ContentProvider
+	 */
+	protected ContentProviderImpl jamnServerContentProviderImpl = new ContentProviderImpl();
 
 	/**
 	 */
@@ -54,9 +60,12 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	}
 
 	/**
+	 * IMPORTANT
+	 * This method is NOT part of a JamnServer provider interface.
+	 * It is used to get the separated ContentProvider.  
 	 */
 	public JamnServer.ContentProvider getJamnContentProvider() {
-		return providerImpl;
+		return jamnServerContentProviderImpl;
 	}
 
 	/**
@@ -173,7 +182,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 
 			// TODO
 			// this is part of the RPCProvider contract
-			// must be jason or string ?
+			// must be jason - does string make sense ?
 			if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_JSON)) {
 				lRet = JSON.writeValueAsString(lRet);
 			}

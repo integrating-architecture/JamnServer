@@ -6,12 +6,12 @@
 	<p id="request"></p>
 	<p id="response"></p>
 	<script>
-
+		//CHANGE to YOUR PORT here
+		const url = "http://localhost:8099/api";
+		
 		let request = '{"user": "John", "message": "Hello Server"}';
 
 		async function getIPCData() {
-			//CHANGE to YOUR PORT here
-			const url = "http://localhost:8099/api";
 			let data = "";
 
 			try {

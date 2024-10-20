@@ -131,7 +131,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		protected Object instance = null;
 		protected String path = "";
 		protected String contentType = "";
-		Map<String, String> methods = new HashMap<>(4);
+		protected Map<String, String> methods = new HashMap<>(4);
 		protected Class<?> responseClass = null;
 		protected Method processingMethod = null;
 

@@ -780,7 +780,7 @@ public class JamnServer {
 				String[] lParts = null;
 				String[] lSubParts = null;
 				String lLine = lLines[i];
-				if (lLine.contains(":")) {
+				if (i > 0 && lLine.contains(":")) {
 					lParts = lLine.split(":");
 					if (lParts.length == 2) {
 						lAttributes.put(lParts[0].trim(), lParts[1].trim());

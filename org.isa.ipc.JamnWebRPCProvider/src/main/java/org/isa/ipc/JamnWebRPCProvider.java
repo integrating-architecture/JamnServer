@@ -60,9 +60,8 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	}
 
 	/**
-	 * IMPORTANT
-	 * This method is NOT part of a JamnServer provider interface.
-	 * It is used to get the separated ContentProvider.  
+	 * IMPORTANT This method is NOT part of a JamnServer provider interface. It is
+	 * used to get the separated ContentProvider.
 	 */
 	public JamnServer.ContentProvider getJamnContentProvider() {
 		return jamnServerContentProviderImpl;
@@ -75,6 +74,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		RPCServiceObject lServiceObj = null;
 		WebRPCService lServiceAnno = null;
 		Object lInstance = null;
+		Class<?> lRequestClass = null;
 		Class<?> lReponseClass = null;
 		Method lProcessingMethod = null;
 
@@ -82,11 +82,13 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			lServiceAnno = pServiceClass.getDeclaredAnnotation(WebRPCService.class);
 			ServiceHelper.checkServiceAnnotation(lServiceAnno, pServiceClass);
 
+			lRequestClass = ServiceHelper.getServiceRequestClassFrom(pServiceClass);
 			lReponseClass = ServiceHelper.getServiceResponseClassFrom(pServiceClass);
-			lProcessingMethod = ServiceHelper.getServiceProcessingMethodFrom(pServiceClass, lReponseClass);
+			lProcessingMethod = ServiceHelper.getServiceProcessingMethodFrom(pServiceClass, lRequestClass, lReponseClass);
 			lInstance = pServiceClass.getDeclaredConstructor().newInstance();
 
-			lServiceObj = new RPCServiceObject(lServiceAnno, lInstance, lReponseClass, lProcessingMethod);
+			lServiceObj = new RPCServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass,
+					lProcessingMethod);
 			apiServices.put(lServiceObj.path, lServiceObj);
 		} else {
 			throw new ApiDefinitionException("No WebRPCService annotation found in [" + pServiceClass + "]");
@@ -107,6 +109,11 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		public String[] methods() default { "GET, POST" };
 
 		public String contentType() default HTTPVAL_CONTENT_TYPE_JSON;
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.TYPE)
+	public static @interface Request {
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
@@ -132,14 +139,16 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		protected String path = "";
 		protected String contentType = "";
 		protected Map<String, String> methods = new HashMap<>(4);
+		protected Class<?> requestClass = null;
 		protected Class<?> responseClass = null;
 		protected Method processingMethod = null;
 
-		protected RPCServiceObject(WebRPCService pServiceAnno, Object pInstance, Class<?> pResponseClass,
-				Method pProcessingMethod) {
+		protected RPCServiceObject(WebRPCService pServiceAnno, Object pInstance, Class<?> pRequestClass,
+				Class<?> pResponseClass, Method pProcessingMethod) {
 			instance = pInstance;
 			path = pServiceAnno.path().trim();
 			contentType = pServiceAnno.contentType().trim();
+			requestClass = pRequestClass;
 			responseClass = pResponseClass;
 			processingMethod = pProcessingMethod;
 
@@ -205,8 +214,10 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	 */
 	protected static class ServiceHelper {
 		/**
+		 * Request path and method are mandatory
 		 */
-		protected static void checkServiceAnnotation(WebRPCService pServiceAnno, Class<?> pServiceClass) throws Exception {
+		protected static void checkServiceAnnotation(WebRPCService pServiceAnno, Class<?> pServiceClass)
+				throws Exception {
 			if (pServiceAnno.path().isEmpty()) {
 				throw new ApiDefinitionException("No WebRPCService path attribute found in [" + pServiceClass + "]");
 			}
@@ -216,23 +227,53 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		}
 
 		/**
+		 * Processing method is mandatory
+		 * with or without parameter of type pRequestClass
 		 */
-		protected static Method getServiceProcessingMethodFrom(Class<?> pServiceClass, Class<?> pResponseClass)
-				throws Exception {
+		protected static Method getServiceProcessingMethodFrom(Class<?> pServiceClass, Class<?> pRequestClass,
+				Class<?> pResponseClass) throws Exception {
 			Method[] lMethods = pServiceClass.getDeclaredMethods();
 
 			for (Method meth : lMethods) {
 				if (meth.isAnnotationPresent(Processor.class)) {
 					if (meth.getReturnType() == pResponseClass) {
-						return meth;
+						if (pRequestClass != null) {
+							for (Class<?> paramcls : meth.getParameterTypes()) {
+								if (paramcls == pRequestClass) {
+									return meth;
+								}
+							}
+						} else {
+							return meth;
+						}
 					}
 				}
 			}
-			throw new ApiDefinitionException("No Processor method found in [" + pServiceClass + "]" + LS
-					+ "The method MUST have return type [" + pResponseClass.getName() + "]");
+
+			String lError = String.join(LS, "No Processor method found in [" + pServiceClass + "]",
+					"The method MUST have return type [" + pResponseClass.getName() + "]");
+			if (pRequestClass != null) {
+				lError = lError + LS + "The method MUST have parameter type [" + pRequestClass.getName() + "]";
+			}
+			throw new ApiDefinitionException(lError);
 		}
 
 		/**
+		 * Request data is optional
+		 */
+		protected static Class<?> getServiceRequestClassFrom(Class<?> pServiceClass) throws Exception {
+			Class<?>[] lClasses = pServiceClass.getDeclaredClasses();
+
+			for (Class<?> cls : lClasses) {
+				if (cls.isAnnotationPresent(Request.class)) {
+					return cls;
+				}
+			}
+			return null;
+		}
+
+		/**
+		 * Response data is mandatory
 		 */
 		protected static Class<?> getServiceResponseClassFrom(Class<?> pServiceClass) throws Exception {
 			Class<?>[] lClasses = pServiceClass.getDeclaredClasses();
@@ -244,6 +285,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			}
 			throw new ApiDefinitionException("No Response class found in [" + pServiceClass + "]");
 		}
+
 	}
 
 	/*********************************************************
@@ -303,8 +345,8 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 							"Unsupported Service Method [" + pMethod + "] [" + lService.getServiceClass() + "]");
 				}
 				if (!lService.isContentTypeSupported(pContentType)) {
-					throw new ApiException(HTTP_400_BAD_REQUEST,
-							"Unsupported Service ContentType [" + pContentType + "] [" + lService.getServiceClass() + "]");
+					throw new ApiException(HTTP_400_BAD_REQUEST, "Unsupported Service ContentType [" + pContentType
+							+ "] [" + lService.getServiceClass() + "]");
 				}
 			} else {
 				throw new ApiException(HTTP_404_NOT_FOUND, "Unsupported Service Path [" + pPath + "]");

@@ -468,7 +468,7 @@ public class JamnServer {
 					lResponse.sendStatus(HTTP_408_TIMEOUT);
 				} else if (t instanceof RuntimeException) {
 					lResponse.sendStatus(HTTP_500_INTERNAL_ERROR);
-					LOG.severe("Request Handling runtime ERROR: " + t.toString() + LS + Helper.getStackTraceFrom(t));
+					LOG.severe("Request Handling internal/runtime ERROR: " + t.toString() + LS + Helper.getStackTraceFrom(t));
 				}
 			} finally {
 				lResponse.close();

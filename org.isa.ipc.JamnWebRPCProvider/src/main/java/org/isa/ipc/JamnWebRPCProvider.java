@@ -3,10 +3,13 @@
 package org.isa.ipc;
 
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,17 +27,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * 
  * Via getJamnContentProvider it provides the plugin for the JamnServer.
  * 
- * A Service is implemented as a pojo class with annotations
- * - defining the web access properties
- * - a processing method
- * - and data objects for request and response
+ * Services are implemented as classes with annotated service methods.
+ * The data IO is based on JSON which is provided by the "com.fasterxml.jackson" library.
  * </pre>
  */
 public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 
-	private static Logger LOG = null;
-
-	private static final String LS = System.getProperty("line.separator");
+	protected static final String LS = System.getProperty("line.separator");
+	protected static Logger LOG = null;
+	protected static CommonHelper Helper = new CommonHelper();
 
 	protected static final ObjectMapper JSON = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
 
@@ -76,23 +77,27 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		Object lInstance = null;
 		Class<?> lRequestClass = null;
 		Class<?> lReponseClass = null;
-		Method lProcessingMethod = null;
 
-		if (pServiceClass.isAnnotationPresent(WebRPCService.class)) {
-			lServiceAnno = pServiceClass.getDeclaredAnnotation(WebRPCService.class);
-			ServiceHelper.checkServiceAnnotation(lServiceAnno, pServiceClass);
-
-			lRequestClass = ServiceHelper.getServiceRequestClassFrom(pServiceClass);
-			lReponseClass = ServiceHelper.getServiceResponseClassFrom(pServiceClass);
-			lProcessingMethod = ServiceHelper.getServiceProcessingMethodFrom(pServiceClass, lRequestClass, lReponseClass);
-			lInstance = pServiceClass.getDeclaredConstructor().newInstance();
-
-			lServiceObj = new RPCServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass,
-					lProcessingMethod);
-			apiServices.put(lServiceObj.path, lServiceObj);
-		} else {
-			throw new ApiDefinitionException("No WebRPCService annotation found in [" + pServiceClass + "]");
+		lInstance = pServiceClass.getDeclaredConstructor().newInstance();
+		
+		Method[] lMethodes = pServiceClass.getDeclaredMethods();
+		for(Method serviceMethod : lMethodes) {
+			if(serviceMethod.isAnnotationPresent(WebRPCService.class)) {
+				lServiceAnno = serviceMethod.getDeclaredAnnotation(WebRPCService.class);
+				ServiceHelper.checkServiceAnnotation(lServiceAnno, serviceMethod, pServiceClass);
+				
+				lRequestClass = ServiceHelper.getServiceRequestClassFrom(serviceMethod, pServiceClass);
+				lReponseClass = ServiceHelper.getServiceResponseClassFrom(serviceMethod, pServiceClass);
+				
+				lServiceObj = new RPCServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass, serviceMethod);
+				if(!apiServices.containsKey(lServiceObj.path)) {
+					apiServices.put(lServiceObj.path, lServiceObj);
+				}else {
+					throw new ApiDefinitionException("WebRPCService path already defined [" + serviceMethod.getName() + "]");
+				}
+			}
 		}
+				
 		return this;
 	}
 
@@ -102,28 +107,13 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	 * </pre>
 	 *********************************************************/
 	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
+	@Target(ElementType.METHOD)
 	public static @interface WebRPCService {
 		public String path() default "/";
 
 		public String[] methods() default { "GET, POST" };
 
 		public String contentType() default HTTPVAL_CONTENT_TYPE_JSON;
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	public static @interface Request {
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	public static @interface Response {
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.METHOD)
-	public static @interface Processor {
 	}
 
 	/*********************************************************
@@ -183,18 +173,28 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 
 		/**
 		 */
-		public Object call() throws Exception {
+		public boolean hasParameter() {
+			return (requestClass!=null);
+		}
+		
+		/**
+		 */
+		public Object callWith(String pRequest) throws Exception {
 			Object lRet = null;
+			Object lParam = null;
 
-			processingMethod.setAccessible(true);
-			lRet = processingMethod.invoke(instance);
-
-			// TODO
-			// this is part of the RPCProvider contract
-			// must be jason - does string make sense ?
 			if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_JSON)) {
+				processingMethod.setAccessible(true);
+				if(hasParameter()) {
+					lParam = JSON.readValue(pRequest, requestClass);					
+					lRet = processingMethod.invoke(instance, lParam);
+				}else {
+					lRet = processingMethod.invoke(instance);					
+				}
+				
 				lRet = JSON.writeValueAsString(lRet);
 			}
+			
 			return lRet;
 		}
 	}
@@ -214,78 +214,35 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	 */
 	protected static class ServiceHelper {
 		/**
-		 * Request path and method are mandatory
 		 */
-		protected static void checkServiceAnnotation(WebRPCService pServiceAnno, Class<?> pServiceClass)
+		protected static void checkServiceAnnotation(WebRPCService pServiceAnno, Method pMeth, Class<?> pServiceClass)
 				throws Exception {
 			if (pServiceAnno.path().isEmpty()) {
-				throw new ApiDefinitionException("No WebRPCService path attribute found in [" + pServiceClass + "]");
+				throw new ApiDefinitionException("No WebRPCService path attribute found for [" + pMeth.getName() + "]");
 			}
 			if (pServiceAnno.methods().length == 0) {
-				throw new ApiDefinitionException("No WebRPCService methods attribute found in [" + pServiceClass + "]");
+				throw new ApiDefinitionException("No WebRPCService methods attribute found for [" + pMeth.getName() + "]");
 			}
 		}
 
 		/**
-		 * Processing method is mandatory
-		 * with or without parameter of type pRequestClass
 		 */
-		protected static Method getServiceProcessingMethodFrom(Class<?> pServiceClass, Class<?> pRequestClass,
-				Class<?> pResponseClass) throws Exception {
-			Method[] lMethods = pServiceClass.getDeclaredMethods();
-
-			for (Method meth : lMethods) {
-				if (meth.isAnnotationPresent(Processor.class)) {
-					if (meth.getReturnType() == pResponseClass) {
-						if (pRequestClass != null) {
-							for (Class<?> paramcls : meth.getParameterTypes()) {
-								if (paramcls == pRequestClass) {
-									return meth;
-								}
-							}
-						} else {
-							return meth;
-						}
-					}
-				}
-			}
-
-			String lError = String.join(LS, "No Processor method found in [" + pServiceClass + "]",
-					"The method MUST have return type [" + pResponseClass.getName() + "]");
-			if (pRequestClass != null) {
-				lError = lError + LS + "The method MUST have parameter type [" + pRequestClass.getName() + "]";
-			}
-			throw new ApiDefinitionException(lError);
-		}
-
-		/**
-		 * Request data is optional
-		 */
-		protected static Class<?> getServiceRequestClassFrom(Class<?> pServiceClass) throws Exception {
-			Class<?>[] lClasses = pServiceClass.getDeclaredClasses();
-
-			for (Class<?> cls : lClasses) {
-				if (cls.isAnnotationPresent(Request.class)) {
-					return cls;
-				}
+		protected static Class<?> getServiceRequestClassFrom(Method pMeth, Class<?> pServiceClass) throws Exception {
+			Class<?>[] lClasses = pMeth.getParameterTypes();
+			if(lClasses.length==1) {
+				return lClasses[0];
+			}else if(lClasses.length > 1) {
+				throw new ApiDefinitionException("WebRPCService method must declare 0 or 1 parameter [" + pMeth.getName() + "]");
 			}
 			return null;
 		}
 
 		/**
-		 * Response data is mandatory
 		 */
-		protected static Class<?> getServiceResponseClassFrom(Class<?> pServiceClass) throws Exception {
-			Class<?>[] lClasses = pServiceClass.getDeclaredClasses();
-
-			for (Class<?> cls : lClasses) {
-				if (cls.isAnnotationPresent(Response.class)) {
-					return cls;
-				}
-			}
-			throw new ApiDefinitionException("No Response class found in [" + pServiceClass + "]");
+		protected static Class<?> getServiceResponseClassFrom(Method pMeth, Class<?> pServiceClass) throws Exception {
+			Class<?> lCls = pMeth.getReturnType();
+			return lCls;
 		}
-
 	}
 
 	/*********************************************************
@@ -308,8 +265,9 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			try {
 				if (lRequest.isGET() || lRequest.isPOST()) {
 					lService = getServiceInstanceFor(pPath, pMethod, lRequest.getCONTENT_TYPE());
-					lResult = lService.call();
-
+					
+					lResult = lService.callWith(pRequestBody);
+					
 					if (lResult instanceof String) {
 						lData = ((String) lResult).getBytes();
 						pResponseAttributes.put(HTTP_CONTENT_TYPE, lService.getContentType());
@@ -324,7 +282,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 					LOG.fine("RPC API Error: [" + e.getMessage() + "]");
 					lStatus = ((ApiException) e).getHttpStatus();
 				} else {
-					LOG.severe("Unexpected internal Error calling RPC API: [" + e.getMessage() + "]");
+					LOG.severe("RPC Request Handling internal/runtime ERROR: " + e.toString() + LS + Helper.getStackTraceFrom(e));
 					lStatus = HTTP_500_INTERNAL_ERROR;
 				}
 			}
@@ -368,6 +326,28 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			public String getHttpStatus() {
 				return httpStatus;
 			}
+		}
+	}
+	
+	/*********************************************************
+	 * <pre>
+	 * A common helper class - just to encapsulate helper methods.
+	 * </pre>
+	 *********************************************************/
+	/**
+	 */
+	public static class CommonHelper {
+
+		/**
+		 */
+		public String getStackTraceFrom(Throwable t) {
+			if(t instanceof InvocationTargetException) {
+				t = ((InvocationTargetException)t).getTargetException();
+				t.printStackTrace();
+			}
+			PrintWriter lWriter = new PrintWriter(new StringWriter());
+			t.printStackTrace(lWriter);
+			return lWriter.toString();
 		}
 	}
 }

@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -948,9 +949,15 @@ public class JamnServer {
 		/**
 		 */
 		public String getStackTraceFrom(Throwable t) {
-			PrintWriter lWriter = new PrintWriter(new StringWriter());
-			t.printStackTrace(lWriter);
-			return lWriter.toString();
+			StringWriter lSwriter = new StringWriter();
+			PrintWriter lPwriter = new PrintWriter(lSwriter);
+
+			if(t instanceof InvocationTargetException) {
+				t = ((InvocationTargetException)t).getTargetException();
+			}
+
+			t.printStackTrace(lPwriter);
+			return lSwriter.toString();
 		}
 	}
 }

@@ -13,9 +13,13 @@ import org.isa.ipc.JamnWebRPCProvider.WebRPCService;
 /**
  * <pre>
  * A minimal WebRPCService example.
+ * Since this JamnWebService-Provider implementation does NOT strictly follow the REST paradigm
+ * the get and post methods are used like:
+ * - GET = NO parameter but accessible just by url even from browser 
+ * - POST = parameter supported but accessible only from a "fetch" like function
  * </pre>
  */
-public class ServerInformationServices {
+public class SampleServerApiServices {
 
 	public static final String PATHBASE_API = "/api";
 	public static final String PATHBASE_API_SERVER = "/api/server";
@@ -26,8 +30,8 @@ public class ServerInformationServices {
 
 	/**
 	 * <pre>
-	 * A trivial About Web RPC Service
-	 * without arguments and accessible via get and post
+	 * About WebRPCService
+	 * NO arguments but return type - accessible via get + post
 	 * http://localhost:8099/api/about
 	 * </pre>
 	 */
@@ -55,9 +59,25 @@ public class ServerInformationServices {
 
 	/**
 	 * <pre>
-	 * A trivial get detailed server-infos Web RPC Service
-	 * with argument and accessible only via post  
+	 * Echo WebRPCService
+	 * with native String argument and return type - accessible only via post
+	 * http://localhost:8099/api/echo
+	 * </pre>
+	 */
+	@WebRPCService(path = PATHBASE_API + "/echo", methods = { "POST" }, contentType = JamnWebRPCProvider.HTTPVAL_CONTENT_TYPE_TEXT)
+	public String sendEcho(String pRequest) {
+		return "ECHO: "+pRequest;
+	}
+
+	/***************************************************************************************
+	 **************************************************************************************/
+
+	/**
+	 * <pre>
+	 * Get detailed Server Info WebRPCService
+	 * with argument and return type - accessible only via post  
 	 * Request example: {"subjects":["name","version","provider"]}
+	 * http://localhost:8099/api/server/get-details
 	 * </pre>
 	 */
 	@WebRPCService(path = PATHBASE_API_SERVER + "/get-details", methods = {"POST" }, contentType = JamnWebRPCProvider.HTTPVAL_CONTENT_TYPE_JSON)
@@ -96,7 +116,9 @@ public class ServerInformationServices {
 			details.put(pSubject, pValue);
 		}
 	}
+
 	/***************************************************************************************
 	 **************************************************************************************/
+
 
 }

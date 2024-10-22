@@ -2,7 +2,7 @@ package org.isa.ipc.sample;
 
 import org.isa.ipc.JamnServer;
 import org.isa.ipc.JamnWebRPCProvider;
-import org.isa.ipc.sample.web.api.ServerInformationServices;
+import org.isa.ipc.sample.web.api.SampleServerApiServices;
 
 public class SampleWebRPCServerApp {
 
@@ -14,7 +14,7 @@ public class SampleWebRPCServerApp {
 		//create the RPC provider
 		JamnWebRPCProvider lWebRPCProvider = new JamnWebRPCProvider(lServer.getLoggerFor(JamnWebRPCProvider.class.getName()));
 		//register rpc api services
-		lWebRPCProvider.registerApiService(ServerInformationServices.class);
+		lWebRPCProvider.registerApiService(SampleServerApiServices.class);
 		
 		//get the actual provider and add it to the server
 		lServer.addContentProvider("RPCProvider", lWebRPCProvider.getJamnContentProvider());

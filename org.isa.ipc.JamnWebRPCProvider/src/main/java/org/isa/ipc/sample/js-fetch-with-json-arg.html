@@ -2,16 +2,16 @@
 <html>
 
 <body style="font-family: sans-serif">
-	<h3>JavaScript Fetch Sample</h3>
+	<h3>JS-Fetch with JSON request argument.</h3>
 	<p id="request"></p>
 	<p id="response"></p>
 	<script>
 		//CHANGE to YOUR PORT here
-		const url = "http://localhost:8099/api";
-		
-		let request = '{"user": "John", "message": "Hello Server"}';
+		const url = "http://localhost:8099/api/server/get-details";
 
-		async function getIPCData() {
+		let request = '{"subjects":["name","version","provider"]}';
+
+		async function fetchServerData() {
 			let data = "";
 
 			try {
@@ -35,15 +35,13 @@
 			return data;
 		}
 
-		function processIPCData(data) {
+		function processReturnData(data) {
 			console.log(typeof data + "[" + data + "]");
 			document.getElementById("request").innerHTML = "Request:<br/> "+request;
 			document.getElementById("response").innerHTML = "Response:<br/> "+data;
 		}
 
-		for (let i = 0; i < 1; i++) {
-			getIPCData().then((data) => processIPCData(data));
-		}
+		fetchServerData().then((data) => processReturnData(data));
 
 	</script>
 </body>

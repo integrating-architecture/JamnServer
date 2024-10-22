@@ -141,7 +141,8 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			requestClass = pRequestClass;
 			responseClass = pResponseClass;
 			processingMethod = pProcessingMethod;
-
+			processingMethod.setAccessible(true);
+			
 			for (String meth : pServiceAnno.methods()) {
 				methods.put(meth.toUpperCase(), meth.toUpperCase());
 			}
@@ -179,20 +180,29 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		
 		/**
 		 */
-		public Object callWith(String pRequest) throws Exception {
+		public Object callWith(String pRequestData) throws Exception {
 			Object lRet = null;
 			Object lParam = null;
 
 			if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_JSON)) {
-				processingMethod.setAccessible(true);
+				//processingMethod.setAccessible(true);
 				if(hasParameter()) {
-					lParam = JSON.readValue(pRequest, requestClass);					
+					lParam = JSON.readValue(pRequestData, requestClass);					
 					lRet = processingMethod.invoke(instance, lParam);
 				}else {
 					lRet = processingMethod.invoke(instance);					
 				}
 				
 				lRet = JSON.writeValueAsString(lRet);
+			}else if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_TEXT)){
+				//processingMethod.setAccessible(true);
+				if(hasParameter() && requestClass==String.class) {
+					lRet = processingMethod.invoke(instance, pRequestData);
+				}else {
+					lRet = processingMethod.invoke(instance);					
+				}
+				
+				lRet = JSON.writeValueAsString(lRet);				
 			}
 			
 			return lRet;
@@ -341,13 +351,16 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		/**
 		 */
 		public String getStackTraceFrom(Throwable t) {
+			StringWriter lSwriter = new StringWriter();
+			PrintWriter lPwriter = new PrintWriter(lSwriter);
+
 			if(t instanceof InvocationTargetException) {
 				t = ((InvocationTargetException)t).getTargetException();
-				t.printStackTrace();
 			}
-			PrintWriter lWriter = new PrintWriter(new StringWriter());
-			t.printStackTrace(lWriter);
-			return lWriter.toString();
+
+			t.printStackTrace(lPwriter);
+			return lSwriter.toString();
 		}
+		
 	}
 }

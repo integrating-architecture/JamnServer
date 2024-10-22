@@ -24,9 +24,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * <pre>
  * This class realizes a sample web based RPC-Service Provider.
- * 
- * Via getJamnContentProvider it provides the plugin for the JamnServer.
- * 
+ *
+ * Usage:
+ *  ... 
+ *   //create the provider
+ *   JamnWebRPCProvider lWebRPCProvider = new JamnWebRPCProvider(lServer.getLoggerFor(JamnWebRPCProvider.class.getName()));
+ *   //register rpc api services
+ *   lWebRPCProvider.registerApiService(SampleServerApiServices.class);
+ *   //get the actual provider and add it to a server
+ *   lServer.addContentProvider("RPCProvider", lWebRPCProvider.getJamnContentProvider());
+ *  ...
+ *
  * Services are implemented as classes with annotated service methods.
  * The data IO is based on JSON which is provided by the "com.fasterxml.jackson" library.
  * </pre>
@@ -79,25 +87,29 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		Class<?> lReponseClass = null;
 
 		lInstance = pServiceClass.getDeclaredConstructor().newInstance();
-		
+
 		Method[] lMethodes = pServiceClass.getDeclaredMethods();
-		for(Method serviceMethod : lMethodes) {
-			if(serviceMethod.isAnnotationPresent(WebRPCService.class)) {
+		for (Method serviceMethod : lMethodes) {
+			if (serviceMethod.isAnnotationPresent(WebRPCService.class)) {
 				lServiceAnno = serviceMethod.getDeclaredAnnotation(WebRPCService.class);
 				ServiceHelper.checkServiceAnnotation(lServiceAnno, serviceMethod, pServiceClass);
-				
+
 				lRequestClass = ServiceHelper.getServiceRequestClassFrom(serviceMethod, pServiceClass);
 				lReponseClass = ServiceHelper.getServiceResponseClassFrom(serviceMethod, pServiceClass);
-				
-				lServiceObj = new RPCServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass, serviceMethod);
-				if(!apiServices.containsKey(lServiceObj.path)) {
+
+				lServiceObj = new RPCServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass,
+						serviceMethod);
+				if (!apiServices.containsKey(lServiceObj.path)) {
 					apiServices.put(lServiceObj.path, lServiceObj);
-				}else {
-					throw new ApiDefinitionException("WebRPCService path already defined [" + serviceMethod.getName() + "]");
+					LOG.fine("WebRPCService installed [" + lServiceObj.getSimpleName() + "] at [" + lServiceObj.path
+							+ "]");
+				} else {
+					throw new ApiDefinitionException("WebRPCService Path of [" + lServiceObj.getSimpleName()
+							+ "] already defined for [" + apiServices.get(lServiceObj.path).getSimpleName() + "]");
 				}
 			}
 		}
-				
+
 		return this;
 	}
 
@@ -128,24 +140,37 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		protected Object instance = null;
 		protected String path = "";
 		protected String contentType = "";
-		protected Map<String, String> methods = new HashMap<>(4);
+		protected Map<String, String> httpMethods = new HashMap<>(4);
 		protected Class<?> requestClass = null;
 		protected Class<?> responseClass = null;
-		protected Method processingMethod = null;
+		protected Method serviceMethod = null;
 
 		protected RPCServiceObject(WebRPCService pServiceAnno, Object pInstance, Class<?> pRequestClass,
-				Class<?> pResponseClass, Method pProcessingMethod) {
+				Class<?> pResponseClass, Method pServiceMethod) {
 			instance = pInstance;
 			path = pServiceAnno.path().trim();
 			contentType = pServiceAnno.contentType().trim();
 			requestClass = pRequestClass;
 			responseClass = pResponseClass;
-			processingMethod = pProcessingMethod;
-			processingMethod.setAccessible(true);
-			
+			serviceMethod = pServiceMethod;
+			serviceMethod.setAccessible(true);
+
 			for (String meth : pServiceAnno.methods()) {
-				methods.put(meth.toUpperCase(), meth.toUpperCase());
+				httpMethods.put(meth.toUpperCase(), meth.toUpperCase());
 			}
+		}
+
+		/**
+		 */
+		@Override
+		public String toString() {
+			return getSimpleName();
+		}
+
+		/**
+		 */
+		public String getSimpleName() {
+			return ServiceHelper.getSimpleName(getServiceClass(), serviceMethod);
 		}
 
 		/**
@@ -157,7 +182,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		/**
 		 */
 		public boolean isMethodSupported(String pMethod) {
-			return methods.containsKey(pMethod.toUpperCase());
+			return httpMethods.containsKey(pMethod.toUpperCase());
 		}
 
 		/**
@@ -175,9 +200,9 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		/**
 		 */
 		public boolean hasParameter() {
-			return (requestClass!=null);
+			return (requestClass != null);
 		}
-		
+
 		/**
 		 */
 		public Object callWith(String pRequestData) throws Exception {
@@ -185,26 +210,24 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			Object lParam = null;
 
 			if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_JSON)) {
-				//processingMethod.setAccessible(true);
-				if(hasParameter()) {
-					lParam = JSON.readValue(pRequestData, requestClass);					
-					lRet = processingMethod.invoke(instance, lParam);
-				}else {
-					lRet = processingMethod.invoke(instance);					
+				if (hasParameter()) {
+					lParam = JSON.readValue(pRequestData, requestClass);
+					lRet = serviceMethod.invoke(instance, lParam);
+				} else {
+					lRet = serviceMethod.invoke(instance);
 				}
-				
+
 				lRet = JSON.writeValueAsString(lRet);
-			}else if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_TEXT)){
-				//processingMethod.setAccessible(true);
-				if(hasParameter() && requestClass==String.class) {
-					lRet = processingMethod.invoke(instance, pRequestData);
-				}else {
-					lRet = processingMethod.invoke(instance);					
+			} else if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_TEXT)) {
+				if (hasParameter() && requestClass == String.class) {
+					lRet = serviceMethod.invoke(instance, pRequestData);
+				} else {
+					lRet = serviceMethod.invoke(instance);
 				}
-				
-				lRet = JSON.writeValueAsString(lRet);				
+
+				lRet = JSON.writeValueAsString(lRet);
 			}
-			
+
 			return lRet;
 		}
 	}
@@ -225,13 +248,21 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	protected static class ServiceHelper {
 		/**
 		 */
+		protected static String getSimpleName(Class<?> pServiceClass, Method pMeth) {
+			return pServiceClass.getSimpleName() + " - " + pMeth.getName();
+		}
+
+		/**
+		 */
 		protected static void checkServiceAnnotation(WebRPCService pServiceAnno, Method pMeth, Class<?> pServiceClass)
 				throws Exception {
 			if (pServiceAnno.path().isEmpty()) {
-				throw new ApiDefinitionException("No WebRPCService path attribute found for [" + pMeth.getName() + "]");
+				throw new ApiDefinitionException(
+						"No WebRPCService path attribute found for [" + getSimpleName(pServiceClass, pMeth) + "]");
 			}
 			if (pServiceAnno.methods().length == 0) {
-				throw new ApiDefinitionException("No WebRPCService methods attribute found for [" + pMeth.getName() + "]");
+				throw new ApiDefinitionException(
+						"No WebRPCService methods attribute found for [" + getSimpleName(pServiceClass, pMeth) + "]");
 			}
 		}
 
@@ -239,10 +270,11 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		 */
 		protected static Class<?> getServiceRequestClassFrom(Method pMeth, Class<?> pServiceClass) throws Exception {
 			Class<?>[] lClasses = pMeth.getParameterTypes();
-			if(lClasses.length==1) {
+			if (lClasses.length == 1) {
 				return lClasses[0];
-			}else if(lClasses.length > 1) {
-				throw new ApiDefinitionException("WebRPCService method must declare 0 or 1 parameter [" + pMeth.getName() + "]");
+			} else if (lClasses.length > 1) {
+				throw new ApiDefinitionException("WebRPCService method must declare 0 or 1 parameter ["
+						+ getSimpleName(pServiceClass, pMeth) + "]");
 			}
 			return null;
 		}
@@ -275,16 +307,16 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			try {
 				if (lRequest.isGET() || lRequest.isPOST()) {
 					lService = getServiceInstanceFor(pPath, pMethod, lRequest.getCONTENT_TYPE());
-					
+
 					lResult = lService.callWith(pRequestBody);
-					
+
 					if (lResult instanceof String) {
 						lData = ((String) lResult).getBytes();
 						pResponseAttributes.put(HTTP_CONTENT_TYPE, lService.getContentType());
 						pResponseContent.write(lData);
 					} else {
 						throw new ApiException(HTTP_500_INTERNAL_ERROR, "Unsupported API Return Type ["
-								+ lResult.getClass() + "] [" + lService.getServiceClass() + "]");
+								+ lResult.getClass() + "] [" + lService.getSimpleName() + "]");
 					}
 				}
 			} catch (Exception e) {
@@ -292,7 +324,9 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 					LOG.fine("RPC API Error: [" + e.getMessage() + "]");
 					lStatus = ((ApiException) e).getHttpStatus();
 				} else {
-					LOG.severe("RPC Request Handling internal/runtime ERROR: " + e.toString() + LS + Helper.getStackTraceFrom(e));
+					String lInfo = lService != null ? lService.getSimpleName() : "";
+					lInfo = lInfo + LS + Helper.getStackTraceFrom(e);
+					LOG.severe("RPC Request Handling internal/runtime ERROR: " + e.toString() + LS + lInfo);
 					lStatus = HTTP_500_INTERNAL_ERROR;
 				}
 			}
@@ -310,11 +344,11 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 
 				if (!lService.isMethodSupported(pMethod)) {
 					throw new ApiException(HTTP_405_METHOD_NOT_ALLOWED,
-							"Unsupported Service Method [" + pMethod + "] [" + lService.getServiceClass() + "]");
+							"Unsupported Service Method [" + pMethod + "] [" + lService.getSimpleName() + "]");
 				}
 				if (!lService.isContentTypeSupported(pContentType)) {
 					throw new ApiException(HTTP_400_BAD_REQUEST, "Unsupported Service ContentType [" + pContentType
-							+ "] [" + lService.getServiceClass() + "]");
+							+ "] [" + lService.getSimpleName() + "]");
 				}
 			} else {
 				throw new ApiException(HTTP_404_NOT_FOUND, "Unsupported Service Path [" + pPath + "]");
@@ -338,7 +372,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			}
 		}
 	}
-	
+
 	/*********************************************************
 	 * <pre>
 	 * A common helper class - just to encapsulate helper methods.
@@ -354,13 +388,13 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 			StringWriter lSwriter = new StringWriter();
 			PrintWriter lPwriter = new PrintWriter(lSwriter);
 
-			if(t instanceof InvocationTargetException) {
-				t = ((InvocationTargetException)t).getTargetException();
+			if (t instanceof InvocationTargetException) {
+				t = ((InvocationTargetException) t).getTargetException();
 			}
 
 			t.printStackTrace(lPwriter);
 			return lSwriter.toString();
 		}
-		
+
 	}
 }

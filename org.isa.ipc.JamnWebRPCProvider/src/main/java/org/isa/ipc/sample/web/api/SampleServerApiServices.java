@@ -25,12 +25,11 @@ public class SampleServerApiServices {
 	public static final String PATHBASE_API_SERVER = "/api/server";
 
 	/***************************************************************************************
-	 * using a path to identify the service 
+	 * RPCService - About
 	 **************************************************************************************/
-
 	/**
 	 * <pre>
-	 * About WebRPCService
+	 * RPCService - About
 	 * NO arguments but return type - accessible via get + post
 	 * http://localhost:8099/api/about
 	 * </pre>
@@ -55,26 +54,26 @@ public class SampleServerApiServices {
 	}
 
 	/***************************************************************************************
+	 * RPCService - Echo
 	 **************************************************************************************/
-
 	/**
 	 * <pre>
-	 * Echo WebRPCService
+	 * RPCService - Echo
 	 * with native String argument and return type - accessible only via post
 	 * http://localhost:8099/api/echo
 	 * </pre>
 	 */
 	@WebRPCService(path = PATHBASE_API + "/echo", methods = { "POST" }, contentType = JamnWebRPCProvider.HTTPVAL_CONTENT_TYPE_TEXT)
 	public String sendEcho(String pRequest) {
-		return "ECHO: "+pRequest;
+		return "Server ECHO: " + pRequest;
 	}
 
 	/***************************************************************************************
+	 * RPCService - Get detailed Server Info
 	 **************************************************************************************/
-
 	/**
 	 * <pre>
-	 * Get detailed Server Info WebRPCService
+	 * RPCService - Get detailed Server Info
 	 * with argument and return type - accessible only via post  
 	 * Request example: {"subjects":["name","version","provider"]}
 	 * http://localhost:8099/api/server/get-details
@@ -119,6 +118,4 @@ public class SampleServerApiServices {
 
 	/***************************************************************************************
 	 **************************************************************************************/
-
-
 }

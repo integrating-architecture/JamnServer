@@ -17,10 +17,6 @@ import java.util.logging.Logger;
 
 import org.isa.ipc.http.HttpHeader;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * <pre>
  * This class realizes a sample web based RPC-Service Provider.
@@ -40,32 +36,41 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * </pre>
  */
 public class JamnWebRPCProvider implements JamnServer.HttpConstants {
-
 	protected static final String LS = System.getProperty("line.separator");
-	protected static Logger LOG = null;
+
+	protected static Logger LOG = Logger.getLogger(JamnWebRPCProvider.class.getName());
 	protected static CommonHelper Helper = new CommonHelper();
 
-	protected static final ObjectMapper JSON = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+	/****************************************************************************
+	 * IT IS MANDATORY TO SET A JSON-TOOL manually
+	 * 
+	 * @see org.isa.ipc.sample.SampleWebRPCServerApp
+	 ***************************************************************************/
+	protected static JsonToolWrapper JSON = null;
+	public static void setJsonTool(JsonToolWrapper pTool) {
+		JSON = pTool;
+	}
 
+	/**
+	 * Logger is optional.
+	 */
+	public static void setLogger(Logger pLogger) {
+		LOG = pLogger;
+	}
+
+	/**
+	 * A map holding all registered services - which define an API.
+	 */
 	protected Map<String, RPCServiceObject> apiServices = new HashMap<>();
 
 	/**
-	 * The actual JamnServer.ContentProvider
+	 * The actual JamnServer.ContentProvider implementation.
 	 */
 	protected ContentProviderImpl jamnServerContentProviderImpl = new ContentProviderImpl();
 
 	/**
 	 */
 	public JamnWebRPCProvider() {
-		this(Logger.getLogger(JamnWebRPCProvider.class.getName()));
-	}
-
-	/**
-	 */
-	public JamnWebRPCProvider(Logger pLogger) {
-		if (LOG == null) {
-			LOG = pLogger;
-		}
 	}
 
 	/**
@@ -77,7 +82,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	}
 
 	/**
-	 * The providers interface to register and install Services.
+	 * The interface method to register and install Services.
 	 */
 	public JamnWebRPCProvider registerApiService(Class<?> pServiceClass) throws Exception {
 		RPCServiceObject lServiceObj = null;
@@ -115,7 +120,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 
 	/*********************************************************
 	 * <pre>
-	 * Annotation Interfaces to annotate classes as RPC Services.
+	 * The Annotation Interfaces to annotate classes as RPC Services.
 	 * </pre>
 	 *********************************************************/
 	@Retention(RetentionPolicy.RUNTIME)
@@ -134,7 +139,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	 * </pre>
 	 *********************************************************/
 	/**
-	 * The central class that holds an Service Instance.
+	 * The central internal class that holds an Service Instance.
 	 */
 	protected static class RPCServiceObject {
 		protected Object instance = null;
@@ -211,13 +216,13 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 
 			if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_JSON)) {
 				if (hasParameter()) {
-					lParam = JSON.readValue(pRequestData, requestClass);
+					lParam = JSON.toObject(pRequestData, requestClass);
 					lRet = serviceMethod.invoke(instance, lParam);
 				} else {
 					lRet = serviceMethod.invoke(instance);
 				}
 
-				lRet = JSON.writeValueAsString(lRet);
+				lRet = JSON.toString(lRet);
 			} else if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_TEXT)) {
 				if (hasParameter() && requestClass == String.class) {
 					lRet = serviceMethod.invoke(instance, pRequestData);
@@ -225,7 +230,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 					lRet = serviceMethod.invoke(instance);
 				}
 
-				lRet = JSON.writeValueAsString(lRet);
+				lRet = JSON.toString(lRet);
 			}
 
 			return lRet;
@@ -233,7 +238,8 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	}
 
 	/**
-	 * An exception class for errors during api service creation.
+	 * Exceptions thrown by this JamnWebRPCProvider implementation during
+	 * Service-API initialization/creation.
 	 */
 	protected static class ApiDefinitionException extends Exception {
 		private static final long serialVersionUID = 1L;
@@ -244,6 +250,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	}
 
 	/**
+	 * Internal Helper to create and manage the service objects.
 	 */
 	protected static class ServiceHelper {
 		/**
@@ -289,11 +296,14 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 
 	/*********************************************************
 	 * <pre>
-	 * The actual JamnServer Content Provider for this RPC Service Provider.
+	 * The actual JamnServer.ContentProvider Interface Implementation for this RPC Service Provider.
 	 * </pre>
 	 *********************************************************/
 	protected class ContentProviderImpl implements JamnServer.ContentProvider {
 
+		/**
+		 * This method realizes the service execution logic.
+		 */
 		@Override
 		public String createResponseContent(Map<String, String> pResponseAttributes, OutputStream pResponseContent,
 				String pMethod, String pPath, String pRequestBody, Map<String, String> pRequestAttributes) {
@@ -357,6 +367,8 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		}
 
 		/**
+		 * Exceptions thrown by this ContentProviderImpl implementation during
+		 * Service-API execution.
 		 */
 		protected static class ApiException extends Exception {
 			private static final long serialVersionUID = 1L;
@@ -380,7 +392,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	 *********************************************************/
 	/**
 	 */
-	public static class CommonHelper {
+	protected static class CommonHelper {
 
 		/**
 		 */
@@ -397,4 +409,22 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 		}
 
 	}
+
+	/*********************************************************
+	 * <pre>
+	 * A wrapper interface for a JSON tool.
+	 * </pre>
+	 *********************************************************/
+	/**
+	 */
+	public static interface JsonToolWrapper {
+		/**
+		 */
+		public <T> T toObject(String pSrc, Class<T> pType) throws Exception;
+
+		/**
+		 */
+		public String toString(Object pObj) throws Exception;
+	}
+
 }

@@ -11,6 +11,8 @@ Required dependencies:
 		<artifactId>org.isa.ipc.JamnServer</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 	</dependency>
+	
+	<!-- or or a tool of your choice -->
 	<dependency>
 		<groupId>com.fasterxml.jackson.core</groupId>
 		<artifactId>jackson-databind</artifactId>

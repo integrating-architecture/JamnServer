@@ -131,9 +131,9 @@ public class JamnServer {
 
 			serverThread.start();
 
-			LOG.info("Server STARTED:  [" + config + "]" + LS);
+			LOG.info("JamnServer Instance STARTED:  [" + config + "]" + LS);
 		} catch (IOException e) {
-			LOG.severe("ERROR starting Server: [" + e.getMessage() + "]");
+			LOG.severe("ERROR starting JamnServer: [" + e.getMessage() + "]");
 			stop();
 		}
 	}
@@ -157,7 +157,7 @@ public class JamnServer {
 			requestExecutor.shutdownNow();
 		}
 
-		LOG.info(LS + "Server STOPPED");
+		LOG.info(LS + "JamnServer STOPPED");
 	}
 
 	/**
@@ -454,7 +454,12 @@ public class JamnServer {
 
 			try {
 				lRequest.readHeader(lInStream);
-				lRequest.readBody(lInStream);
+				lRequest.readBody(lInStream, 0);
+
+				// TODO
+				if (lRequest.getContentLength() > 0 && lRequest.getBody().isEmpty()) {
+					lStatus = lStatus;
+				}
 
 				lContentProvider = getContentProviderFor(lRequest.getHeaderAttributes());
 				lStatus = lContentProvider.createResponseContent(lResponseAttributes, lResponseContent,
@@ -576,10 +581,24 @@ public class JamnServer {
 
 			/**
 			 */
-			public void readBody(InputStream pInStream) throws IOException {
-				int lLength = getContentLength();
-				if (lLength > 0) {
-					body = HttpHelper.readHttpRequestBody(pInStream, lLength).toString();
+			public void readBody(InputStream pInStream, long pTimeout) throws IOException {
+				int lContentLength = getContentLength();
+				long lStart = System.currentTimeMillis();
+
+				if (lContentLength > 0) {
+					StringBuilder lBuffer = new StringBuilder();
+					while (true) {
+						lBuffer = HttpHelper.readHttpRequestBody(pInStream, lContentLength);
+						if (lBuffer.length() == lContentLength) {
+							body = lBuffer.toString();
+							LOG.fine("Body read time: " + (System.currentTimeMillis() - lStart));
+							break;
+						}
+						if (pTimeout > 0 && (System.currentTimeMillis() - lStart) > pTimeout) {
+							LOG.fine("Could NOT read Body in time: " + (System.currentTimeMillis() - lStart));
+							break;
+						}
+					}
 				}
 			}
 
@@ -871,6 +890,13 @@ public class JamnServer {
 		 */
 		public int getPort() {
 			return Integer.valueOf(props.getProperty("port", "8099"));
+		}
+
+		/**
+		 */
+		public Config setPort(int pPort) {
+			props.setProperty("port", String.valueOf(pPort));
+			return this;
 		}
 
 		/**

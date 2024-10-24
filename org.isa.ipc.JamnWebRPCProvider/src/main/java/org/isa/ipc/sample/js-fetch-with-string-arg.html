@@ -9,7 +9,9 @@
 		//CHANGE to YOUR PORT here
 		const url = "http://localhost:8099/api/echo";
 
-		let request = "Any string sent by the client";
+		let request = "Hello JamnServer";
+		let i = 0;
+		let line = "";
 
 		async function fetchServerData() {
 			let data = "";
@@ -18,7 +20,7 @@
 				const response = await fetch(url, {
 					method: "POST",
 					accept: "text/plain",
-					headers: {"Content-Type": "text/plain"},
+					headers: { "Content-Type": "text/plain" },
 					mode: "cors", // required for localhost communication via js fetch
 					body: request
 				})
@@ -36,12 +38,16 @@
 		}
 
 		function processReturnData(data) {
+			line = line + data + "<br/>";
 			console.log(typeof data + "[" + data + "]");
-			document.getElementById("request").innerHTML = "Request:<br/> "+request;
-			document.getElementById("response").innerHTML = "Response:<br/> "+data;
+			document.getElementById("request").innerHTML = "Request:<br/> " + request;
+			document.getElementById("response").innerHTML = "Response(s):<br/> " + line;
 		}
 
-		fetchServerData().then((data) => processReturnData(data));
+		line = "";
+		for (i = 0; i < 1; i++) {
+			fetchServerData().then((data) => processReturnData(data));
+		}
 
 	</script>
 </body>

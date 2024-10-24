@@ -19,7 +19,7 @@ import org.isa.ipc.JamnWebRPCProvider.WebRPCService;
  * - POST = parameter supported but accessible only from a "fetch" like function
  * </pre>
  */
-public class SampleServerApiServices {
+public class SampleWebApiServices {
 
 	public static final String PATHBASE_API = "/api";
 	public static final String PATHBASE_API_SERVER = "/api/server";
@@ -65,7 +65,7 @@ public class SampleServerApiServices {
 	 */
 	@WebRPCService(path = PATHBASE_API + "/echo", methods = { "POST" }, contentType = JamnWebRPCProvider.HTTPVAL_CONTENT_TYPE_TEXT)
 	public String sendEcho(String pRequest) {
-		return "Server ECHO: " + pRequest;
+		return "ECHO: " + pRequest;
 	}
 
 	/***************************************************************************************

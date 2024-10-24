@@ -3,7 +3,7 @@ package org.isa.ipc.sample;
 import org.isa.ipc.JamnServer;
 import org.isa.ipc.JamnWebRPCProvider;
 import org.isa.ipc.JamnWebRPCProvider.JsonToolWrapper;
-import org.isa.ipc.sample.web.api.SampleServerApiServices;
+import org.isa.ipc.sample.web.api.SampleWebApiServices;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -13,7 +13,7 @@ public class SampleWebRPCServerApp {
 
 	// wrap a json tool for the JamnWebRPCProvider
 	private static JsonToolWrapper Jackson = new JamnWebRPCProvider.JsonToolWrapper() {
-		private static final ObjectMapper Jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD,
+		private final ObjectMapper Jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD,
 				Visibility.ANY);
 
 		@Override
@@ -40,7 +40,7 @@ public class SampleWebRPCServerApp {
 		JamnWebRPCProvider lWebRPCProvider = new JamnWebRPCProvider();
 
 		// register your RPC-API Services
-		lWebRPCProvider.registerApiService(SampleServerApiServices.class);
+		lWebRPCProvider.registerApiService(SampleWebApiServices.class);
 		
 		//get the actual provider and add it to the server
 		lServer.addContentProvider("RPCProvider", lWebRPCProvider.getJamnContentProvider());

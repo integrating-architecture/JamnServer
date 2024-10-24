@@ -454,12 +454,7 @@ public class JamnServer {
 
 			try {
 				lRequest.readHeader(lInStream);
-				lRequest.readBody(lInStream, 0);
-
-				// TODO
-				if (lRequest.getContentLength() > 0 && lRequest.getBody().isEmpty()) {
-					lStatus = lStatus;
-				}
+				lRequest.readBody(lInStream);
 
 				lContentProvider = getContentProviderFor(lRequest.getHeaderAttributes());
 				lStatus = lContentProvider.createResponseContent(lResponseAttributes, lResponseContent,
@@ -580,8 +575,27 @@ public class JamnServer {
 			}
 
 			/**
+			 * <pre>
+			 * This implementation is not http compliant and may also be incorrect.
+			 * However - it works with the standard java se client. 
+			 * While None blocking at this point does NOT work reliable because the
+			 * JamnServer does NOT support "splitted" requests.
+			 * The JamnServer treats a request as a closed "transaction".
+			 * </pre>
 			 */
-			public void readBody(InputStream pInStream, long pTimeout) throws IOException {
+			public void readBody(InputStream pInStream) throws IOException {
+				// try to read the body until socket timeout
+				readBody(pInStream, -1);
+			}
+
+			/**
+			 * <pre>
+			 * Tries to blocking read the request body from the socket InputStream
+			 * until global socket timeout
+			 * or until a given local timeout value is reached.
+			 * </pre>
+			 */
+			protected void readBody(InputStream pInStream, long pTimeout) throws IOException {
 				int lContentLength = getContentLength();
 				long lStart = System.currentTimeMillis();
 
@@ -589,14 +603,18 @@ public class JamnServer {
 					StringBuilder lBuffer = new StringBuilder();
 					while (true) {
 						lBuffer = HttpHelper.readHttpRequestBody(pInStream, lContentLength);
+						// accept only complete bodies
 						if (lBuffer.length() == lContentLength) {
 							body = lBuffer.toString();
 							LOG.fine("Body read time: " + (System.currentTimeMillis() - lStart));
 							break;
 						}
+						// if local timeout elapsed
 						if (pTimeout > 0 && (System.currentTimeMillis() - lStart) > pTimeout) {
-							LOG.fine("Could NOT read Body in time: " + (System.currentTimeMillis() - lStart));
-							break;
+							LOG.severe("Could NOT read Request Body in time: [" + (System.currentTimeMillis() - lStart)
+									+ "] - expected length [" + lContentLength + "] read length [" + lBuffer.length()
+									+ "]");
+							throw new IOException("Could NOT read Request Body from socket stream.");
 						}
 					}
 				}
@@ -767,8 +785,7 @@ public class JamnServer {
 
 		/**
 		 * Starting at the CURRENT position of the input stream reading until
-		 * pContentLen bytes are read. TODO i != pContentLen. This is called after
-		 * readHttpRequestHeader.
+		 * pContentLen bytes are read.
 		 */
 		public StringBuilder readHttpRequestBody(InputStream pInStream, int pContentLen) throws IOException {
 			int i = 0;

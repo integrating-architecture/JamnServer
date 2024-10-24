@@ -82,22 +82,20 @@ public class WebRPCProviderTest {
 	}
 
 	@Test
-	public void test() throws Exception {
+	public void testApiEcho() throws Exception {
 		String lMsg = "0123456789";
 		HttpRequest lRequest = null;
 		HttpResponse<String> lResponse = null;
 
-		for (int i = 0; i < 1; i++) {
-			lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/api/echo"))
-					.headers("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString(lMsg)).build();
+		lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/api/echo")).headers("Content-Type", "text/plain")
+				.POST(HttpRequest.BodyPublishers.ofString(lMsg)).build();
 
-			lResponse = Client.send(lRequest, BodyHandlers.ofString());
+		lResponse = Client.send(lRequest, BodyHandlers.ofString());
 
-			String lBody = lResponse.body();
-			int lStatus = lResponse.statusCode();
+		String lBody = lResponse.body();
+		int lStatus = lResponse.statusCode();
 
-			assertEquals(200, lStatus, "HTTP Status");
-			assertEquals("ECHO: " + lMsg, lBody, "HTTP Body");
-		}
+		assertEquals(200, lStatus, "HTTP Status");
+		assertEquals("ECHO: " + lMsg, lBody, "HTTP Body");
 	}
 }

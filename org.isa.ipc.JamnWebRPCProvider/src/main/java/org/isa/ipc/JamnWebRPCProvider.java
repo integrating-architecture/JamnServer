@@ -25,14 +25,30 @@ import org.isa.ipc.http.HttpHeader;
  *  ... 
  *   //create the provider
  *   JamnWebRPCProvider lWebRPCProvider = new JamnWebRPCProvider(lServer.getLoggerFor(JamnWebRPCProvider.class.getName()));
+ *   
  *   //register rpc api services
- *   lWebRPCProvider.registerApiService(SampleServerApiServices.class);
+ *   lWebRPCProvider.registerApiService(SampleWebApiServices.class);
+ *   
  *   //get the actual provider and add it to a server
  *   lServer.addContentProvider("RPCProvider", lWebRPCProvider.getJamnContentProvider());
  *  ...
  *
- * Services are implemented as classes with annotated service methods.
- * The data IO is based on JSON which is provided by the "com.fasterxml.jackson" library.
+ * Services are implemented as usual with Pojo classes and annotated service methods.
+ * 
+ * The data IO is by default based on JSON which is provided by the "com.fasterxml.jackson" library.
+ * But you can simply fallback to pure String IO or plug in any other JSON or String based format converter.
+ * 
+ * JamnWebRPCProvider.setJsonTool(new JamnWebRPCProvider.JsonToolWrapper() {
+ * 		private final MyConverterClass MyConverter = new MyConverterClass();
+ * 			Override
+ * 			public <T> T toObject(String pSrc, Class<T> pType) throws Exception {
+ * 				return MyConverter.getAsObject(pSrc, pType);
+ * 			}
+ * 			Override
+ * 			public String toString(Object pObj) throws Exception {
+ * 				return MyConverter.getAsString(pObj);
+ * 			}
+ * 		});
  * </pre>
  */
 public class JamnWebRPCProvider implements JamnServer.HttpConstants {
@@ -47,6 +63,7 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 	 * @see org.isa.ipc.sample.SampleWebRPCServerApp
 	 ***************************************************************************/
 	protected static JsonToolWrapper JSON = null;
+
 	public static void setJsonTool(JsonToolWrapper pTool) {
 		JSON = pTool;
 	}
@@ -114,7 +131,6 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 				}
 			}
 		}
-
 		return this;
 	}
 

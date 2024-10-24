@@ -1,3 +1,4 @@
+/*Authored by www.integrating-architecture.de*/
 package org.isa.ipc.sample;
 
 import org.isa.ipc.JamnServer;
@@ -8,6 +9,11 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/**
+ * <pre>
+ * A an app for starting a JamnServer with the sample Service API.
+ * </pre>
+ */
 public class SampleWebRPCServerApp {
 
 	public static void main(String[] args) throws Exception {

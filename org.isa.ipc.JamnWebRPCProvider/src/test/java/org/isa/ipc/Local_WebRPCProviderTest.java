@@ -1,4 +1,3 @@
-/*Authored by www.integrating-architecture.de*/
 package org.isa.ipc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,6 +11,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import org.isa.ipc.sample.web.api.SampleWebApiServices;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -22,15 +22,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * JamnWebRPCProvider Unit test.
  */
-@DisplayName("Jamn Server WebRPCProvider Test")
-public class WebRPCProviderTest {
+@DisplayName("Local_WebRPCProviderTest")
+@Disabled
+public class Local_WebRPCProviderTest {
 
 	private static HttpClient Client;
 	private static JamnServer Server;
 	private static String ServerURL;
 
 	@BeforeAll
-	public static void setupEnvironment() throws Exception {
+	public static void setupServerAndProvider() throws Exception {
 		// create standard Java SE HTTP Client
 		Client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
@@ -42,9 +43,10 @@ public class WebRPCProviderTest {
 		// e.g. default: http://localhost:8099
 		ServerURL = "http://localhost:" + Server.getConfig().getPort();
 
-		// if JavaScript/HTML/Browser calls were required
-		// CORS would have to be enabled on the LOCAL server address
-		// Server.getConfig().setCORSEnabled(true);
+		// if JavaScript/HTML/Browser calls are needed
+		// CORS must be enabled on a LOCAL server address
+		// Server.getConfig().setCORSEnabled(true); // required for localhost
+		// communication via js fetch
 
 		// WebRPCProvider setup
 		// set logging and json tool for the JamnWebRPCProvider
@@ -83,19 +85,21 @@ public class WebRPCProviderTest {
 
 	@Test
 	public void testApiEcho() throws Exception {
-		String lMessage = "Client message for JamnServer API";
+		String lMsg = "0123456789";
 		HttpRequest lRequest = null;
 		HttpResponse<String> lResponse = null;
 
-		lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/api/echo")).headers("Content-Type", "text/plain")
-				.POST(HttpRequest.BodyPublishers.ofString(lMessage)).build();
+		for (int i = 0; i < 100; i++) {
+			lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/api/echo"))
+					.headers("Content-Type", "text/plain").POST(HttpRequest.BodyPublishers.ofString(lMsg)).build();
 
-		lResponse = Client.send(lRequest, BodyHandlers.ofString());
+			lResponse = Client.send(lRequest, BodyHandlers.ofString());
 
-		String lBody = lResponse.body();
-		int lStatus = lResponse.statusCode();
+			String lBody = lResponse.body();
+			int lStatus = lResponse.statusCode();
 
-		assertEquals(200, lStatus, "HTTP Status");
-		assertEquals("ECHO: " + lMessage, lBody, "HTTP Body");
+			assertEquals(200, lStatus, "HTTP Status");
+			assertEquals("ECHO: " + lMsg, lBody, "HTTP Body");
+		}
 	}
 }

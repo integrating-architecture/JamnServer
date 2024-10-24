@@ -29,7 +29,7 @@ public class WebRPCProviderTest {
 	private static String ServerURL;
 
 	@BeforeAll
-	public static void setupServerAndProvider() throws Exception {
+	public static void setupEnvironment() throws Exception {
 		// create standard Java SE HTTP Client
 		Client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
@@ -41,10 +41,9 @@ public class WebRPCProviderTest {
 		// e.g. default: http://localhost:8099
 		ServerURL = "http://localhost:" + Server.getConfig().getPort();
 
-		// if JavaScript/HTML/Browser calls are needed
-		// CORS must be enabled on a LOCAL server address
-		// Server.getConfig().setCORSEnabled(true); // required for localhost
-		// communication via js fetch
+		// if JavaScript/HTML/Browser calls were required
+		// CORS would have to be enabled on the LOCAL server address
+		// Server.getConfig().setCORSEnabled(true);
 
 		// WebRPCProvider setup
 		// set logging and json tool for the JamnWebRPCProvider
@@ -83,12 +82,12 @@ public class WebRPCProviderTest {
 
 	@Test
 	public void testApiEcho() throws Exception {
-		String lMsg = "0123456789";
+		String lMessage = "Client message for JamnServer API";
 		HttpRequest lRequest = null;
 		HttpResponse<String> lResponse = null;
 
 		lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/api/echo")).headers("Content-Type", "text/plain")
-				.POST(HttpRequest.BodyPublishers.ofString(lMsg)).build();
+				.POST(HttpRequest.BodyPublishers.ofString(lMessage)).build();
 
 		lResponse = Client.send(lRequest, BodyHandlers.ofString());
 
@@ -96,6 +95,6 @@ public class WebRPCProviderTest {
 		int lStatus = lResponse.statusCode();
 
 		assertEquals(200, lStatus, "HTTP Status");
-		assertEquals("ECHO: " + lMsg, lBody, "HTTP Body");
+		assertEquals("ECHO: " + lMessage, lBody, "HTTP Body");
 	}
 }

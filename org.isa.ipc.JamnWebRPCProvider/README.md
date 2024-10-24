@@ -1,6 +1,6 @@
 # JamnWebRPCProvider
 
-This is an experimental example implementation for simple, rest like RPC Web Services.
+This is an experimental example implementation for simple, Rest-like RPC Web Services implemented as a JamnServer Provider PlugIn.
 
 Required dependencies:
 

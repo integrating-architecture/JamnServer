@@ -221,7 +221,6 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 				} else {
 					lRet = serviceMethod.invoke(instance);
 				}
-
 				lRet = JSON.toString(lRet);
 			} else if (getContentType().equalsIgnoreCase(HTTPVAL_CONTENT_TYPE_TEXT)) {
 				if (hasParameter() && requestClass == String.class) {
@@ -229,7 +228,11 @@ public class JamnWebRPCProvider implements JamnServer.HttpConstants {
 				} else {
 					lRet = serviceMethod.invoke(instance);
 				}
-
+				if (responseClass == String.class) {
+					// if string defined return directly
+					return lRet;
+				}
+				// this surrounds a blank string with ""
 				lRet = JSON.toString(lRet);
 			}
 

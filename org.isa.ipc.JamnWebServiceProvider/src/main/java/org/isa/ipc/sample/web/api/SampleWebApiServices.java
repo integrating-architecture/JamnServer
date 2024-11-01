@@ -19,6 +19,9 @@ import org.isa.ipc.JamnWebServiceProvider.WebService;
  * the get and post methods are used like:
  * - GET = NO parameter but accessible just by url even from browser 
  * - POST = parameter supported but accessible only from a "fetch" like function
+ * 
+ * NOTE: 
+ * For simplicity, the used data structures have public fields and NO getter/setter methods.
  * </pre>
  */
 public class SampleWebApiServices {
@@ -50,9 +53,9 @@ public class SampleWebApiServices {
     /**
      */
     public static class AboutResponse {
-        protected String name = "";
-        protected String version = "";
-        protected String descr = "";
+        public String name = "";
+        public String version = "";
+        public String descr = "";
     }
 
     /***************************************************************************************
@@ -101,7 +104,7 @@ public class SampleWebApiServices {
     /**
      */
     public static class DetailsRequest {
-        protected List<String> subjects = new ArrayList<>();
+        public List<String> subjects = new ArrayList<>();
 
         List<String> getSubjects() {
             return subjects;
@@ -111,7 +114,7 @@ public class SampleWebApiServices {
     /**
      */
     public static class DetailsResponse {
-        protected Map<String, String> details = new LinkedHashMap<>();
+        public Map<String, String> details = new LinkedHashMap<>();
 
         public void putSubject(String pSubject, String pValue) {
             details.put(pSubject, pValue);

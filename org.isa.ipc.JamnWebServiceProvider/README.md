@@ -2,13 +2,14 @@
 
 This is a sample implementation of easy to use, REST-like Web Services exposed through a JamnServer-Content-Provider.
 
-Like usual the <a href="/org.isa.ipc.JamnWebServiceProvider/src/main/java/org/isa/ipc/JamnWebServiceProvider.java">Provider</a> allows you to implement and register Web Services as annotated methods of a pojo class. <a href="/org.isa.ipc.JamnWebServiceProvider/src/main/java/org/isa/ipc/sample/SampleWebServiceApp.java">(Sample)</a>
+Like usual the <a href="/org.isa.ipc.JamnWebServiceProvider/src/main/java/org/isa/ipc/JamnWebServiceProvider.java">Provider</a> allows you to implement and register Web Services as annotated methods of a pojo class.
+(<a href="/org.isa.ipc.JamnWebServiceProvider/src/test/java/org/isa/ipc/WebServiceProviderTest.java">Test </a> -- <a href="/org.isa.ipc.JamnWebServiceProvider/src/main/java/org/isa/ipc/sample/web/api/SampleWebApiServices.java"> Sample API</a>)
 
 ```java
 //the service annotation
 import org.isa.ipc.JamnWebServiceProvider.WebService;
 
-// register API Services by the provider like
+// register Web Services by the provider like
 // provider.registerServices(SampleWebApiServices.class);
 
 public class SampleWebApiServices {

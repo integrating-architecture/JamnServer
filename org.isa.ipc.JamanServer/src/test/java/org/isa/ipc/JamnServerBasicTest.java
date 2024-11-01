@@ -40,12 +40,10 @@ class JamnServerBasicTest {
     void testDoGETRquest() throws Exception {
         // java jdk http client
         HttpClient lClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
-        HttpRequest lRequest = null;
-        HttpResponse<String> lResponse = null;
 
-        lRequest = HttpRequest.newBuilder().uri(new URI("http://localhost:8099/")).build();
+        HttpRequest lRequest = HttpRequest.newBuilder().uri(new URI("http://localhost:8099/")).build();
 
-        lResponse = lClient.send(lRequest, BodyHandlers.ofString());
+        HttpResponse<String> lResponse = lClient.send(lRequest, BodyHandlers.ofString());
 
         // HTTP 204 No Content - but alive
         assertEquals(204, lResponse.statusCode(), "HTTP Status");

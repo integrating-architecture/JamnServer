@@ -29,6 +29,9 @@ public class WebServiceProviderTest {
     private static JamnServer Server;
     private static String ServerURL;
 
+    // JSON Tool
+    private static ObjectMapper Jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+
     @BeforeAll
     public static void setupEnvironment() throws Exception {
         // create standard Java SE HTTP Client
@@ -45,16 +48,14 @@ public class WebServiceProviderTest {
         JamnWebServiceProvider.setLogger(Server.getLoggerFor(JamnWebServiceProvider.class.getName()));
 
         JamnWebServiceProvider.setJsonTool(new JamnWebServiceProvider.JsonToolWrapper() {
-            private final ObjectMapper jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
-
             @Override
             public <T> T toObject(String pSrc, Class<T> pType) throws Exception {
-                return jack.readValue(pSrc, pType);
+                return Jack.readValue(pSrc, pType);
             }
 
             @Override
             public String toString(Object pObj) throws Exception {
-                return jack.writeValueAsString(pObj);
+                return Jack.writeValueAsString(pObj);
             }
         });
 
@@ -78,18 +79,40 @@ public class WebServiceProviderTest {
     @Test
     void testApiEcho() throws Exception {
         String lMessage = "Client message for JamnServer API";
-        HttpRequest lRequest = null;
-        HttpResponse<String> lResponse = null;
 
-        lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/api/echo")).headers("Content-Type", "text/plain")
+        HttpRequest lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/api/echo"))
+                .headers("Content-Type", "text/plain")
                 .POST(HttpRequest.BodyPublishers.ofString(lMessage)).build();
 
-        lResponse = Client.send(lRequest, BodyHandlers.ofString());
+        HttpResponse<String> lResponse = Client.send(lRequest, BodyHandlers.ofString());
 
-        String lBody = lResponse.body();
-        int lStatus = lResponse.statusCode();
+        assertEquals(200, lResponse.statusCode(), "HTTP Status");
+        assertEquals("ECHO: " + lMessage, lResponse.body(), "HTTP Body");
+    }
 
-        assertEquals(200, lStatus, "HTTP Status");
-        assertEquals("ECHO: " + lMessage, lBody, "HTTP Body");
+    @Test
+    void testGETApiAboutErrorNotFound() throws Exception {
+        // Error Case - test for unknown service path
+        // status: 404 - Not found
+        // log: WebService API Error: [Unsupported WebService Path [/about]]
+        HttpRequest lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/about"))
+                .headers("Content-Type", "application/json").GET().build();
+
+        HttpResponse<String> lResponse = Client.send(lRequest, BodyHandlers.ofString());
+        assertEquals(404, lResponse.statusCode(), "HTTP Status");
+    }
+
+    @Test
+    void testGETApiAbout() throws Exception {
+        HttpRequest lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/api/about"))
+                .headers("Content-Type", "application/json").GET().build();
+
+        HttpResponse<String> lResponse = Client.send(lRequest, BodyHandlers.ofString());
+
+        assertEquals(200, lResponse.statusCode(), "HTTP Status");
+
+        SampleWebApiServices.AboutResponse lAbout = Jack.readValue(lResponse.body(),
+                SampleWebApiServices.AboutResponse.class);
+        assertEquals("0.0.1", lAbout.version, "AboutResponse.version");
     }
 }

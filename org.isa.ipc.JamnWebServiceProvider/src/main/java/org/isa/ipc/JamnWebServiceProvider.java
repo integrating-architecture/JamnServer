@@ -122,21 +122,21 @@ public class JamnWebServiceProvider {
         for (Method serviceMethod : lMethodes) {
             if (serviceMethod.isAnnotationPresent(WebService.class)) {
                 lServiceAnno = serviceMethod.getDeclaredAnnotation(WebService.class);
-                checkServiceAnnotation(lServiceAnno, serviceMethod, pServiceClass);
+                checkServiceAnnotation(lServiceAnno, serviceMethod);
 
-                lRequestClass = getServiceRequestClassFrom(serviceMethod, pServiceClass);
+                lRequestClass = getServiceRequestClassFrom(serviceMethod);
                 lReponseClass = getServiceResponseClassFrom(serviceMethod);
 
                 lServiceObj = new ServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass, serviceMethod);
                 if (!registeredServices.containsKey(lServiceObj.path)) {
                     registeredServices.put(lServiceObj.path, lServiceObj);
-                    final String info = String.format("WebService installed [%s] at [%s]", lServiceObj.getSimpleName(),
+                    final String info = String.format("WebService installed [%s] at [%s]", lServiceObj.getName(),
                             lServiceObj.path);
                     LOG.fine(info);
                 } else {
                     throw new WebServiceDefinitionException(String.format(
-                            "WebService Path of [%s] already defined for [%s]", lServiceObj.getSimpleName(),
-                            registeredServices.get(lServiceObj.path).getSimpleName()));
+                            "WebService Path of [%s] already defined for [%s]", lServiceObj.getName(),
+                            registeredServices.get(lServiceObj.path).getName()));
                 }
             }
         }
@@ -167,34 +167,36 @@ public class JamnWebServiceProvider {
 
     /**
      */
-    protected static String getSimpleName(Class<?> pServiceClass, Method pMeth) {
-        return pServiceClass.getSimpleName() + " - " + pMeth.getName();
+    protected static String getServiceMethodName(Method pMeth) {
+        return pMeth.getDeclaringClass().getSimpleName() + " - " + pMeth.getName();
     }
 
     /**
      */
-    protected static void checkServiceAnnotation(WebService pServiceAnno, Method pMeth, Class<?> pServiceClass)
+    protected static void checkServiceAnnotation(WebService pServiceAnno, Method pMeth)
             throws WebServiceDefinitionException {
         if (pServiceAnno.path().isEmpty()) {
             throw new WebServiceDefinitionException(
-                    String.format("No WebService path attribute found for [%s]", getSimpleName(pServiceClass, pMeth)));
+                    String.format("No WebService path attribute found for [%s]",
+                            getServiceMethodName(pMeth)));
         }
         if (pServiceAnno.methods().length == 0) {
             throw new WebServiceDefinitionException(String.format("No WebService methods attribute found for [%s]",
-                    getSimpleName(pServiceClass, pMeth)));
+                    getServiceMethodName(pMeth)));
         }
     }
 
     /**
      */
-    protected static Class<?> getServiceRequestClassFrom(Method pMeth, Class<?> pServiceClass)
+    protected static Class<?> getServiceRequestClassFrom(Method pMeth)
             throws WebServiceDefinitionException {
         Class<?>[] lClasses = pMeth.getParameterTypes();
         if (lClasses.length == 1) {
             return lClasses[0];
         } else if (lClasses.length > 1) {
             throw new WebServiceDefinitionException(String.format(
-                    "WebService method must declare 0 or 1 parameter [%s]", getSimpleName(pServiceClass, pMeth)));
+                    "WebService method must declare 0 or 1 parameter [%s]",
+                    getServiceMethodName(pMeth)));
         }
         return null;
     }
@@ -239,13 +241,13 @@ public class JamnWebServiceProvider {
          */
         @Override
         public String toString() {
-            return getSimpleName();
+            return getName();
         }
 
         /**
          */
-        public String getSimpleName() {
-            return JamnWebServiceProvider.getSimpleName(getServiceClass(), serviceMethod);
+        public String getName() {
+            return getServiceMethodName(serviceMethod);
         }
 
         /**
@@ -357,14 +359,14 @@ public class JamnWebServiceProvider {
                     } else {
                         throw new WebServiceException(SC_500_INTERNAL_ERROR,
                                 String.format("Unsupported WebService API Return Type [%s] [%s]", lResult.getClass(),
-                                        lService.getSimpleName()));
+                                        lService.getName()));
                     }
                 }
             } catch (WebServiceException wse) {
                 LOG.fine(() -> String.format("WebService API Error: [%s]", wse.getMessage()));
                 lStatus = wse.getHttpStatus();
             } catch (Exception e) {
-                String info = lService != null ? lService.getSimpleName() : "";
+                String info = lService != null ? lService.getName() : "";
                 info = info + LS + getStackTraceFrom(e);
                 LOG.severe(String.format("WebService Request Handling internal/runtime ERROR: %s %s %s", e.toString(),
                         LS, info));
@@ -384,11 +386,11 @@ public class JamnWebServiceProvider {
 
                 if (!lService.isMethodSupported(pMethod)) {
                     throw new WebServiceException(SC_405_METHOD_NOT_ALLOWED, String
-                            .format("Unsupported WebService Method [%s] [%s]", pMethod, lService.getSimpleName()));
+                            .format("Unsupported WebService Method [%s] [%s]", pMethod, lService.getName()));
                 }
                 if (!lService.isContentTypeSupported(pContentType)) {
                     throw new WebServiceException(SC_400_BAD_REQUEST, String.format(
-                            "Unsupported WebService ContentType [%s] [%s]", pContentType, lService.getSimpleName()));
+                            "Unsupported WebService ContentType [%s] [%s]", pContentType, lService.getName()));
                 }
             } else {
                 throw new WebServiceException(SC_404_NOT_FOUND,

@@ -157,8 +157,13 @@ public class JamnWebServiceProvider {
     }
 
     /*********************************************************
-     * Internal static helper methods for service creation.
+     * Internal static helper methods.
      *********************************************************/
+    /**
+     */
+    protected static String getStackTraceFrom(Throwable t) {
+        return JamnServer.getStackTraceFrom(t);
+    }
 
     /**
      */
@@ -412,18 +417,7 @@ public class JamnWebServiceProvider {
     }
 
     /*********************************************************
-     * Static helper methods.
-     *********************************************************/
-    /**
-     */
-    protected static String getStackTraceFrom(Throwable t) {
-        return JamnServer.getStackTraceFrom(t);
-    }
-
-    /*********************************************************
-     * <pre>
      * A wrapper interface for a JSON tool.
-     * </pre>
      *********************************************************/
     /**
      */

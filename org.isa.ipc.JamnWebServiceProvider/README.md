@@ -6,7 +6,7 @@ Like usual the <a href="/org.isa.ipc.JamnWebServiceProvider/src/main/java/org/is
 
 ```java
 //the service annotation
-import org.isa.ipc.JamnWebServiceProvider;
+import org.isa.ipc.JamnWebServiceProvider.WebService;
 
 // register API Services by the provider like
 // provider.registerServices(SampleWebApiServices.class);

@@ -43,6 +43,7 @@ import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import javax.net.ServerSocketFactory;
+import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
 /**
@@ -153,8 +154,7 @@ public class JamnServer {
         serverThread.setName(getClass().getSimpleName() + " - on Port [" + config.getPort() + "]");
 
         try {
-            serverSocket = ServerSocketFactory.getDefault().createServerSocket(config.getPort());
-            serverSocket.setReuseAddress(true);
+            serverSocket = createServerSocket();
 
             if (requestExecutor == null) {
                 requestExecutor = Executors.newFixedThreadPool(config.getWorkerNumber());
@@ -163,8 +163,9 @@ public class JamnServer {
             serverThread.start();
 
             LOG.info(() -> String.format("JamnServer Instance STARTED: [%s]%s", config, LS));
-        } catch (IOException e) {
-            LOG.severe(() -> String.format("ERROR starting JamnServer: [%s]", e.getMessage()));
+        } catch (Exception e) {
+            LOG.severe(() -> String.format("ERROR starting JamnServer: [%s]%s%s", e.getMessage(), LS,
+                    getStackTraceFrom(e)));
             stop();
         }
     }
@@ -253,6 +254,22 @@ public class JamnServer {
      */
     public static void setHttpHelper(HttpHelper pHelper) {
         HttpHelper = pHelper;
+    }
+
+    /**
+     */
+    protected ServerSocket createServerSocket() throws Exception {
+        ServerSocket lSocket = null;
+
+        if (!System.getProperty("javax.net.ssl.keyStore", "").isEmpty()
+                && !System.getProperty("javax.net.ssl.keyStorePassword", "").isEmpty()) {
+            lSocket = SSLServerSocketFactory.getDefault().createServerSocket(config.getPort());
+        } else {
+            lSocket = ServerSocketFactory.getDefault().createServerSocket(config.getPort());
+        }
+
+        lSocket.setReuseAddress(true);
+        return lSocket;
     }
 
     /*********************************************************

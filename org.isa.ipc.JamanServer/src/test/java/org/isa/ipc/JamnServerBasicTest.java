@@ -1,3 +1,4 @@
+/* Authored by www.integrating-architecture.de */
 package org.isa.ipc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

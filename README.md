@@ -6,9 +6,11 @@ The purpose is textdata based remote communication e.g. with JSON/XML/HTML etc. 
 
 The Server implementation has NO dependencies to any APIs or Libraries. It uses only standard Java SE functionality and is <a href="/org.isa.ipc.JamanServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a>
 
-Combined with an equally small Content-Provider implementation like <a href="/org.isa.ipc.JamnWebServiceProvider">JamnWebServiceProvider</a>, Jamn can serve as a basis for lightweight (two classes) and straightforward REST-like Web APIs as you e.g. know from JavaScript.
+The basic design is a layered separation of socket, protocol and content, so you can easily adapt anything to your own needs.
 
-**NOTE**: Although the server supports http in a basic form, **it is NOT intended to be a real HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required.
+E.g. combined with a small Content-Provider implementation like <a href="/org.isa.ipc.JamnWebServiceProvider">JamnWebServiceProvider</a>, Jamn can serve as a basis for lightweight (two classes) and straightforward REST-like Web APIs as you e.g. know from JavaScript.
+
+**NOTE**: Although the current server supports http in a basic form, **it is NOT intended to be a real HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required.
 
 <a href="/org.isa.ipc.JamanServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java">A basic usage example</a>
 

@@ -27,7 +27,7 @@ public class SampleWebServiceApp {
         JamnWebServiceProvider.setLogger(lServer.getLoggerFor(JamnWebServiceProvider.class.getName()));
 
         // and create a json tool wrapper for the JamnWebServiceProvider
-        JamnWebServiceProvider.setJsonTool(new JamnWebServiceProvider.JsonToolWrapper() {
+        JamnWebServiceProvider.setJsonTool(new JamnServer.JsonToolWrapper() {
             private final ObjectMapper jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
 
             @Override
@@ -48,7 +48,7 @@ public class SampleWebServiceApp {
 
         // add the actual jamn-content-provider from JamnWebServiceProvider to the
         // server
-        lServer.addContentProvider("WebServiceProvider", lWebServiceProvider.getJamnContentProvider());
+        lServer.addContentProvider("WebServiceProvider", lWebServiceProvider);
         // start server
         lServer.start();
     }

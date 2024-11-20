@@ -2,6 +2,7 @@
 package org.isa.ipc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -47,7 +48,7 @@ public class WebServiceProviderTest {
         // set logging and json tool for the JamnWebServiceProvider
         JamnWebServiceProvider.setLogger(Server.getLoggerFor(JamnWebServiceProvider.class.getName()));
 
-        JamnWebServiceProvider.setJsonTool(new JamnWebServiceProvider.JsonToolWrapper() {
+        JamnWebServiceProvider.setJsonTool(new JamnServer.JsonToolWrapper() {
             @Override
             public <T> T toObject(String pSrc, Class<T> pType) throws Exception {
                 return Jack.readValue(pSrc, pType);
@@ -66,9 +67,10 @@ public class WebServiceProviderTest {
         lWebServiceProvider.registerServices(SampleWebApiServices.class);
 
         // get the actual provider and add it to the server
-        Server.addContentProvider("WebServiceProvider", lWebServiceProvider.getJamnContentProvider());
+        Server.addContentProvider("WebServiceProvider", lWebServiceProvider);
         // start server
         Server.start();
+        assertTrue(Server.isRunning(), "Test Server start FAILED");
     }
 
     @AfterAll

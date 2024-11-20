@@ -33,7 +33,7 @@ class JamnServerBasicTest {
         Server = new JamnServer(8099);
         Server.start();
 
-        assertTrue(Server.isRunning());
+        assertTrue(Server.isRunning(), "Test Server start FAILED");
     }
 
     @Test

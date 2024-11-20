@@ -8,10 +8,9 @@ import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.TEXT_HTML;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_200_OK;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 
 import org.isa.ipc.JamnServer;
@@ -28,13 +27,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  * When this sample Server is running
  * - browser: http://localhost:8099 - should show an empty page
- * - browser: http://localhost:8099/info - should show the info-page
+ * - browser: http://localhost:8099/info - should show the info.html page
  * - browser: open||drop in the js-fetch-page.html file - should show a json request and response
  * </pre>
  */
 public class SampleCustomerContentProviderApp {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    /**
+     */
+    private static String WebRoot = "src/test/resources/var/http/sample/";
+
+    private static byte[] readResourceFile(String pFileName) throws Exception {
+        String lPath = WebRoot + pFileName;
+        return Files.readAllBytes(Paths.get(lPath));
+    }
 
     /**
      */
@@ -63,13 +70,13 @@ public class SampleCustomerContentProviderApp {
                 if (lRequest.isGET()) {
                     byte[] lData = null;
                     if ("/info".equalsIgnoreCase(pPath)) {
-                        lData = readResourceFile("/info-page.html");
+                        lData = readResourceFile("info.html");
 
                         lResponse.setContentType(TEXT_HTML);
                         pResponseContent.write(lData);
 
                     } else if ("/isa-logo.png".equalsIgnoreCase(pPath)) {
-                        lData = readResourceFile("/isa-logo.png");
+                        lData = readResourceFile("isa-logo.png");
 
                         lResponse.setContentType(IMAGE_PNG);
                         pResponseContent.write(lData);
@@ -98,17 +105,4 @@ public class SampleCustomerContentProviderApp {
         public String user = "";
         public String message = "";
     }
-
-    /**
-     */
-    private static byte[] readResourceFile(String pName) throws IOException {
-        ByteArrayOutputStream lResult = new ByteArrayOutputStream();
-        InputStream lInput = SampleCustomerContentProviderApp.class.getResourceAsStream(pName);
-        byte[] lBuffer = new byte[1024];
-        for (int length; (length = lInput.read(lBuffer)) != -1;) {
-            lResult.write(lBuffer, 0, length);
-        }
-        return lResult.toByteArray();
-    }
-
 }

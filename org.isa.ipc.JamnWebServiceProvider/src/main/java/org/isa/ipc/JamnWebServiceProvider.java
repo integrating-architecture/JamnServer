@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.isa.ipc.JamnServer.HttpHeader;
+import org.isa.ipc.JamnServer.JsonToolWrapper;
 
 /**
  * <pre>
@@ -40,7 +41,7 @@ import org.isa.ipc.JamnServer.HttpHeader;
  *  lWebServiceProvider.registerServices(SampleWebApiServices.class);
  *
  *  // add the actual jamn-content-provider to the server
- *  lServer.addContentProvider("WebServiceProvider", lWebServiceProvider.getJamnContentProvider());
+ *  lServer.addContentProvider("WebServiceProvider", lWebServiceProvider);
  *  
  *  ...
  *
@@ -48,7 +49,7 @@ import org.isa.ipc.JamnServer.HttpHeader;
  * The data IO is by default based on JSON which is provided by the "com.fasterxml.jackson" library.
  * But you can simply fallback to pure String IO or plug in any other JSON or String based format converter.
  *
- * JamnWebServiceProvider.setJsonTool(new JamnWebServiceProvider.JsonToolWrapper() {
+ * JamnWebServiceProvider.setJsonTool(new JamnServer.JsonToolWrapper() {
  * 		private final MyConverterClass MyConverter = new MyConverterClass();
  * 			Override
  * 			public <T> T toObject(String pSrc, Class<T> pType) throws Exception {
@@ -61,21 +62,11 @@ import org.isa.ipc.JamnServer.HttpHeader;
  * 		});
  * </pre>
  */
-public class JamnWebServiceProvider {
+public class JamnWebServiceProvider implements JamnServer.ContentProvider {
 
     protected static final String LS = System.getProperty("line.separator");
     protected static Logger LOG = Logger.getLogger(JamnWebServiceProvider.class.getName());
-
-    /****************************************************************************
-     * IT IS MANDATORY TO SET A JSON-TOOL manually
-     *
-     * @see org.isa.ipc.sample.SampleWebServiceApp
-     ***************************************************************************/
-    protected static JsonToolWrapper JSON = null;
-
-    public static void setJsonTool(JsonToolWrapper pTool) {
-        JSON = pTool;
-    }
+    protected static JsonToolWrapper JSON;
 
     /**
      * Logger is optional.
@@ -85,22 +76,16 @@ public class JamnWebServiceProvider {
     }
 
     /**
+     * Set JSON externally.
+     */
+    public static void setJsonTool(JsonToolWrapper pTool) {
+        JSON = pTool;
+    }
+
+    /**
      * A map holding all registered services.
      */
-    protected Map<String, ServiceObject> registeredServices = new HashMap<>();
-
-    /**
-     * The actual JamnServer.ContentProvider implementation instance.
-     */
-    protected WebServiceContentProviderImpl jamnWebServiceContentProvider = new WebServiceContentProviderImpl();
-
-    /**
-     * IMPORTANT This method is NOT part of any interface contract. It is just used
-     * to get the separated ContentProvider instance.
-     */
-    public JamnServer.ContentProvider getJamnContentProvider() {
-        return jamnWebServiceContentProvider;
-    }
+    protected Map<String, ServiceObject> serviceRegistry = new HashMap<>();
 
     /**
      * The public interface method to register and install Services.
@@ -128,15 +113,15 @@ public class JamnWebServiceProvider {
                 lReponseClass = getServiceResponseClassFrom(serviceMethod);
 
                 lServiceObj = new ServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass, serviceMethod);
-                if (!registeredServices.containsKey(lServiceObj.path)) {
-                    registeredServices.put(lServiceObj.path, lServiceObj);
+                if (!serviceRegistry.containsKey(lServiceObj.path)) {
+                    serviceRegistry.put(lServiceObj.path, lServiceObj);
                     final String info = String.format("WebService installed [%s] at [%s]", lServiceObj.getName(),
                             lServiceObj.path);
                     LOG.fine(info);
                 } else {
-                    throw new WebServiceDefinitionException(String.format(
-                            "WebService Path of [%s] already defined for [%s]", lServiceObj.getName(),
-                            registeredServices.get(lServiceObj.path).getName()));
+                    throw new WebServiceDefinitionException(
+                            String.format("WebService Path of [%s] already defined for [%s]", lServiceObj.getName(),
+                                    serviceRegistry.get(lServiceObj.path).getName()));
                 }
             }
         }
@@ -177,26 +162,23 @@ public class JamnWebServiceProvider {
             throws WebServiceDefinitionException {
         if (pServiceAnno.path().isEmpty()) {
             throw new WebServiceDefinitionException(
-                    String.format("No WebService path attribute found for [%s]",
-                            getServiceMethodName(pMeth)));
+                    String.format("No WebService path attribute found for [%s]", getServiceMethodName(pMeth)));
         }
         if (pServiceAnno.methods().length == 0) {
-            throw new WebServiceDefinitionException(String.format("No WebService methods attribute found for [%s]",
-                    getServiceMethodName(pMeth)));
+            throw new WebServiceDefinitionException(
+                    String.format("No WebService methods attribute found for [%s]", getServiceMethodName(pMeth)));
         }
     }
 
     /**
      */
-    protected static Class<?> getServiceRequestClassFrom(Method pMeth)
-            throws WebServiceDefinitionException {
+    protected static Class<?> getServiceRequestClassFrom(Method pMeth) throws WebServiceDefinitionException {
         Class<?>[] lClasses = pMeth.getParameterTypes();
         if (lClasses.length == 1) {
             return lClasses[0];
         } else if (lClasses.length > 1) {
-            throw new WebServiceDefinitionException(String.format(
-                    "WebService method must declare 0 or 1 parameter [%s]",
-                    getServiceMethodName(pMeth)));
+            throw new WebServiceDefinitionException(
+                    String.format("WebService method must declare 0 or 1 parameter [%s]", getServiceMethodName(pMeth)));
         }
         return null;
     }
@@ -313,8 +295,7 @@ public class JamnWebServiceProvider {
     }
 
     /**
-     * Exceptions thrown by this JamnWebServiceProvider implementation during
-     * Service initialization/creation.
+     * Exceptions thrown during Service initialization/creation.
      */
     protected static class WebServiceDefinitionException extends Exception {
         private static final long serialVersionUID = 1L;
@@ -328,108 +309,85 @@ public class JamnWebServiceProvider {
         }
     }
 
-    /*********************************************************
-     * The actual JamnServer.ContentProvider Interface Implementation.
-     *********************************************************/
-    protected class WebServiceContentProviderImpl implements JamnServer.ContentProvider {
+    /**
+     * Exceptions thrown during Service execution.
+     */
+    protected static class WebServiceException extends Exception {
+        private static final long serialVersionUID = 1L;
+        private final String httpStatus;
 
-        /**
-         * This method realizes the service execution logic.
-         */
-        @Override
-        public String createResponseContent(Map<String, String> pResponseAttributes, OutputStream pResponseContent,
-                String pMethod, String pPath, String pRequestBody, Map<String, String> pRequestAttributes) {
-
-            String lStatus = SC_200_OK;
-            HttpHeader lRequest = new HttpHeader(pRequestAttributes);
-
-            ServiceObject lService = null;
-            Object lResult = null;
-            byte[] lData = null;
-            try {
-                if (lRequest.isGET() || lRequest.isPOST()) {
-                    lService = getServiceInstanceFor(pPath, pMethod, lRequest.getContentType());
-
-                    lResult = lService.callWith(pRequestBody);
-
-                    if (lResult instanceof String result) {
-                        lData = result.getBytes();
-                        pResponseAttributes.put(CONTENT_TYPE, lService.getContentType());
-                        pResponseContent.write(lData);
-                    } else {
-                        throw new WebServiceException(SC_500_INTERNAL_ERROR,
-                                String.format("Unsupported WebService API Return Type [%s] [%s]", lResult.getClass(),
-                                        lService.getName()));
-                    }
-                }
-            } catch (WebServiceException wse) {
-                LOG.fine(() -> String.format("WebService API Error: [%s]", wse.getMessage()));
-                lStatus = wse.getHttpStatus();
-            } catch (Exception e) {
-                String info = lService != null ? lService.getName() : "";
-                info = info + LS + getStackTraceFrom(e);
-                LOG.severe(String.format("WebService Request Handling internal/runtime ERROR: %s %s %s", e.toString(),
-                        LS, info));
-                lStatus = SC_500_INTERNAL_ERROR;
-            }
-
-            return lStatus;
+        WebServiceException(String pHttpStatus, String pMsg) {
+            super(pMsg);
+            httpStatus = pHttpStatus;
         }
 
-        /**
-         */
-        protected ServiceObject getServiceInstanceFor(String pPath, String pMethod, String pContentType)
-                throws WebServiceException {
-            ServiceObject lService = null;
-            if (registeredServices.containsKey(pPath)) {
-                lService = registeredServices.get(pPath);
-
-                if (!lService.isMethodSupported(pMethod)) {
-                    throw new WebServiceException(SC_405_METHOD_NOT_ALLOWED, String
-                            .format("Unsupported WebService Method [%s] [%s]", pMethod, lService.getName()));
-                }
-                if (!lService.isContentTypeSupported(pContentType)) {
-                    throw new WebServiceException(SC_400_BAD_REQUEST, String.format(
-                            "Unsupported WebService ContentType [%s] [%s]", pContentType, lService.getName()));
-                }
-            } else {
-                throw new WebServiceException(SC_404_NOT_FOUND,
-                        String.format("Unsupported WebService Path [%s]", pPath));
-            }
-            return lService;
-        }
-
-        /**
-         * Exceptions thrown by this WebServiceContentProviderImpl implementation during
-         * Service execution.
-         */
-        protected static class WebServiceException extends Exception {
-            private static final long serialVersionUID = 1L;
-            private final String httpStatus;
-
-            WebServiceException(String pHttpStatus, String pMsg) {
-                super(pMsg);
-                httpStatus = pHttpStatus;
-            }
-
-            public String getHttpStatus() {
-                return httpStatus;
-            }
+        public String getHttpStatus() {
+            return httpStatus;
         }
     }
 
     /*********************************************************
-     * A wrapper interface for a JSON tool.
+     * The actual JamnServer.ContentProvider Interface Implementation.
      *********************************************************/
+    @Override
+    public String createResponseContent(Map<String, String> pResponseAttributes, OutputStream pResponseContent,
+            String pMethod, String pPath, String pRequestBody, Map<String, String> pRequestAttributes) {
+
+        String lStatus = SC_200_OK;
+        HttpHeader lRequest = new HttpHeader(pRequestAttributes);
+
+        ServiceObject lService = null;
+        Object lResult = null;
+        byte[] lData = null;
+        try {
+            if (lRequest.isGET() || lRequest.isPOST()) {
+                lService = getServiceInstanceFor(pPath, pMethod, lRequest.getContentType());
+
+                lResult = lService.callWith(pRequestBody);
+
+                if (lResult instanceof String result) {
+                    lData = result.getBytes();
+                    pResponseAttributes.put(CONTENT_TYPE, lService.getContentType());
+                    pResponseContent.write(lData);
+                } else {
+                    throw new WebServiceException(SC_500_INTERNAL_ERROR,
+                            String.format("Unsupported WebService API Return Type [%s] [%s]", lResult.getClass(),
+                                    lService.getName()));
+                }
+            }
+        } catch (WebServiceException wse) {
+            LOG.fine(() -> String.format("WebService API Error: [%s]", wse.getMessage()));
+            lStatus = wse.getHttpStatus();
+        } catch (Exception e) {
+            String info = lService != null ? lService.getName() : "";
+            info = info + LS + getStackTraceFrom(e);
+            LOG.severe(String.format("WebService Request Handling internal/runtime ERROR: %s %s %s", e.toString(), LS,
+                    info));
+            lStatus = SC_500_INTERNAL_ERROR;
+        }
+
+        return lStatus;
+    }
+
     /**
      */
-    public static interface JsonToolWrapper {
-        /**
-         */
-        public <T> T toObject(String pSrc, Class<T> pType) throws Exception;
+    protected ServiceObject getServiceInstanceFor(String pPath, String pMethod, String pContentType)
+            throws WebServiceException {
+        ServiceObject lService = null;
+        if (serviceRegistry.containsKey(pPath)) {
+            lService = serviceRegistry.get(pPath);
 
-        /**
-         */
-        public String toString(Object pObj) throws Exception;
+            if (!lService.isMethodSupported(pMethod)) {
+                throw new WebServiceException(SC_405_METHOD_NOT_ALLOWED,
+                        String.format("Unsupported WebService Method [%s] [%s]", pMethod, lService.getName()));
+            }
+            if (!lService.isContentTypeSupported(pContentType)) {
+                throw new WebServiceException(SC_400_BAD_REQUEST, String
+                        .format("Unsupported WebService ContentType [%s] [%s]", pContentType, lService.getName()));
+            }
+        } else {
+            throw new WebServiceException(SC_404_NOT_FOUND, String.format("Unsupported WebService Path [%s]", pPath));
+        }
+        return lService;
     }
 }

@@ -85,6 +85,8 @@ import javax.net.ssl.SSLSocket;
  */
 public class JamnServer {
 
+    public static final String JamnServerWebID = "JamnServer/0.0.1";
+
     // initialize logging from properties file
     static {
         try {
@@ -735,6 +737,7 @@ public class JamnServer {
         public static final Map<String, String> HTTP_DEFAULT_RESPONSE_ATTRIBUTES;
         static {
             Map<String, String> lMap = new HashMap<>();
+            lMap.put(Field.SERVER, JamnServerWebID);
             lMap.put(Field.CONTENT_TYPE, FieldValue.TEXT_PLAIN);
             lMap.put(Field.CONTENT_LENGTH, "0");
             HTTP_DEFAULT_RESPONSE_ATTRIBUTES = Collections.unmodifiableMap(lMap);
@@ -791,6 +794,7 @@ public class JamnServer {
             public static final String HTTP_VERSION_MARK = "HTTP/";
 
             // header field attributes
+            public static final String SERVER = "Server";
             public static final String CONTENT_LENGTH = "Content-Length";
             public static final String CONTENT_TYPE = "Content-Type";
             public static final String CONNECTION = "Connection";
@@ -807,11 +811,16 @@ public class JamnServer {
             }
 
             public static final String CLOSE = "close";
+            public static final String TEXT = "text/";
             public static final String TEXT_PLAIN = "text/plain";
             public static final String TEXT_XML = "text/xml";
             public static final String TEXT_HTML = "text/html";
+            public static final String TEXT_CSS = "text/css";
+            public static final String TEXT_JS = "text/javascript";
             public static final String APPLICATION_JSON = "application/json";
+            public static final String IMAGE = "image/";
             public static final String IMAGE_PNG = "image/png";
+            public static final String IMAGE_X_ICON = "image/x-icon";
             public static final String ACCESS_CONTROL_ALLOW_ORIGIN_ALL = "*";
             public static final String ACCESS_CONTROL_ALLOW_METHODS_ALL = "GET, POST, PATCH, PUT, DELETE, OPTIONS";
             public static final String ACCESS_CONTROL_ALLOW_HEADERS_ALL = "Origin, Content-Type, X-Auth-Token";
@@ -1141,6 +1150,21 @@ public class JamnServer {
             }
             return lProps;
         }
+    }
+
+    /*********************************************************
+     * A wrapper interface for a JSON tool.
+     *********************************************************/
+    /**
+     */
+    public static interface JsonToolWrapper {
+        /**
+         */
+        public <T> T toObject(String pSrc, Class<T> pType) throws Exception;
+
+        /**
+         */
+        public String toString(Object pObj) throws Exception;
     }
 
     /*********************************************************

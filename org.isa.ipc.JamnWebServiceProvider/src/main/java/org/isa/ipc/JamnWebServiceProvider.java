@@ -41,7 +41,7 @@ import org.isa.ipc.JamnServer.JsonToolWrapper;
  *  lWebServiceProvider.registerServices(SampleWebApiServices.class);
  *
  *  // add the actual jamn-content-provider to the server
- *  lServer.addContentProvider("WebServiceProvider", lWebServiceProvider);
+ *  lServer.addContentProvider(lWebServiceProvider);
  *  
  *  ...
  *
@@ -67,13 +67,6 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     protected static final String LS = System.getProperty("line.separator");
     protected static Logger LOG = Logger.getLogger(JamnWebServiceProvider.class.getName());
     protected static JsonToolWrapper JSON;
-
-    /**
-     * Logger is optional.
-     */
-    public static void setLogger(Logger pLogger) {
-        LOG = pLogger;
-    }
 
     /**
      * Set JSON externally.

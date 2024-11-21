@@ -15,14 +15,11 @@ public class SampleWebContentApp {
         // create a Jamn server
         JamnServer lServer = new JamnServer();
 
-        // set logging for the JamnWebContentProvider
-        JamnWebContentProvider.setLogger(lServer.getLoggerFor(JamnWebContentProvider.class.getName()));
-
         // create the JamnWebContentProvider with a webroot
         // no leading slash because relative path
         JamnWebContentProvider lWebContentProvider = new JamnWebContentProvider("src/test/resources/var/http/sample");
         // add to server
-        lServer.addContentProvider("WebContentProvider", lWebContentProvider);
+        lServer.addContentProvider(lWebContentProvider);
 
         // start server
         lServer.start();

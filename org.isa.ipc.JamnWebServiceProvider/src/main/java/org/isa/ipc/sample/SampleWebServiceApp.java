@@ -23,9 +23,6 @@ public class SampleWebServiceApp {
         // required for using Testfiles in a browser
         lServer.getConfig().setCORSEnabled(true);
 
-        // set logging and json tool for the JamnWebServiceProvider
-        JamnWebServiceProvider.setLogger(lServer.getLoggerFor(JamnWebServiceProvider.class.getName()));
-
         // and create a json tool wrapper for the JamnWebServiceProvider
         JamnWebServiceProvider.setJsonTool(new JamnServer.JsonToolWrapper() {
             private final ObjectMapper jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
@@ -46,9 +43,8 @@ public class SampleWebServiceApp {
         // register the Web-API Services
         lWebServiceProvider.registerServices(SampleWebApiServices.class);
 
-        // add the actual jamn-content-provider from JamnWebServiceProvider to the
-        // server
-        lServer.addContentProvider("WebServiceProvider", lWebServiceProvider);
+        // add the provider to the server
+        lServer.addContentProvider(lWebServiceProvider);
         // start server
         lServer.start();
     }

@@ -48,7 +48,7 @@ public class SampleCustomerContentProviderApp {
     public static void main(String[] args) {
         JamnServer lServer = new JamnServer();
 
-        lServer.addContentProvider("SampleProvider", new SampleContentProvider());
+        lServer.addContentProvider(new SampleContentProvider());
         lServer.getConfig().setCORSEnabled(true); // required for localhost communication via js fetch
         lServer.start();
     }

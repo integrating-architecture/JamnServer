@@ -35,14 +35,11 @@ public class WebContentProviderTest {
         // e.g. default: http://localhost:8099
         ServerURL = "http://localhost:" + Server.getConfig().getPort();
 
-        // set logging for the JamnWebContentProvider
-        JamnWebContentProvider.setLogger(Server.getLoggerFor(JamnWebContentProvider.class.getName()));
-
         // create the JamnWebContentProvider with a webroot
         // no leading slash because relative path
         JamnWebContentProvider lWebContentProvider = new JamnWebContentProvider("src/test/resources/var/http/sample");
         // add to server
-        Server.addContentProvider("WebContentProvider", lWebContentProvider);
+        Server.addContentProvider(lWebContentProvider);
 
         // start server
         Server.start();

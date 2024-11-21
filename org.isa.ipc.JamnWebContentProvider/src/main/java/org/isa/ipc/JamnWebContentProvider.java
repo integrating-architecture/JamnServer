@@ -28,13 +28,8 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     protected static final String LS = System.getProperty("line.separator");
     protected static Logger LOG = Logger.getLogger(JamnWebContentProvider.class.getName());
     protected static JsonToolWrapper JSON;
-
-    /**
-     * Logger is optional.
-     */
-    public static void setLogger(Logger pLogger) {
-        LOG = pLogger;
-    }
+    // development.mode - disables e.g. caching if true
+    protected static boolean DvlpMode = true;
 
     /**
      * Set JSON externally.
@@ -105,7 +100,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         public WebFile getFileContent(RequestHeader pRequest, ResponseHeader lResponse) throws WebContentException {
             WebFile lWebFile = new WebFile(pRequest.getPath());
 
-            if (fileCache.containsKey(lWebFile.getId())) {
+            if (!DvlpMode && fileCache.containsKey(lWebFile.getId())) {
                 lWebFile = fileCache.get(lWebFile.getId());
                 lResponse.setContentType(lWebFile.getContentType());
                 return lWebFile;
@@ -274,7 +269,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
 
         public boolean isJavaScriptRequest() {
             String lPath = getPath();
-            return (lPath.endsWith(".js"));
+            return (lPath.endsWith(".js") || lPath.endsWith(".mjs"));
         }
     }
 

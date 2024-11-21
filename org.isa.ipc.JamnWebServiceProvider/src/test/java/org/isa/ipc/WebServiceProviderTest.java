@@ -44,10 +44,6 @@ public class WebServiceProviderTest {
         // e.g. default: http://localhost:8099
         ServerURL = "http://localhost:" + Server.getConfig().getPort();
 
-        // WebServiceProvider setup
-        // set logging and json tool for the JamnWebServiceProvider
-        JamnWebServiceProvider.setLogger(Server.getLoggerFor(JamnWebServiceProvider.class.getName()));
-
         JamnWebServiceProvider.setJsonTool(new JamnServer.JsonToolWrapper() {
             @Override
             public <T> T toObject(String pSrc, Class<T> pType) throws Exception {
@@ -66,8 +62,8 @@ public class WebServiceProviderTest {
         // register your Web-API Services
         lWebServiceProvider.registerServices(SampleWebApiServices.class);
 
-        // get the actual provider and add it to the server
-        Server.addContentProvider("WebServiceProvider", lWebServiceProvider);
+        // add the provider to the server
+        Server.addContentProvider(lWebServiceProvider);
         // start server
         Server.start();
         assertTrue(Server.isRunning(), "Test Server start FAILED");

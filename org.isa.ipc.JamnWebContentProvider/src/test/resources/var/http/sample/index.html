@@ -3,15 +3,49 @@
 
 <head>
 	<meta charset="UTF-8">
-	<link rel="stylesheet" href="css/isa-sample.css" type="text/css"/>
-    <title>Sample WebContent</title>
+	<link rel="stylesheet" href="css/isa-sample.css" type="text/css" />
+	<title>Sample WebContent</title>
+
+	<!--
+		Sample classic JavaScript import
+	-->
+	<script type="text/javascript" src="js/isa-util.js"></script>
+
+	<script>
+		//check if ECMA JS Module importmap is supported
+		if (!HTMLScriptElement.supports?.("importmap")) {
+			console.log("WARNING - Browser DOES NOT SUPPORT ECMA JS Module importmap.");
+		} 
+	</script>
+	<!--
+		Sample ECMA JS Module import
+	-->
+	<script type="importmap">
+	{
+	    "imports": {
+	        "isa-common-util": "/jsmod/isa-common-util.mjs"
+	    }
+	}
+	</script>
+
 </head>
 
 <body>
-    <div class="info-block">
-        <img src="images/isa-logo.png" title="ISA Logo" alt="isa-logo" width="64" height="64"/>
-        <p>JamnServer Info <br>Server Instance is running</br></p>
-    </div>
+	<div class="info-block">
+		<img src="images/isa-logo.png" title="ISA Logo" alt="isa-logo" width="64px" height="64px" />
+		<p id=server-info>JamnServer Info</p>
+			<script type="module">
+				import * as isa from 'isa-common-util';
+
+				//call classic js function
+				isaLog(isa.JamnServerInfo);
+
+				//use ECMA Module
+				let info = isa.JamnServerInfo.name + "<span style='font-size: 0.5em;'> V-" + isa.JamnServerInfo.version + "</span><br>" + isa.JamnServerInfo.description;
+				isa.setElementHTML("server-info", info);
+
+			</script>
+	</div>
 </body>
 
 </html>

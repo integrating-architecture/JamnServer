@@ -204,12 +204,6 @@ public class JamnServer {
         return config;
     }
 
-    /**
-     */
-    public Logger getLoggerFor(String pName) {
-        return Logger.getLogger(pName);
-    }
-
     /*********************************************************
      * <pre>
      * The customization methods for the server components.
@@ -225,8 +219,8 @@ public class JamnServer {
 
     /**
      */
-    public JamnServer addContentProvider(String pId, ContentProvider pProvider) {
-        requestProcessor.addContentProvider(pId, pProvider);
+    public JamnServer addContentProvider(ContentProvider pProvider) {
+        requestProcessor.addContentProvider(pProvider.getClass().getSimpleName(), pProvider);
         return this;
     }
 

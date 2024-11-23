@@ -1096,6 +1096,12 @@ public class JamnServer {
 
         /**
          */
+        public String getEncoding() {
+            return props.getProperty("encoding", "UTF-8");
+        }
+
+        /**
+         */
         public int getWorkerNumber() {
             return Integer.valueOf(props.getProperty("worker", "5"));
         }

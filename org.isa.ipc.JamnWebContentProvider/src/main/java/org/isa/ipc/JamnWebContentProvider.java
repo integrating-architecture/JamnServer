@@ -24,8 +24,8 @@ import org.isa.ipc.JamnServer.JsonToolWrapper;
 /**
  * <pre>
  * This class realizes a simple Web Content Provider.
- * Which is essentially a rudimentary web server.
- * 
+ * Which is essentially a rudimentary web server 
+ * with the ability to create dynamic content (see SampleWebContentApp).
  * </pre>
  */
 public class JamnWebContentProvider implements JamnServer.ContentProvider {
@@ -36,13 +36,13 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     // development.mode - disables e.g. caching if true
     protected static boolean DvlpMode = true;
 
-    protected static ExtensionInterfaceFactory ExtensionFactory = new ExtensionInterfaceFactory();
+    protected static ExtensionFactory ExtensionFactory = new ExtensionFactory();
 
     /**
      * Set an ExtensionInterfaceFactory to customize file providing, caching and
      * enrichment.
      */
-    public static void setExtensionFactory(ExtensionInterfaceFactory pFactory) {
+    public static void setExtensionFactory(ExtensionFactory pFactory) {
         ExtensionFactory = pFactory;
     }
 
@@ -132,17 +132,16 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             try {
                 // by default we assume html
                 lResponse.setContentType(TEXT_HTML);
-                if (pRequest.isFaviconRequest()) {
-                    lResponse.setContentType(IMAGE_X_ICON);
-                } else if (pRequest.isImageRequest()) {
-                    lResponse.setContentType(getImageTypeFrom(lWebFile.filePath));
-                } else if (pRequest.isStyleSheetRequest()) {
+                if (pRequest.isStyleSheetRequest()) {
                     lResponse.setContentType(TEXT_CSS);
                 } else if (pRequest.isJavaScriptRequest()) {
                     lResponse.setContentType(TEXT_JS);
+                } else if (pRequest.isImageRequest()) {
+                    lResponse.setContentType(getImageTypeFrom(lWebFile.filePath));
+                    lWebFile.setTextFormat(false);
                 }
 
-                lWebFile.contentType = lResponse.getContentType();
+                lWebFile.setContentType(lResponse.getContentType());
                 fileProvider.readAllFileBytes(lWebFile);
                 fileEnricher.enrich(lWebFile);
                 fileCache.put(lWebFile.requestPath, lWebFile);
@@ -164,7 +163,8 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         /**
          */
         public String getImageTypeFrom(String pPath) {
-            return IMAGE + pPath.substring(pPath.lastIndexOf(".") + 1, pPath.length());
+            return pPath.endsWith("/favicon.ico") ? IMAGE_X_ICON
+                    : IMAGE + pPath.substring(pPath.lastIndexOf(".") + 1, pPath.length());
         }
 
     }
@@ -173,15 +173,16 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      * Plugable extension interfaces, classes and factory.
      *********************************************************/
     /**
-     * File access abstraction. E.g. to read files from e.g. a database.
+     * A file provider delivers the concrete file content as a byte array. This
+     * might be a filesystem file, or a database record or what ever.
      */
     public static interface FileProvider {
         void readAllFileBytes(WebFile pWebFile) throws Exception;
     }
 
     /**
-     * File enricher abstraction. E.g. to implement a template enrichment or similar
-     * things.
+     * A file enricher is used to pre process loaded web files to dynamically inject
+     * values, text or code.
      */
     public static interface FileEnricher {
         void enrich(WebFile pFile) throws Exception;
@@ -201,15 +202,18 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     /**
      * The factory to create the plugable extension objects.
      */
-    public static class ExtensionInterfaceFactory {
+    public static class ExtensionFactory {
         /**
          */
         public FileProvider createFileProvider() {
-            return new FileProvider() {
-                @Override
-                public void readAllFileBytes(WebFile pWebFile) throws Exception {
-                    pWebFile.data = Files.readAllBytes(Paths.get(pWebFile.filePath));
-                }
+            return (WebFile pWebFile) -> pWebFile.setData(Files.readAllBytes(Paths.get(pWebFile.filePath)));
+        }
+
+        /**
+         */
+        public FileEnricher createFileEnricher() {
+            return (WebFile pFile) -> {
+                // nothing to do by default
             };
         }
 
@@ -235,16 +239,6 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
                 }
             };
         }
-
-        /**
-         */
-        public FileEnricher createFileEnricher() {
-            return new FileEnricher() {
-                @Override
-                public void enrich(WebFile pFile) throws Exception {
-                }
-            };
-        }
     }
 
     /**
@@ -254,6 +248,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         protected String filePath = "";
         protected String contentType = "";
         protected byte[] data = new byte[0];
+        protected boolean isTextFormat = true;
 
         public WebFile(String pPath) {
             requestPath = pPath;
@@ -263,16 +258,52 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             return requestPath;
         }
 
+        public boolean isEmpty() {
+            return data.length == 0;
+        }
+
+        public String toString() {
+            return requestPath;
+        }
+
+        public String getRequestPath() {
+            return requestPath;
+        }
+
+        public void setRequestPath(String requestPath) {
+            this.requestPath = requestPath;
+        }
+
+        public String getFilePath() {
+            return filePath;
+        }
+
+        public void setFilePath(String filePath) {
+            this.filePath = filePath;
+        }
+
         public String getContentType() {
             return contentType;
+        }
+
+        public void setContentType(String contentType) {
+            this.contentType = contentType;
         }
 
         public byte[] getData() {
             return data;
         }
 
-        public boolean isEmpty() {
-            return data.length == 0;
+        public void setData(byte[] data) {
+            this.data = data;
+        }
+
+        public boolean isTextFormat() {
+            return isTextFormat;
+        }
+
+        public void setTextFormat(boolean isTextFormat) {
+            this.isTextFormat = isTextFormat;
         }
     }
 
@@ -300,7 +331,6 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      * Internal Request HttpHeader.
      */
     private static class RequestHeader extends JamnServer.HttpHeader {
-        // protected Map pathAttributes;
         protected String decodedPath = "";
 
         public RequestHeader(Map<String, String> pAttributes) {
@@ -321,20 +351,10 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             return decodedPath;
         }
 
-        public boolean isFaviconRequest() {
-            return getPath().equals("/favicon.ico");
-        }
-
         public boolean isIndexRequest() {
             String lPath = getPath();
             return (lPath.equals("/") || lPath.equals("/index") || lPath.equals("/index.html")
                     || lPath.equals("/index.htm"));
-        }
-
-        public boolean isImageRequest() {
-            String lPath = getPath();
-            return (lPath.endsWith(".png") || lPath.endsWith(".jpg") || lPath.endsWith(".gif")
-                    || lPath.endsWith(".ico"));
         }
 
         public boolean isStyleSheetRequest() {
@@ -345,6 +365,12 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         public boolean isJavaScriptRequest() {
             String lPath = getPath();
             return (lPath.endsWith(".js") || lPath.endsWith(".mjs"));
+        }
+
+        public boolean isImageRequest() {
+            String lPath = getPath();
+            return (lPath.endsWith(".png") || lPath.endsWith(".jpg") || lPath.endsWith(".gif")
+                    || lPath.endsWith(".ico"));
         }
     }
 

@@ -1,0 +1,32 @@
+
+.border-layout {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  width: 100%;
+  height: 100%;
+}
+
+.border-layout .top {
+  width: 100%;
+}
+
+.border-layout .middle {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.border-layout .middle .side {
+}
+
+.border-layout .middle .center {
+  vertical-align: middle;
+  flex-grow: 1;
+}
+
+.border-layout .bottom {
+    width: 100%;
+}

@@ -1,53 +1,61 @@
 <!--jamn.web.template-->
 
+<!--
+	This page is a trivial sample
+	using serverside and clientside dynamic content injection
+-->
+
 <!DOCTYPE html>
 <html lang=en>
 
 <head>
 	<meta charset="UTF-8">
-	<title>${index.title}</title>
+	<!--title is injected by the server file provider-->
+	<title>${app.title}}</title>
+	<link rel="stylesheet" href="css/border-layout.css" type="text/css" />
 	<link rel="stylesheet" href="css/app.css" type="text/css" />
 
-	<!--
-		Sample classic JavaScript import
-	-->
-	<script type="text/javascript" src="js/app-util.js"></script>
-
-	<script>
-		//check if ECMA JS Module importmap is supported
-		if (!HTMLScriptElement.supports?.("importmap")) {
-			console.log("WARNING - Browser DOES NOT SUPPORT ECMA JS Module importmap.");
-		} 
-	</script>
-	<!--
-		Sample ECMA JS Module import
-	-->
 	<script type="importmap">
 	{
 	    "imports": {
-	        "app-util": "/jsmod/app-util.mjs"
+	        "sample-app": "/jsmod/sample-app.mjs"
 	    }
 	}
+	</script>
+
+	<script type="module">
+		import {registerAt} from 'sample-app';
+		registerAt("approot");
 	</script>
 
 </head>
 
 <body>
-	<div class="info-block">
-		<img src="images/app-logo.png" title="App Logo" alt="app-logo" width="64px" height="64px" />
-		<p id=server-info>JamnServer Info</p>
-			<script type="module">
-				import * as util from 'app-util';
-
-				//call classic js function
-				jamnLog(util.JamnServerInfo);
-
-				//use ECMA Module
-				let infoHtml = util.JamnServerInfo.name + "<span style='font-size: 0.5em;'> V-" + util.JamnServerInfo.version + "</span><br>" + util.JamnServerInfo.description;
-				util.setElementHTML("server-info", infoHtml);
-
-			</script>
+<!--the approot is hidden by default - it gets visible from inside the sample-app-->
+<div id="approot" class="site-container" >
+	<div class="border-layout">
+	    <div class="top header">
+			<h3 class="vrel-center" style="text-align: center;">Info</h3>
+	    </div>
+	    <div class="middle workarea">
+			<div class="workarea-left side border-layout" >
+				<div class="vrel-center h-center">
+					<img src="images/app-logo.png" title="App Logo" alt="app-logo" width="64px" height="64px" />
+				</div>
+			</div>
+			<div class="center workarea-center">
+				<div class="vrel-center" >
+					<!--this elements are set by the app-->
+					<lb4>Name:</lb4><span id="server.name"></span></br>
+					<lb4>Version:</lb4><span id="server.version"></span></br>
+					<lb4>Description:</lb4><span id="server.description"></span></br>
+				</div>
+			</div>
+			<div class="workarea-right side border-layout"></div>
+	    </div>
+	    <div class="bottom footer">
+	    </div>
 	</div>
-</body>
+</div></body>
 
 </html>

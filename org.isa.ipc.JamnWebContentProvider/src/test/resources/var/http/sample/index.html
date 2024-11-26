@@ -1,10 +1,5 @@
 <!--jamn.web.template-->
 
-<!--
-	This page is a trivial sample
-	using serverside and clientside dynamic content injection
--->
-
 <!DOCTYPE html>
 <html lang=en>
 
@@ -24,14 +19,14 @@
 	</script>
 
 	<script type="module">
-		import {registerAt} from 'sample-app';
-		registerAt("approot");
+		import {anchorAt} from 'sample-app';
+		anchorAt("approot");
 	</script>
 
 </head>
 
 <body>
-<!--the approot is hidden by default - it gets visible from inside the sample-app-->
+<!--the approot is hidden by default - it gets visible from sample-app-->
 <div id="approot" class="site-container" >
 	<div class="border-layout">
 	    <div class="top header">

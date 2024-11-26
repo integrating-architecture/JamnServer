@@ -3,7 +3,7 @@
 /**
  * A sample js app module
  */
-export function registerAt (rootId) {
+export function anchorAt (rootId) {
 	rootElement = document.getElementById(rootId);
 	document.addEventListener("DOMContentLoaded", startApp);
 }

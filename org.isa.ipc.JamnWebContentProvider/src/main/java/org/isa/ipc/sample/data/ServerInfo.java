@@ -1,14 +1,31 @@
 /* Authored by www.integrating-architecture.de */
 package org.isa.ipc.sample.data;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
- * 
+ * <pre>
+ * A sample data structure to inject into the javascript app module
+ * as ServerInfo.
+ * </pre>
  */
 public class ServerInfo {
 
     protected String name = "";
     protected String version = "";
     protected String description = "";
+
+    protected Map<String, String> links = new HashMap<>();
+
+    public Map<String, String> getLinks() {
+        return links;
+    }
+
+    public ServerInfo addLink(String pKey, String pValue) {
+        links.put(pKey, pValue);
+        return this;
+    }
 
     public String getName() {
         return name;

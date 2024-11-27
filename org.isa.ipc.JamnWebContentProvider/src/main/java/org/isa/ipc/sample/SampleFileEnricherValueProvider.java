@@ -26,8 +26,15 @@ public class SampleFileEnricherValueProvider implements Helper.ExprString.ValueP
                 return "JamnWeb Sample";
             }
             if ("server.info".equals(pKey)) {
-                return JSON.writeValueAsString(new ServerInfo().setName("JamnServer").setVersion("0.0.1-SNAPSHOT")
-                        .setDescription("Just another micro node Server"));
+             // @formatter:off
+                ServerInfo lInfo = new ServerInfo()
+                        .setName("JamnServer - Sample WebContent App")
+                        .setVersion("0.0.1-SNAPSHOT")
+                        .setDescription("A simple web content provider sample app to demonstrate the use of server side content, code and data injection.")
+                        .addLink("app.scm",
+                                "https://github.com/integrating-architecture/JamnServer/blob/master/org.isa.ipc.JamnWebContentProvider");
+             // @formatter:on
+                return JSON.writeValueAsString(lInfo);
             }
         } catch (Exception e) {
             LOG.severe(() -> String.format("ERROR retrieving template value for: [%s] in context [%s] %s%s%s", pKey,

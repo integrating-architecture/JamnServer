@@ -30,7 +30,7 @@
 <div id="approot" class="site-container" >
 	<div class="border-layout">
 	    <div class="top header">
-			<h3 class="vrel-center" style="text-align: center;">Info</h3>
+			<wintitle class="vrel-center" style="text-align: center;">App Info</wintitle>
 	    </div>
 	    <div class="middle workarea">
 			<div class="workarea-left side border-layout" >
@@ -41,14 +41,19 @@
 			<div class="center workarea-center">
 				<div class="vrel-center" >
 					<!--this elements are set by the app-->
-					<lb4>Name:</lb4><span id="server.name"></span></br>
-					<lb4>Version:</lb4><span id="server.version"></span></br>
-					<lb4>Description:</lb4><span id="server.description"></span></br>
+					<proplb>Name:</proplb><propval id="server.name"></propval></br>
+					<proplb>Version:</proplb><propval id="server.version"></propval></br>
+					<proplb>Description:</proplb><propval id="server.description"></propval></br>
 				</div>
 			</div>
 			<div class="workarea-right side border-layout"></div>
 	    </div>
 	    <div class="bottom footer">
+			<div class="status-bar">
+				<div class="status-part" style="border: none; width: 10%; float: right; display:flex; justify-content: center;">
+					<a id="app.scm" target="_blank"><img src="images/github.png" title="GitHub Source" alt="github-logo" width="18px" height="18px"></a>
+				</div>
+			</div>			
 	    </div>
 	</div>
 </div></body>

@@ -25,7 +25,9 @@ function startApp () {
 function prepare () {
 	setHTML("server.name", ServerInfo.name);
 	setHTML("server.version", ServerInfo.version);
-	setHTML("server.description", ServerInfo.description);
+	setHTML("server.description", (ServerInfo.description.length > 15) ? "<br>"+ServerInfo.description : ServerInfo.description);
+	
+	setAttr("app.scm", "href", ServerInfo.links["app.scm"]);
 }
 
 function show () {
@@ -34,4 +36,8 @@ function show () {
 
 function setHTML (id, html){
 	document.getElementById(id).innerHTML = html;
+}
+
+function setAttr (id, name, value){
+	document.getElementById(id).setAttribute(name, value);
 }

@@ -19,11 +19,12 @@ public class SampleWebContentApp {
         // set a customized ExtensionFactory for the content provider
         JamnWebContentProvider.setExtensionFactory(new JamnWebContentProvider.ExtensionFactory() {
             /**
-             * Use a customer FileEnricher for templating.
+             * Enable file enrichment with the default FileEnricher and a customer
+             * ValueProvider for templating.
              */
             @Override
             public FileEnricher createFileEnricher() {
-                return new SampleFileEnricher();
+                return new JamnWebContentProvider.DefaultFileEnricher(new SampleFileEnricherValueProvider());
             }
         });
 

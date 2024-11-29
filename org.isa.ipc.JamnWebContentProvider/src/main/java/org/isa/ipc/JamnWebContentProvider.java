@@ -12,14 +12,18 @@ import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_404_NOT_FOUND;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
 
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.isa.ipc.JamnServer.JsonToolWrapper;
+import org.isa.ipc.JamnWebContentProvider.ExprString.ValueProvider;
 
 /**
  * <pre>
@@ -213,7 +217,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
          */
         public FileEnricher createFileEnricher() {
             return (WebFile pFile) -> {
-                // nothing to do by default
+                // by default NO file enrichment enabled
             };
         }
 
@@ -321,6 +325,149 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
 
         public String getHttpStatus() {
             return httpStatus;
+        }
+    }
+
+    /**
+     * <pre>
+     * The FileEnricher is the interface used by a FileProvider to preprocess requested files.
+     * 
+     * This Default enricher first looks for a TemplateMarker at the head/top of the file.
+     * If such a marker is present an ExprString is used that calls the a ValueProvider
+     * for all expressions like ${valuekey}.
+     * </pre>
+     */
+    public static class DefaultFileEnricher implements FileEnricher {
+
+        // the marker is expected as a file type comment e.g. like
+        // <!--jamn.web.template-->, /*jamn.web.template*/
+        // where the comment characters are NOT searched or parsed
+        protected static String TemplateMarker = "jamn.web.template";
+        protected static int MarkLen = TemplateMarker.length() + 10;// marklen + a surcharge for comment chars
+        protected static Charset Encoding = Charset.forName("UTF-8");
+
+        // the ValueProvider for expressions like "${valuekey}"
+        protected ValueProvider lValueProvider = null;
+
+        protected DefaultFileEnricher() {
+        }
+
+        public DefaultFileEnricher(ValueProvider pProvider) {
+            lValueProvider = pProvider;
+        }
+
+        @Override
+        public void enrich(WebFile pFile) throws Exception {
+            String lContent = "";
+            // only process if file has text format and a TEMPLATE_MARKER
+            if (pFile.isTextFormat() && hasTemplateMarker(pFile)) {
+                lContent = new String(pFile.getData(), Encoding);
+                lContent = new ExprString(lContent, lValueProvider).build(pFile);
+                pFile.setData(lContent.getBytes(Encoding));
+            }
+        }
+
+        /**
+         * Read the first MarkLen bytes of a file and ckeck for the template marker.
+         */
+        protected boolean hasTemplateMarker(WebFile pFile) {
+            String lHead = "";
+            byte[] lBuffer = new byte[MarkLen];
+            if (pFile.getData() != null && pFile.getData().length > MarkLen) {
+                System.arraycopy(pFile.getData(), 0, lBuffer, 0, MarkLen);
+                lHead = new String(lBuffer, Encoding);
+            }
+            return lHead.contains(TemplateMarker);
+        }
+    }
+
+    /**
+     * <pre>
+     * A simple class implementing template strings that include variable expressions.
+     *
+     * e.g. new ExprString("Hello ${visitor} I'am ${me}")
+     *          .put("visitor", "John")
+     *          .put("me", "Andreas")
+     *          .build();
+     * results in: "Hello John I'am Andreas"
+     * </pre>
+     */
+    public static class ExprString {
+        protected static String PatternStart = "${";
+        protected static String PatternEnd = "}";
+        protected static Pattern ExprPattern = Pattern.compile("\\$\\{(\\w.+)\\}");
+
+        protected String template = "";
+        protected Map<String, String> valueMap = new HashMap<>();
+        protected ValueProvider provider = (String pKey, Object pCtx) -> valueMap.getOrDefault(pKey, "");
+
+        /**
+         */
+        protected ExprString() {
+        }
+
+        /**
+         */
+        public ExprString(String pTemplate) {
+            this();
+            template = pTemplate;
+        }
+
+        /**
+         */
+        public ExprString(String pTemplate, ValueProvider pProvider) {
+            this(pTemplate);
+            provider = pProvider;
+        }
+
+        /**
+         */
+        @Override
+        public String toString() {
+            return template;
+        }
+
+        /**
+         */
+        public ExprString put(String pKey, String pValue) {
+            valueMap.put(pKey, pValue);
+            return this;
+        }
+
+        /**
+         */
+        public String build() {
+            return build(null);
+        }
+
+        /**
+         */
+        public String build(Object pCtx) {
+            StringBuilder lResult = new StringBuilder();
+            String lPart = "";
+            String lName = "";
+            String lValue = "";
+            Matcher lMatcher = ExprPattern.matcher(template);
+
+            int lCurrentPos = 0;
+            while (lMatcher.find()) {
+                lPart = template.substring(lCurrentPos, lMatcher.start());
+                lName = lMatcher.group().replace(PatternStart, "").replace(PatternEnd, "");
+                lValue = provider.getValueFor(lName, pCtx);
+                lResult.append(lPart).append(lValue);
+                lCurrentPos = lMatcher.end();
+            }
+            if (lCurrentPos < template.length()) {
+                lPart = template.substring(lCurrentPos, template.length());
+                lResult.append(lPart);
+            }
+            return lResult.toString();
+        }
+
+        /**
+         */
+        public static interface ValueProvider {
+            String getValueFor(String pKey, Object pCtx);
         }
     }
 

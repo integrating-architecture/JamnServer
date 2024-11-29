@@ -3,6 +3,8 @@ package org.isa.ipc.sample;
 
 import java.util.logging.Logger;
 
+import org.isa.ipc.JamnServer;
+import org.isa.ipc.JamnWebContentProvider;
 import org.isa.ipc.sample.data.ServerInfo;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -13,14 +15,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * The value provider is the end point interface of the sample server side
  * templating and preprocessing mechanism.
  */
-public class SampleFileEnricherValueProvider implements Helper.ExprString.ValueProvider {
+public class SampleFileEnricherValueProvider implements JamnWebContentProvider.ExprString.ValueProvider {
 
     protected static final String LS = System.getProperty("line.separator");
     protected static Logger LOG = Logger.getLogger(SampleFileEnricherValueProvider.class.getName());
     protected static ObjectMapper JSON = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
 
     @Override
-    public String getValue(String pKey, Object pCtx) {
+    public String getValueFor(String pKey, Object pCtx) {
         try {
             if ("app.title".equals(pKey)) {
                 return "JamnWeb Sample";
@@ -39,11 +41,17 @@ public class SampleFileEnricherValueProvider implements Helper.ExprString.ValueP
         } catch (Exception e) {
             LOG.severe(() -> String.format("ERROR retrieving template value for: [%s] in context [%s] %s%s%s", pKey,
                     pCtx, e.getMessage(), LS,
-                    Helper.getStackTraceFrom(e)));
+                    getStackTraceFrom(e)));
         }
 
         LOG.fine(() -> String.format("No template value for: [%s] in context [%s]", pKey, pCtx));
         return "";
+    }
+
+    /**
+     */
+    private static String getStackTraceFrom(Throwable t) {
+        return JamnServer.getStackTraceFrom(t);
     }
 
 }

@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.isa.ipc.JamnServer.Config;
 import org.isa.ipc.JamnServer.JsonToolWrapper;
 import org.isa.ipc.JamnWebContentProvider.ExprString.ValueProvider;
 
@@ -36,33 +37,111 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
 
     protected static final String LS = System.getProperty("line.separator");
     protected static Logger LOG = Logger.getLogger(JamnWebContentProvider.class.getName());
-    protected static JsonToolWrapper JSON;
     // development.mode - disables e.g. caching if true
     protected static boolean DvlpMode = true;
 
-    protected static ExtensionFactory ExtensionFactory = new ExtensionFactory();
+    protected static JsonToolWrapper JSON;
 
     /**
-     * Set an ExtensionInterfaceFactory to customize file providing, caching and
-     * enrichment.
-     */
-    public static void setExtensionFactory(ExtensionFactory pFactory) {
-        ExtensionFactory = pFactory;
-    }
-
-    /**
-     * Set JSON externally.
+     * Set a JSON tool externally.
      */
     public static void setJsonTool(JsonToolWrapper pTool) {
         JSON = pTool;
     }
 
+    protected Config config = new Config();
     protected WebFileHandler fileHandler;
+    protected String webroot;
+
+    /**
+     * <pre>
+     * The content provider supports two interfaces to customize content.
+     * A fileProvider and a fileEnricher. 
+     * 
+     * The fileProvider provides the actual byte content of what is called a WebFile.
+     * This can be real files from an underlying filesystem (default)
+     * or anything else a user wants to be associated with a resource name.
+     * </pre>
+     */
+    protected FileProvider fileProvider = (WebFile pFile) -> pFile
+            .setData(Files.readAllBytes(Paths.get(pFile.filePath)));
+
+    /**
+     * <pre>
+     * The fileEnricher is an interface used by the fileProvider
+     * to modify the file/resource content before provision.
+     * By default files can be marked as templates with placeholders like ${name} that become resolved.
+     * </pre>
+     */
+    protected FileEnricher fileEnricher = (WebFile pFile) -> {
+    };
+
+    protected FileCache fileCache = new FileCache() {
+        private Map<String, WebFile> cacheMap = Collections.synchronizedMap(new HashMap<>());
+
+        @Override
+        public synchronized void put(String pKey, WebFile pFile) {
+            cacheMap.put(pKey, pFile);
+        }
+
+        @Override
+        public boolean contains(String pKey) {
+            return cacheMap.containsKey(pKey);
+        }
+
+        @Override
+        public WebFile get(String pKey) {
+            return cacheMap.get(pKey);
+        }
+    };
+
+    private JamnWebContentProvider() {
+    }
+
+    private JamnWebContentProvider(String pRoot) {
+        webroot = pRoot;
+    }
 
     /**
      */
-    public JamnWebContentProvider(String pWebRoot) {
-        fileHandler = new WebFileHandler(pWebRoot);
+    public static JamnWebContentProvider Builder(String pWebRoot) {
+        JamnWebContentProvider lProvider = new JamnWebContentProvider(pWebRoot);
+        return lProvider;
+    }
+    
+    /**
+     */
+    public JamnWebContentProvider setConfig(Config pConfig) {
+        config = pConfig;
+        return this;
+    }
+
+    /**
+     */
+    public JamnWebContentProvider setFileEnricher(FileEnricher pFileEnricher) {
+        this.fileEnricher = pFileEnricher;
+        return this;
+    }
+
+    /**
+     */
+    public JamnWebContentProvider setFileCache(FileCache fileCache) {
+        this.fileCache = fileCache;
+        return this;
+    }
+
+    /**
+    */
+    public JamnWebContentProvider setFileProvider(FileProvider fileProvider) {
+        this.fileProvider = fileProvider;
+        return this;
+    }
+
+    /**
+     */
+    public JamnWebContentProvider build() {
+        fileHandler = new WebFileHandler(webroot, fileCache, fileEnricher, fileProvider);
+        return this;
     }
 
     /**
@@ -107,12 +186,16 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      */
     private static class WebFileHandler {
         protected String rootPath = "";
-        protected FileCache fileCache = ExtensionFactory.createFileCache();
-        protected FileEnricher fileEnricher = ExtensionFactory.createFileEnricher();
-        protected FileProvider fileProvider = ExtensionFactory.createFileProvider();
+        protected FileCache fileCache;
+        protected FileEnricher fileEnricher;
+        protected FileProvider fileProvider;
 
-        public WebFileHandler(String pRoot) {
+        public WebFileHandler(String pRoot, FileCache pFileCache, FileEnricher pFileEnricher,
+                FileProvider pFileProvider) {
             rootPath = pRoot;
+            fileCache = pFileCache;
+            fileEnricher = pFileEnricher;
+            fileProvider = pFileProvider;
         }
 
         /**
@@ -201,48 +284,6 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         boolean contains(String pKey);
 
         WebFile get(String pKey);
-    }
-
-    /**
-     * The factory to create the plugable extension objects.
-     */
-    public static class ExtensionFactory {
-        /**
-         */
-        public FileProvider createFileProvider() {
-            return (WebFile pWebFile) -> pWebFile.setData(Files.readAllBytes(Paths.get(pWebFile.filePath)));
-        }
-
-        /**
-         */
-        public FileEnricher createFileEnricher() {
-            return (WebFile pFile) -> {
-                // by default NO file enrichment enabled
-            };
-        }
-
-        /**
-         */
-        public FileCache createFileCache() {
-            return new FileCache() {
-                private Map<String, WebFile> cacheMap = Collections.synchronizedMap(new HashMap<>());
-
-                @Override
-                public synchronized void put(String pKey, WebFile pFile) {
-                    cacheMap.put(pKey, pFile);
-                }
-
-                @Override
-                public boolean contains(String pKey) {
-                    return cacheMap.containsKey(pKey);
-                }
-
-                @Override
-                public WebFile get(String pKey) {
-                    return cacheMap.get(pKey);
-                }
-            };
-        }
     }
 
     /**

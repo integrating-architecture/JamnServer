@@ -57,13 +57,12 @@ public class WebServiceProviderTest {
         });
 
         // create the WebService provider
-        JamnWebServiceProvider lWebServiceProvider = new JamnWebServiceProvider();
-
-        // register your Web-API Services
-        lWebServiceProvider.registerServices(SampleWebApiServices.class);
+        JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.Builder()
+                // register the Web-API Services
+                .registerServices(SampleWebApiServices.class).build();
 
         // add the provider to the server
-        Server.addContentProvider(lWebServiceProvider);
+        Server.addContentProvider(JamnServer.WEBSERVICE_PROVIDER, lWebServiceProvider);
         // start server
         Server.start();
         assertTrue(Server.isRunning(), "Test Server start FAILED");

@@ -37,14 +37,14 @@ public class SampleWebServiceApp {
                 return jack.writeValueAsString(pObj);
             }
         });
-        // create the WebService provider
-        JamnWebServiceProvider lWebServiceProvider = new JamnWebServiceProvider();
 
-        // register the Web-API Services
-        lWebServiceProvider.registerServices(SampleWebApiServices.class);
+        // create the WebService provider
+        JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.Builder().setConfig(lServer.getConfig())
+                // register the Web-API Services
+                .registerServices(SampleWebApiServices.class).build();
 
         // add the provider to the server
-        lServer.addContentProvider(lWebServiceProvider);
+        lServer.addContentProvider(JamnServer.WEBSERVICE_PROVIDER, lWebServiceProvider);
         // start server
         lServer.start();
     }

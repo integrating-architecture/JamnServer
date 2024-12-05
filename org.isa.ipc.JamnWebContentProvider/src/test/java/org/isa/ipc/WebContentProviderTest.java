@@ -37,9 +37,10 @@ public class WebContentProviderTest {
 
         // create the JamnWebContentProvider with a webroot
         // no leading slash because relative path
-        JamnWebContentProvider lWebContentProvider = new JamnWebContentProvider("src/test/resources/var/http/sample");
+        JamnWebContentProvider lWebContentProvider = JamnWebContentProvider
+                .Builder("src/test/resources/var/http/sample").build();
         // add to server
-        Server.addContentProvider(lWebContentProvider);
+        Server.addContentProvider(JamnServer.SAMPLE_CONTENT_PROVIDER, lWebContentProvider);
 
         // start server
         Server.start();

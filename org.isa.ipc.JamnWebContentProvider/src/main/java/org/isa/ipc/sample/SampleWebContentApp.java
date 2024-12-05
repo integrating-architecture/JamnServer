@@ -3,7 +3,7 @@ package org.isa.ipc.sample;
 
 import org.isa.ipc.JamnServer;
 import org.isa.ipc.JamnWebContentProvider;
-import org.isa.ipc.JamnWebContentProvider.FileEnricher;
+import org.isa.ipc.JamnWebContentProvider.DefaultFileEnricher;
 
 /**
  * Run a JamnServer with the sample content provider;
@@ -16,23 +16,15 @@ public class SampleWebContentApp {
         // create a Jamn server
         JamnServer lServer = new JamnServer();
 
-        // set a customized ExtensionFactory for the content provider
-        JamnWebContentProvider.setExtensionFactory(new JamnWebContentProvider.ExtensionFactory() {
-            /**
-             * Enable file enrichment with the default FileEnricher and a customer
-             * ValueProvider for templating.
-             */
-            @Override
-            public FileEnricher createFileEnricher() {
-                return new JamnWebContentProvider.DefaultFileEnricher(new SampleFileEnricherValueProvider());
-            }
-        });
-
         // create the provider with a webroot
         // no leading slash because relative path
-        JamnWebContentProvider lWebContentProvider = new JamnWebContentProvider("src/test/resources/var/http/sample");
+        JamnWebContentProvider lWebContentProvider = JamnWebContentProvider
+                .Builder("src/test/resources/var/http/sample")
+                .setConfig(lServer.getConfig())
+                .setFileEnricher(new DefaultFileEnricher(new SampleFileEnricherValueProvider()))
+                .build();
         // add it to server
-        lServer.addContentProvider(lWebContentProvider);
+        lServer.addContentProvider(JamnServer.SAMPLE_CONTENT_PROVIDER, lWebContentProvider);
 
         // start server
         lServer.start();

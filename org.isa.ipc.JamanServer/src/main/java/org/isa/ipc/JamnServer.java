@@ -730,12 +730,23 @@ public class JamnServer {
         public HttpHeader() {
         }
 
+        /**
+         * IMPORTANT - this INHERITS immutability
+         */
         public HttpHeader(Map<String, String> pAttributes) {
             fieldMap = pAttributes;
         }
 
-        public HttpHeader initWith(Map<String, String> pInitAttributes, boolean pIsCORSEnabled) {
+        /**
+         * IMPORTANT - this DOES NOT inherit immutability
+         */
+        public HttpHeader initWith(Map<String, String> pInitAttributes) {
             fieldMap = new LinkedHashMap<>(pInitAttributes);
+            return this;
+        }
+
+        public HttpHeader initWith(Map<String, String> pInitAttributes, boolean pIsCORSEnabled) {
+            initWith(pInitAttributes);
             setCORSEnabled(pIsCORSEnabled);
             return this;
         }

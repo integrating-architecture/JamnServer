@@ -92,17 +92,20 @@ public class JamnServer {
     // JamnServer name - just used for http header info
     public static final String JamnServerWebID = "JamnServer/0.0.1";
 
-    // these constants are not really necessary or mandatory,
-    // they are just for easier search- and readability
-    public static final String SAMPLE_CONTENT_PROVIDER = "SampleContentProvider";
     public static final String WEBCONTENT_PROVIDER = "WebContentProvider";
     public static final String WEBSERVICE_PROVIDER = "WebServiceProvider";
     public static final String WEBSOCKET_PROVIDER = "WebSocketProvider";
+    // ?
+    public static final String SAMPLE_CONTENT_PROVIDER = "SampleContentProvider";
 
-    // initialize logging from properties file
+    // if exists - initialize logging from internal properties file
     static {
         try {
-            LogManager.getLogManager().readConfiguration(JamnServer.class.getResourceAsStream("/logging.properties"));
+            InputStream lIn = JamnServer.class.getResourceAsStream("/logging.properties");
+            if (lIn != null) {
+                LogManager.getLogManager()
+                        .readConfiguration(lIn);
+            }
         } catch (SecurityException | IOException e) {
             e.printStackTrace();
             throw new JamnRuntimeException(e);
@@ -592,14 +595,13 @@ public class JamnServer {
                     // if so switch to WebSocket processing
                     UpgradeHandler lWebSocketHandler = getContentProviderUpgradeHandlerFor(WEBSOCKET_PROVIDER,
                             lRequest.getAttributes());
-                    lWebSocketHandler.handleRequest(lRequest.getMethod(), lRequest.getPath(),
-                            lRequest.getAttributes(), pSocketInStream, pSocketOutStream, pSocket, pComData);
+                    lWebSocketHandler.handleRequest(lRequest.getMethod(), lRequest.getPath(), lRequest.getAttributes(),
+                            pSocketInStream, pSocketOutStream, pSocket, pComData);
                 } else {
                     // else do basic http processing
                     lContentProvider = getContentProviderFor(lRequest.getAttributes());
                     lStatus = lContentProvider.createResponseContent(lResponseAttributes, lResponseContent,
-                            lRequest.getMethod(), lRequest.getPath(), lRequest.getBody(),
-                            lRequest.getAttributes());
+                            lRequest.getMethod(), lRequest.getPath(), lRequest.getBody(), lRequest.getAttributes());
 
                     lResponse.setHttpStatus(lStatus).applyAttributes(lResponseAttributes).setContent(lResponseContent);
                     lResponse.send();
@@ -1253,8 +1255,14 @@ public class JamnServer {
         public static final String HTTP_CORS_ENABLED = "http-cors-enabled";
         public static final String CLIENT_SOCKET_TIMEOUT = "client-socket-timeout";
 
-        public static final String DEFAULT_CONFIG = String.join("\n", "port=8099", "worker=5",
-                "encoding=" + StandardCharsets.UTF_8.name(), "client-socket-timeout=10000", "http-cors-enabled=false");
+        // @formatter:off
+        public static final String DEFAULT_CONFIG = String.join(LS, "#" + JamnServerWebID + " Config Properties", "",
+                "#Server port", "port=8099", "", 
+                "#Max worker threads", "worker=5", "",
+                "#Encoding", "encoding=" + StandardCharsets.UTF_8.name(), "",
+                "#Socket timeout in millis", "client-socket-timeout=10000", "",
+                "#Cross origin flag", "http-cors-enabled=false", "");
+        // @formatter:on
 
         protected Properties props = new Properties();
 

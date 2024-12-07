@@ -4,7 +4,7 @@
 Jamn is an **experimental**, lightweight **Java MicroServer** designed for independence, simplicity and easy customization.
 The purpose is textdata based application communication e.g. with JSON/XML/HTML etc. based on a rudimentary HTTP compatibility.
 
-The Server implementation has NO dependencies to any APIs or Libraries. It uses only standard Java SE functionality and is <a href="/org.isa.ipc.JamanServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a>
+The Server implementation has NO dependencies to any APIs or Libraries. It uses only standard Java SE functionality and is <a href="/org.isa.ipc.JamnServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a>
 
 The basic design is a layered separation of socket, protocol and content, so you can easily adapt anything to your own needs.
 
@@ -12,7 +12,7 @@ E.g. combined with a small Content-Provider implementation like <a href="/org.is
 
 **NOTE**: Although the current server supports http in a basic form, **it is NOT intended to be a real HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required.
 
-<a href="/org.isa.ipc.JamanServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java">A basic usage example</a>
+<a href="/org.isa.ipc.JamnServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java">A basic usage example</a>
 
 <br />
 

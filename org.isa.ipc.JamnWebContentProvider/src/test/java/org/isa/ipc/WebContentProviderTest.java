@@ -10,6 +10,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 
+import org.isa.ipc.JamnWebContentProvider.DefaultFileEnricher;
+import org.isa.ipc.sample.FileEnricherValueProvider;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
  */
 @DisplayName("Jamn Server WebContentProvider Test")
 public class WebContentProviderTest {
+
     private static HttpClient Client;
     private static JamnServer Server;
     private static String ServerURL;
@@ -38,13 +41,16 @@ public class WebContentProviderTest {
         // create the JamnWebContentProvider with a webroot
         // no leading slash because relative path
         JamnWebContentProvider lWebContentProvider = JamnWebContentProvider
-                .Builder("src/test/resources/var/http/sample").build();
+                .Builder("src/test/resources/http/sample")
+                .setConfig(Server.getConfig())
+                .setFileEnricher(new DefaultFileEnricher(new FileEnricherValueProvider()))
+                .build();
         // add to server
-        Server.addContentProvider(JamnServer.SAMPLE_CONTENT_PROVIDER, lWebContentProvider);
+        Server.addContentProvider("WebContentProvider", lWebContentProvider);
 
         // start server
         Server.start();
-        assertTrue(Server.isRunning(), "Test Server start FAILED");
+        assertTrue(Server.isRunning(), "Error Test Server start");
     }
 
     @AfterAll
@@ -54,14 +60,12 @@ public class WebContentProviderTest {
 
     @Test
     void testRoot() throws Exception {
-        String lPath = "/";
-
-        HttpRequest lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + lPath))
+        HttpRequest lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/"))
                 .headers("Content-Type", "text/html").GET().build();
 
         HttpResponse<String> lResponse = Client.send(lRequest, BodyHandlers.ofString());
 
-        assertEquals(200, lResponse.statusCode(), "HTTP Status");
+        assertEquals(200, lResponse.statusCode(), "Error HTTP Status");
     }
 
 }

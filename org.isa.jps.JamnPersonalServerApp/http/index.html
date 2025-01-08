@@ -1,0 +1,65 @@
+<!--jamn.web.template-->
+
+<!DOCTYPE html>
+<html lang=en>
+
+<head>
+	<meta charset="UTF-8">
+	<!--title is injected by the server file provider-->
+	<title>${app.title}}</title>
+	<link rel="stylesheet" href="css/jps-app.css" type="text/css" />
+	
+	<style>
+		textarea {
+		  resize: none;
+		  font-family: Console, monospace;
+		  font-size: 1.0em;
+		  max-width: 650px;
+		}
+		button{
+			margin-left: 20px;
+			margin-top: 10px;
+			width: 100px;
+			height: 30px;
+		}
+	</style>
+	
+	<script type="importmap">
+	{
+	    "imports": {
+	        "app": "/jsmod/jps-app.mjs"
+	    }
+	}
+	</script>
+
+	<script type="module">
+		import {anchorAt} from 'app';
+		anchorAt("approot");
+	</script>
+
+	<script type="text/javascript">
+		function loadScript () {
+			console.log("loadScript");
+		}
+	</script>
+
+</head>
+
+<body>
+<!--the approot is hidden by default - it gets visible from jps-app-->
+<div id="approot" class="site-container" style="width: 700px; height: 450px;">
+	<div class="workarea" >
+		<p style="margin-left: 20px;"">Script:</p>
+		<div class="workarea-center">
+			<textarea id="source" rows="15" cols="80">your javascript code</textarea>
+		</div>
+		<div >
+			<button id="pbLoad" onclick="loadScript()">Load</button>
+			<button id="pbRun" onclick="app.test()">Run</button>
+		</div>
+	</div>
+</div>
+
+</body>
+
+</html>

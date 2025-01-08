@@ -20,21 +20,26 @@ import static org.isa.ipc.JamnServer.HttpHeader.Field.SEC_WEBSOCKET_KEY;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.ACCESS_CONTROL_ALLOW_HEADERS_ALL;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.ACCESS_CONTROL_ALLOW_METHODS_ALL;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.ACCESS_CONTROL_ALLOW_ORIGIN_ALL;
+import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.TEXT_HTML;
+import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_200_OK;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_204_NO_CONTENT;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_408_TIMEOUT;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -47,6 +52,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLServerSocketFactory;
@@ -89,32 +95,36 @@ import org.isa.ipc.JamnServer.ContentProvider.UpgradeHandler;
  */
 public class JamnServer {
 
-    // JamnServer name - just used for http header info
+    private static final Logger LOG = Logger.getLogger(JamnServer.class.getName());
+
+    // JamnServer web id - just used for http header info
     public static final String JamnServerWebID = "JamnServer/0.0.1";
 
-    public static final String WEBCONTENT_PROVIDER = "WebContentProvider";
-    public static final String WEBSERVICE_PROVIDER = "WebServiceProvider";
-    public static final String WEBSOCKET_PROVIDER = "WebSocketProvider";
-    // ?
-    public static final String SAMPLE_CONTENT_PROVIDER = "SampleContentProvider";
+    // note page - to show that NO content provider is installed by default
+    private static String BlankServerPage;
 
-    // if exists - initialize logging from internal properties file
     static {
         try {
+            // if exists - initialize logging from internal properties file
             InputStream lIn = JamnServer.class.getResourceAsStream("/logging.properties");
             if (lIn != null) {
-                LogManager.getLogManager()
-                        .readConfiguration(lIn);
+                LogManager.getLogManager().readConfiguration(lIn);
+            }
+            lIn = JamnServer.class.getResourceAsStream("/blank-server.html");
+            if (lIn != null) {
+                try (BufferedReader lReader = new BufferedReader(new InputStreamReader(lIn))) {
+                    BlankServerPage = lReader.lines().collect(Collectors.joining("\n"));
+                }
             }
         } catch (SecurityException | IOException e) {
             e.printStackTrace();
-            throw new JamnRuntimeException(e);
+            throw new JamnRuntimeException(e, "Jamn Server static initialization failed");
         }
     }
-    private static final Logger LOG = Logger.getLogger(JamnServer.class.getName());
 
-    public static final String LS = System.getProperty("line.separator");
+    public static final String LS = System.lineSeparator();
     public static final String CRLF = "\r\n";
+    public static final String WEBSOCKET_PROVIDER = "WebSocketProvider";
 
     // extendable, customizable helper functions
     protected static WebHelper WebHelper = new WebHelper();
@@ -143,7 +153,7 @@ public class JamnServer {
      */
     public static void main(String[] pArgs) {
         JamnServer lServer = new JamnServer();
-        // required for using Testfiles in a browser
+        // required for using local Testfiles in a browser
         lServer.getConfig().setCORSEnabled(true);
         lServer.start();
     }
@@ -157,13 +167,32 @@ public class JamnServer {
     /**
      */
     public synchronized void start() {
-        kernel.start();
+        String lErrorInfo = "";
+        try {
+            kernel.start();
+            LOG.info(() -> String.format("JamnServer Instance STARTED: [%s]%s", config, LS));
+        } catch (Exception e) {
+            if (e instanceof BindException) {
+                lErrorInfo = String.format("Probably ALREADY RUNNING SERVER on port [%s]", getConfig().getPort());
+                LOG.severe(String.format("%s %s%s", lErrorInfo, LS, getStackTraceFrom(e)));
+            } else {
+                LOG.severe(String.format("ERROR starting JamnServer: [%s]%s%s", e, LS,
+                        getStackTraceFrom(e)));
+                lErrorInfo = e.getMessage();
+            }
+            stop();
+            throw new JamnRuntimeException(String.format("JamnServer start failed [%s]", lErrorInfo));
+        }
     }
 
     /**
      */
     public synchronized void stop() {
+        boolean wasRunning = isRunning();
         kernel.stop();
+        if (wasRunning) {
+            LOG.info(LS + "JamnServer STOPPED");
+        }
     }
 
     /**
@@ -297,8 +326,9 @@ public class JamnServer {
         }
 
         /**
+         * @throws IOException
          */
-        protected ServerSocket createServerSocket() throws Exception {
+        protected ServerSocket createServerSocket() throws IOException {
             ServerSocket lSocket = null;
 
             if (!System.getProperty("javax.net.ssl.keyStore", "").isEmpty()
@@ -313,8 +343,9 @@ public class JamnServer {
         }
 
         /**
+         * @throws IOException
          */
-        public synchronized void start() {
+        public synchronized void start() throws IOException {
             if (serverSocket != null && !serverSocket.isClosed()) {
                 return;
             }
@@ -325,21 +356,13 @@ public class JamnServer {
             serverThread = new ServerThread();
             serverThread.setName(getClass().getSimpleName() + " - on Port [" + config.getPort() + "]");
 
-            try {
-                serverSocket = createServerSocket();
+            serverSocket = createServerSocket();
 
-                if (requestExecutor == null) {
-                    requestExecutor = Executors.newFixedThreadPool(config.getWorkerNumber());
-                }
-
-                serverThread.start();
-
-                LOG.info(() -> String.format("JamnServer Instance STARTED: [%s]%s", config, LS));
-            } catch (Exception e) {
-                LOG.severe(() -> String.format("ERROR starting JamnServer: [%s]%s%s", e.getMessage(), LS,
-                        getStackTraceFrom(e)));
-                stop();
+            if (requestExecutor == null) {
+                requestExecutor = Executors.newFixedThreadPool(config.getWorkerNumber());
             }
+
+            serverThread.start();
         }
 
         /**
@@ -358,8 +381,6 @@ public class JamnServer {
             if (requestExecutor != null) {
                 requestExecutor.shutdownNow();
             }
-
-            LOG.info(LS + "JamnServer STOPPED");
         }
 
         /**
@@ -502,18 +523,29 @@ public class JamnServer {
             return null;
         };
 
-        // empty default provider
-        // just returning status SC_204_NO_CONTENT an logging the use
+        // empty default content provider
+        // just returning the blank server page at root
+        // or status SC_204_NO_CONTENT
         protected ContentProvider defaultContentProvider = (Map<String, String> pResponseAttributes,
                 OutputStream pResponseContent, String pMethod, String pPath, String pRequestBody,
                 final Map<String, String> pRequestAttributes) -> {
-            LOG.warning(() -> String.format("USE of EMPTY default Content Provider"));
+            LOG.warning(() -> "Request to EMPTY Default Content Provider");
+
+            try {
+                if ("/".equals(pPath)) {
+                    new HttpHeader(pResponseAttributes).setContentType(TEXT_HTML);
+                    pResponseContent.write(BlankServerPage.getBytes());
+                    return SC_200_OK;
+                }
+            } catch (IOException e) {
+                // ignore in empty default implementation
+            }
             return SC_204_NO_CONTENT;
         };
 
         protected UpgradeHandler defaultUpgradeHandler = (pMethod, pPath, pRequestAttributes, pSocketInStream,
                 pSocketOutStream, pSocket, pComData) -> {
-            LOG.warning(() -> String.format("USE of EMPTY default UpgradeHandler Content Provider"));
+            LOG.warning(() -> "USE of EMPTY default UpgradeHandler Content Provider");
             return SC_204_NO_CONTENT;
         };
 
@@ -608,9 +640,9 @@ public class JamnServer {
                 }
             } catch (InterruptedIOException e) {
                 lResponse.sendStatus(SC_408_TIMEOUT);
-            } catch (RuntimeException e) {
+            } catch (Exception e) {
                 lResponse.sendStatus(SC_500_INTERNAL_ERROR);
-                LOG.severe(() -> String.format("Request Handling internal/runtime ERROR: %s %s %s", e.toString(), LS,
+                LOG.severe(() -> String.format("Request Handling internal/runtime ERROR: %s %s %s", e, LS,
                         getStackTraceFrom(e)));
             } finally {
                 lResponse.close();
@@ -668,7 +700,9 @@ public class JamnServer {
             /**
              */
             public void readHeader(InputStream pInStream) throws IOException {
-                String lHeader = WebHelper.readHttpRequestHeader(pInStream).toString();
+                byte[] lBytes = WebHelper.readHttpRequestHeader(pInStream);
+                String lHeader = new String(lBytes, getEncoding());
+
                 fieldMap = Collections.unmodifiableMap(WebHelper.parseHttpHeader(lHeader));
 
                 LOG.fine(() -> String.format("%s - Request header: %s", Thread.currentThread().getName(), lHeader));
@@ -676,35 +710,12 @@ public class JamnServer {
 
             /**
              * <pre>
-             * Tries to blocking read the request body from the socket InputStream
-             * until global socket timeout is reached.
-             * 
-             * TODO rework
-             * This implementation is not http compliant and may also be incorrect.
-             * However - it works with the standard java se client.
-             * While None blocking at this point does NOT work reliable because the
-             * JamnServer does NOT support "splitted" requests.
-             * The JamnServer treats a request as a closed "transaction".
+             * Tries to blocking read the request body from the socket InputStream.
              * </pre>
              */
             public void readBody(InputStream pInStream) throws IOException {
-                int lCount = 0;
-                int lContentLength = getContentLength();
-
-                if (lContentLength > 0) {
-                    StringBuilder lBuffer;
-                    while (true) {
-                        lCount++;
-                        lBuffer = WebHelper.readHttpRequestBody(pInStream, lContentLength);
-                        // accept only complete bodies
-                        if (lBuffer.length() == lContentLength) {
-                            body = lBuffer.toString();
-                            break;
-                        } else {
-                            LOG.warning(String.format("Read body chunk [%s]", lCount));
-                        }
-                    }
-                }
+                byte[] lBytes = WebHelper.readHttpRequestBody(pInStream, getContentLength());
+                body = new String(lBytes, getEncoding());
             }
 
             /**
@@ -885,6 +896,7 @@ public class JamnServer {
          */
         public HttpHeader setCORSEnabled(boolean pFlag) {
             if (pFlag) {
+                // at first just allow everything
                 set(ACCESS_CONTROL_ALLOW_ORIGIN, ACCESS_CONTROL_ALLOW_ORIGIN_ALL);
                 set(ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_METHODS_ALL);
                 set(ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_HEADERS_ALL);
@@ -915,6 +927,12 @@ public class JamnServer {
          */
         public void setEncoding(String encoding) {
             this.encoding = encoding;
+        }
+
+        /**
+         */
+        public String getEncoding() {
+            return encoding;
         }
 
         /**
@@ -1064,52 +1082,70 @@ public class JamnServer {
         /**
          * Starting at the beginning of the stream reading until a blank/empty line is
          * detected.
+         * 
+         * @throws IOException
          */
-        public StringBuilder readHttpRequestHeader(InputStream pInStream) throws IOException {
+        public byte[] readHttpRequestHeader(InputStream pInStream) throws IOException {
             int lByte = 0;
             int headerEndFlag = 0;
 
-            StringBuilder lBuffer = new StringBuilder(1000);
-
+            ByteArrayOutputStream lByteBuffer = new ByteArrayOutputStream();
             do {
                 if ((lByte = pInStream.read()) == -1) {
                     break; // end of stream, because pIn.available() may ? not
                            // be reliable enough
                 }
 
+                // TODO encoding test
                 if (lByte == 13) { // CR
-                    if (pInStream.read() == 10) { // LF
-                        lBuffer.append("\n");
+                    lByteBuffer.write(lByte);
+                    if ((lByte = pInStream.read()) == 10) { // LF
+                        lByteBuffer.write(lByte);
                         headerEndFlag++;
+                    } else if (lByte != -1) {
+                        lByteBuffer.write(lByte);
                     }
                 } else {
-                    lBuffer.append((char) lByte);
+                    lByteBuffer.write(lByte);
                     if (headerEndFlag == 1) {
                         headerEndFlag--;
                     }
                 }
             } while (headerEndFlag < 2 && pInStream.available() > 0);
-            return lBuffer;
+
+            return lByteBuffer.toByteArray();
         }
 
         /**
-         * Starting at the CURRENT position of the input stream reading until
-         * pContentLen bytes are read.
+         * <pre>
+         * Tries to blocking read the request body from the socket InputStream.
+         * </pre>
          */
-        public StringBuilder readHttpRequestBody(InputStream pInStream, int pContentLen) throws IOException {
-            int i = 0;
+        public byte[] readHttpRequestBody(InputStream pInStream, int pContentLength)
+                throws IOException {
+            ByteArrayOutputStream lByteBuffer = new ByteArrayOutputStream();
             int lByte = 0;
-            StringBuilder lBuffer = new StringBuilder(1000);
+            int lActual = 0;
+            int lAvailable = 0;
 
-            for (; i < pContentLen && pInStream.available() > 0; i++) {
-                lByte = pInStream.read();
-                if (lByte == -1) {
-                    break;
+            if (pContentLength > 0) {
+                while ((lAvailable = pInStream.available()) > 0 || lActual < pContentLength) {
+                    lActual++;
+                    lByte = pInStream.read();
+                    if (lByte == -1) {
+                        break;
+                    }
+                    lByteBuffer.write(lByte);
+                    // lBuffer.append((char) lByte);
                 }
-                lBuffer.append((char) lByte);
+                if (lActual != pContentLength || lAvailable > 0) {
+                    String msg = String.format("Http body read: actual [%s] header [%s] available [%s]", lActual,
+                            pContentLength,
+                            lAvailable);
+                    LOG.warning(() -> msg);
+                }
             }
-
-            return lBuffer;
+            return lByteBuffer.toByteArray();
         }
 
         /**
@@ -1195,22 +1231,6 @@ public class JamnServer {
             return lHeader;
         }
 
-//        /**
-//         */
-//        public StringBuilder createHttpMessage(String[] pStatusLine, Map<String, String> pHeaderAttributes,
-//                String pBody) {
-//            int lContentLen = (pBody != null) ? pBody.length() : 0;
-//            if (lContentLen > 0) {
-//                pHeaderAttributes.put(CONTENT_LENGTH, String.valueOf(lContentLen));
-//            }
-//
-//            StringBuilder lMsg = createHttpHeader(pStatusLine, pHeaderAttributes);
-//            if (lContentLen > 0) {
-//                lMsg.append(pBody);
-//            }
-//            return lMsg;
-//        }
-
         /**
          */
         public byte[] createHttpMessageBytes(String[] pStatusLine, Map<String, String> pHeaderAttributes, byte[] pBody,
@@ -1255,14 +1275,15 @@ public class JamnServer {
         public static final String HTTP_CORS_ENABLED = "http-cors-enabled";
         public static final String CLIENT_SOCKET_TIMEOUT = "client-socket-timeout";
 
-        // @formatter:off
-        public static final String DEFAULT_CONFIG = String.join(LS, "#" + JamnServerWebID + " Config Properties", "",
+        public static final String DEFAULT_CONFIG = String.join(LS,
+                "##",
+                "## " + JamnServerWebID + " Config Properties",
+                "##", "",
                 "#Server port", "port=8099", "", 
                 "#Max worker threads", "worker=5", "",
                 "#Encoding", "encoding=" + StandardCharsets.UTF_8.name(), "",
                 "#Socket timeout in millis", "client-socket-timeout=10000", "",
                 "#Cross origin flag", "http-cors-enabled=false", "");
-        // @formatter:on
 
         protected Properties props = new Properties();
 
@@ -1342,8 +1363,8 @@ public class JamnServer {
             try {
                 lProps.load(new StringReader(pDef));
             } catch (IOException e) {
-                LOG.severe(String.format("ERROR parsing config to properties string [%s]", pDef));
-                throw new JamnRuntimeException(e);
+                LOG.severe(String.format("ERROR parsing config to properties string [%s] [%s]", pDef, e));
+                throw new JamnRuntimeException("Config properties creation/initialization error");
             }
             return lProps;
         }
@@ -1357,11 +1378,12 @@ public class JamnServer {
     public static interface JsonToolWrapper {
         /**
          */
-        public <T> T toObject(String pSrc, Class<T> pType) throws Exception;
+        public <T> T toObject(String pSrc, Class<T> pType) throws IOException;
 
         /**
          */
-        public String toString(Object pObj) throws Exception;
+        public String toString(Object pObj) throws IOException;
+
     }
 
     /*********************************************************
@@ -1393,9 +1415,14 @@ public class JamnServer {
     public static class JamnRuntimeException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
-        public JamnRuntimeException(Throwable pCause) {
-            super(pCause.getMessage(), pCause);
+        public JamnRuntimeException(Throwable pCause, String pMsg) {
+            super(pMsg, pCause);
         }
+
+        public JamnRuntimeException(String pMsg) {
+            super(pMsg);
+        }
+
     }
 
 }

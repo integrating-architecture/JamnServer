@@ -4,12 +4,14 @@ package org.isa.ipc;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 
+import org.isa.ipc.JamnServer.JsonToolWrapper;
 import org.isa.ipc.sample.web.api.SampleWebApiServices;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -31,7 +33,19 @@ public class WebServiceProviderTest {
     private static String ServerURL;
 
     // JSON Tool
-    private static ObjectMapper Jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+    private static JsonToolWrapper Jack = new JamnServer.JsonToolWrapper() {
+        ObjectMapper jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+
+        @Override
+        public <T> T toObject(String pSrc, Class<T> pType) throws IOException {
+            return jack.readValue(pSrc, pType);
+        }
+
+        @Override
+        public String toString(Object pObj) throws IOException {
+            return jack.writeValueAsString(pObj);
+        }
+    };
 
     @BeforeAll
     public static void setupEnvironment() throws Exception {
@@ -44,25 +58,14 @@ public class WebServiceProviderTest {
         // e.g. default: http://localhost:8099
         ServerURL = "http://localhost:" + Server.getConfig().getPort();
 
-        JamnWebServiceProvider.setJsonTool(new JamnServer.JsonToolWrapper() {
-            @Override
-            public <T> T toObject(String pSrc, Class<T> pType) throws Exception {
-                return Jack.readValue(pSrc, pType);
-            }
-
-            @Override
-            public String toString(Object pObj) throws Exception {
-                return Jack.writeValueAsString(pObj);
-            }
-        });
-
         // create the WebService provider
         JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.Builder()
+                .setJsonTool(Jack)
                 // register the Web-API Services
                 .registerServices(SampleWebApiServices.class).build();
 
         // add the provider to the server
-        Server.addContentProvider(JamnServer.WEBSERVICE_PROVIDER, lWebServiceProvider);
+        Server.addContentProvider("WebServiceProvider", lWebServiceProvider);
         // start server
         Server.start();
         assertTrue(Server.isRunning(), "Test Server start FAILED");
@@ -108,7 +111,7 @@ public class WebServiceProviderTest {
 
         assertEquals(200, lResponse.statusCode(), "HTTP Status");
 
-        SampleWebApiServices.AboutResponse lAbout = Jack.readValue(lResponse.body(),
+        SampleWebApiServices.AboutResponse lAbout = Jack.toObject(lResponse.body(),
                 SampleWebApiServices.AboutResponse.class);
         assertEquals("0.0.1", lAbout.version, "AboutResponse.version");
     }

@@ -17,17 +17,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 import org.isa.ipc.JamnServer.Config;
@@ -56,17 +48,17 @@ import org.isa.ipc.JamnServer.JsonToolWrapper;
  *  ...
  *
  *
- * The data IO is by default based on JSON which is provided by the "com.fasterxml.jackson" library.
+ * By default the data IO is based on JSON which is provided by the "com.fasterxml.jackson" library.
  * But you can simply fallback to pure String IO or plug in any other JSON or String based format converter.
  *
- * JamnWebServiceProvider.setJsonTool(new JamnServer.JsonToolWrapper() {
+ * lWebServiceProvider.setJsonTool(new JamnServer.JsonToolWrapper() {
  * 		private final MyConverterClass MyConverter = new MyConverterClass();
  * 			Override
- * 			public <T> T toObject(String pSrc, Class<T> pType) throws Exception {
+ * 			public <T> T toObject(String pSrc, Class<T> pType) throws IOException {
  * 				return MyConverter.getAsObject(pSrc, pType);
  * 			}
  * 			Override
- * 			public String toString(Object pObj) throws Exception {
+ * 			public String toString(Object pObj) throws IOException {
  * 				return MyConverter.getAsString(pObj);
  * 			}
  * 		});
@@ -74,18 +66,11 @@ import org.isa.ipc.JamnServer.JsonToolWrapper;
  */
 public class JamnWebServiceProvider implements JamnServer.ContentProvider {
 
-    protected static final String LS = System.getProperty("line.separator");
+    protected static final String LS = System.lineSeparator();
     protected static final String UFS = "/";
     protected static Logger LOG = Logger.getLogger(JamnWebServiceProvider.class.getName());
-    protected static JsonToolWrapper JSON;
 
-    /**
-     * Set JSON externally.
-     */
-    public static void setJsonTool(JsonToolWrapper pTool) {
-        JSON = pTool;
-    }
-
+    protected JsonToolWrapper jsonTool;
     protected Config config = new Config();
 
     /**
@@ -99,8 +84,14 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     /**
      */
     public static JamnWebServiceProvider Builder() {
-        JamnWebServiceProvider lProvider = new JamnWebServiceProvider();
-        return lProvider;
+        return new JamnWebServiceProvider();
+    }
+
+    /**
+     */
+    public JamnWebServiceProvider setJsonTool(JsonToolWrapper pTool) {
+        jsonTool = pTool;
+        return this;
     }
 
     /**
@@ -117,23 +108,34 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     }
 
     /**
-     * The public interface method to register and install Services implemented in
-     * pServiceClass.
+     * <pre>
+     * The public interface method to register and install Services implemented in pServices.
+     * Where pServices may be a class or an instance of a class.
+     * </pre>
      */
-    public JamnWebServiceProvider registerServices(Class<?> pServiceClass) throws WebServiceDefinitionException {
+    public JamnWebServiceProvider registerServices(Object pServices)
+            throws WebServiceDefinitionException {
         ServiceObject lServiceObj = null;
         WebService lServiceAnno = null;
         Object lInstance = null;
+        Class<?> lServiceClass = null;
         Class<?> lRequestClass = null;
         Class<?> lReponseClass = null;
 
-        try {
-            lInstance = pServiceClass.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-            throw new WebServiceDefinitionException(e);
+        if (pServices instanceof Class) {
+            lServiceClass = (Class<?>) pServices;
+            try {
+                lInstance = lServiceClass.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                throw new WebServiceDefinitionException(
+                        String.format("Instantiation of WebService failed [%s]", lServiceClass), e);
+            }
+        } else {
+            lInstance = pServices;
+            lServiceClass = lInstance.getClass();
         }
 
-        Method[] lMethodes = pServiceClass.getDeclaredMethods();
+        Method[] lMethodes = lServiceClass.getDeclaredMethods();
         for (Method serviceMethod : lMethodes) {
             if (serviceMethod.isAnnotationPresent(WebService.class)) {
                 lServiceAnno = serviceMethod.getDeclaredAnnotation(WebService.class);
@@ -142,10 +144,12 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
                 lRequestClass = getServiceRequestClassFrom(serviceMethod);
                 lReponseClass = getServiceResponseClassFrom(serviceMethod);
 
-                lServiceObj = new ServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass, serviceMethod);
+                lServiceObj = new ServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass, serviceMethod,
+                        () -> jsonTool);
                 if (!serviceRegistry.containsKey(lServiceObj.path)) {
                     serviceRegistry.put(lServiceObj.path, lServiceObj);
-                    final String info = String.format("WebService installed [%s] at [%s]", lServiceObj.getName(),
+                    final String info = String.format("WebService installed [%s] at [%s]",
+                            lServiceObj.getName(),
                             lServiceObj.path);
                     LOG.fine(info);
                 } else {
@@ -159,72 +163,9 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     }
 
     /**
-     * The public interface method to dynamically install and register WebServices
-     * implemented in an external jar file library.
-     */
-    public JamnWebServiceProvider registerServices(WebApiServiceDef pDef, String pPath)
-            throws WebServiceDefinitionException {
-        URLClassLoader lServiceLoader;
-        Class<?> lServiceClass;
-        List<URL> lUrls = new ArrayList<>();
-        String lPathName;
-        List<String> lWarnings = new ArrayList<>();
-
-        try {
-            // the service itself
-            lPathName = toUnifiedPath(pPath) + UFS + pDef.getLibName();
-            createURL(lPathName, lUrls, pDef, lWarnings);
-
-            // the service libraries
-            for (String lib : pDef.getLibs()) {
-                lPathName = toUnifiedPath(lib);
-                createURL(lPathName, lUrls, pDef, lWarnings);
-            }
-
-            if (!lWarnings.isEmpty()) {
-                lWarnings.forEach(msg -> LOG.warning(msg));
-                LOG.warning("NO WEB SERVICES CREATED because of one or more invalid or empty WebService definition(s)");
-                return this;
-            }
-
-            lServiceLoader = new URLClassLoader(lUrls.toArray(new URL[lUrls.size()]),
-                    Thread.currentThread().getContextClassLoader());
-
-            lServiceClass = lServiceLoader.loadClass(pDef.getClassName());
-            registerServices(lServiceClass);
-        } catch (Exception e) {
-            LOG.severe(() -> String.format("ERROR registering WebService: [%s] [%s]%s%s", pDef, e.getMessage(), LS,
-                    getStackTraceFrom(e)));
-            throw new WebServiceDefinitionException(e);
-        }
-
-        return this;
-    }
-
-    /**
      */
     public boolean isServicePath(String pPath) {
         return serviceRegistry.containsKey(pPath);
-    }
-
-    /**
-     */
-    public Function<String, Boolean> getServicePathChecker() {
-        return (String path) -> serviceRegistry.containsKey(path);
-    }
-
-    /**
-     */
-    private void createURL(String pPathName, List<URL> pUrls, WebApiServiceDef pDef, List<String> pWarnings)
-            throws MalformedURLException {
-        Path lFile = Paths.get(pPathName);
-
-        if (Files.exists(lFile) && !Files.isDirectory(lFile)) {
-            pUrls.add(new URL("file:" + pPathName));
-        } else {
-            pWarnings
-                    .add(String.format("WebService library file does NOT exist [%s] [%s]", pPathName, pDef.toString()));
-        }
     }
 
     /*********************************************************
@@ -288,15 +229,6 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
         return pMeth.getReturnType();
     }
 
-    /**
-     */
-    protected static String toUnifiedPath(String pPath) {
-        String lPath = pPath.replace('\\', '/');
-        if (lPath.indexOf(":") > 0) {
-            lPath = lPath.substring(lPath.indexOf(":") + 1, lPath.length());
-        }
-        return lPath;
-    }
 
     /*********************************************************
      * The internal classes for loading and providing WebService objects.
@@ -313,8 +245,11 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
         protected Class<?> responseClass = null;
         protected Method serviceMethod = null;
 
+        protected Supplier<JsonToolWrapper> json;
+
         protected ServiceObject(WebService pServiceAnno, Object pInstance, Class<?> pRequestClass,
-                Class<?> pResponseClass, Method pServiceMethod) {
+                Class<?> pResponseClass, Method pServiceMethod, Supplier<JsonToolWrapper> pJson) {
+            json = pJson;
             instance = pInstance;
             path = pServiceAnno.path().trim();
             contentType = pServiceAnno.contentType().trim();
@@ -379,12 +314,12 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
 
             if (getContentType().equalsIgnoreCase(APPLICATION_JSON)) {
                 if (hasParameter()) {
-                    lParam = JSON.toObject(pRequestData, requestClass);
+                    lParam = json.get().toObject(pRequestData, requestClass);
                     lRet = serviceMethod.invoke(instance, lParam);
                 } else {
                     lRet = serviceMethod.invoke(instance);
                 }
-                lRet = JSON.toString(lRet);
+                lRet = json.get().toString(lRet);
             } else if (getContentType().equalsIgnoreCase(TEXT_PLAIN)) {
                 if (hasParameter() && requestClass == String.class) {
                     lRet = serviceMethod.invoke(instance, pRequestData);
@@ -396,7 +331,7 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
                     return lRet;
                 }
                 // this surrounds a blank string with ""
-                lRet = JSON.toString(lRet);
+                lRet = json.get().toString(lRet);
             }
 
             return lRet;
@@ -429,48 +364,13 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     public static class WebServiceDefinitionException extends Exception {
         private static final long serialVersionUID = 1L;
 
-        WebServiceDefinitionException(String pMsg) {
+        public WebServiceDefinitionException(String pMsg) {
             super(pMsg);
         }
 
-        WebServiceDefinitionException(Throwable t) {
-            super(t.getMessage(), t);
+        public WebServiceDefinitionException(String pMsg, Throwable pCause) {
+            super(pMsg, pCause);
         }
-    }
-
-    /**
-     */
-    public static class WebApiServiceDef {
-        protected String libName = "";
-        protected String className = "";
-        protected List<String> libs = new ArrayList<>();
-
-        public WebApiServiceDef() {
-        }
-
-        public WebApiServiceDef(String pLibName, String pClassName, List<String> pLibs) {
-            this();
-            libName = pLibName;
-            className = pClassName;
-            libs.addAll(pLibs);
-        }
-
-        public String getLibName() {
-            return libName;
-        }
-
-        public String getClassName() {
-            return className;
-        }
-
-        public List<String> getLibs() {
-            return libs;
-        }
-
-        public String toString() {
-            return String.format("WebApiServiceDef [%s : %s]", className, libName);
-        }
-
     }
 
     /*********************************************************

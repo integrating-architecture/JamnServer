@@ -31,13 +31,14 @@ import java.util.logging.Logger;
 
 import org.isa.ipc.JamnServer.Config;
 import org.isa.ipc.JamnServer.HttpHeader;
+import org.isa.ipc.JamnServer.JsonToolWrapper;
 
 /**
  * A rudimentary WebSocket Provider implementation for the JamnServer.
  */
 public class JamnWebSocketProvider implements JamnServer.ContentProvider.UpgradeHandler {
 
-    protected static final String LS = System.getProperty("line.separator");
+    protected static final String LS = System.lineSeparator();
     protected static Logger LOG = Logger.getLogger(JamnWebSocketProvider.class.getName());
 
     protected static WebSocketMessageBroker WSOMessageBroker = new WebSocketMessageBroker();
@@ -59,6 +60,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
         }
     };
 
+    protected JsonToolWrapper jsonTool;
     protected Config config = new Config();
 
     /**
@@ -84,6 +86,13 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
      */
     public JamnWebSocketProvider setConfig(Config pConfig) {
         config = pConfig;
+        return this;
+    }
+
+    /**
+     */
+    public JamnWebSocketProvider setJsonTool(JsonToolWrapper pTool) {
+        jsonTool = pTool;
         return this;
     }
 

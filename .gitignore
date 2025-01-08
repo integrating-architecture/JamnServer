@@ -1,11 +1,11 @@
 # Files and directories #
-**/target/**
-**/dist/**
+**/dist
+**/target
 **/.classpath
 **/.settings
 **/.project
 **/.vscode
-**/siks/**
+**/siks
 *snippets*
 
 # Files #

@@ -35,19 +35,12 @@ import org.isa.ipc.JamnWebContentProvider.ExprString.ValueProvider;
  */
 public class JamnWebContentProvider implements JamnServer.ContentProvider {
 
-    protected static final String LS = System.getProperty("line.separator");
+    protected static final String LS = System.lineSeparator();
     protected static Logger LOG = Logger.getLogger(JamnWebContentProvider.class.getName());
     // development.mode - disables e.g. caching if true
     protected static boolean DvlpMode = true;
 
-    protected static JsonToolWrapper JSON;
-
-    /**
-     * Set a JSON tool externally.
-     */
-    public static void setJsonTool(JsonToolWrapper pTool) {
-        JSON = pTool;
-    }
+    protected JsonToolWrapper jsonTool;
 
     protected Config config = new Config();
     protected WebFileHandler fileHandler;
@@ -111,6 +104,13 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     
     /**
      */
+    public JamnWebContentProvider setJsonTool(JsonToolWrapper pTool) {
+        jsonTool = pTool;
+        return this;
+    }
+
+    /**
+     */
     public JamnWebContentProvider setConfig(Config pConfig) {
         config = pConfig;
         return this;
@@ -171,7 +171,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             LOG.fine(() -> String.format("WebContent Error: [%s]%s%s", ce.getMessage(), LS, getStackTraceFrom(ce)));
             lStatus = ce.getHttpStatus();
         } catch (Exception e) {
-            LOG.severe(String.format("Internal Error GET [%s]%s%s%s%s", pPath, LS, e.toString(), LS,
+            LOG.severe(String.format("Internal Error GET [%s]%s%s%s%s", pPath, LS, e, LS,
                     getStackTraceFrom(e)));
             lStatus = SC_500_INTERNAL_ERROR;
         }

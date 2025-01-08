@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Jamn Workbench</title>
+
+  <!-- External Icon-Font CDN link -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- The App main StyleSheet -->
+  <link rel="stylesheet" href="css/app.css">
+
+  <script>
+    function getSbartopicIds() {
+      return ["system-sbartopic", "command-sbartopic", "tools-sbartopic"];
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+
+      let topics = document.getElementsByClassName("sbartopic");
+
+      for (let i = 0; i < topics.length; i++) {
+        topics[i].addEventListener("click", function (evt) {
+          let ids = getSbartopicIds();
+
+          if (ids.includes(evt.target.id)) {
+            let list = this.querySelector('.sbartopic-entry-list');
+            if (list) {
+              if (list.style.display == "none" || list.style.display == "") {
+                list.style.display = "block";
+              } else {
+                list.style.display = "none";
+              }
+            }
+          }
+        });
+      }
+    });
+
+  </script>
+</head>
+
+<body>
+  <div id="header">
+    <div class="header-item" style="width: 30px;">
+      <img src="images/app-logo.png" title="App Logo" alt="app-logo" width="16px" height="16px" />
+    </div>
+    <div id="header-title" class="header-item">Jamn Workbench -</div>
+    <div id="header-title-text" class="header-item">[]</div>
+  </div>
+  <div id="mainContainer">
+    <div id="sidebar">
+      <div class="sidebar-header">
+        <a class="bi bi-house-gear" href="javascript:void(0)" onclick="" style="font-size: 34px;"></a>
+      </div>
+      <ul class="sbartopic-list">
+        <li class="sbartopic"><a id="system-sbartopic" class="bi bi-laptop" href="#system">&ensp;System</a>
+          <ul class="sbartopic-entry-list">
+            <li class="sbarentry"><a id="system-infos" href="#infos">Infos</a>
+            <li class="sbarentry"><a id="system-properties" href="#properties">Properties</a>
+          </ul>
+        </li>
+        <li class="sbartopic"><a id="command-sbartopic" class="bi bi-command" href="#commands">&ensp;Commands</a></li>
+        <li class="sbartopic"><a id="tools-sbartopic" class="bi bi-tools" href="#tools">&ensp;Tools</a></li>
+      </ul>
+    </div>
+    <div id="workarea">
+      <div class="work-view">
+        <div class="work-view-header">Server Infos</div>
+        <div class="work-view-body">
+          <!--this elements are set by the app-->
+          <plb>Name:</plb>
+          <pval id="server.name"></pval></br>
+          <plb>Version:</plb>
+          <pval id="server.version"></pval></br>
+          <plb>Description:</plb>
+          <pval id="server.description"></pval></br>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="statusline">
+    <span class="statusline-item" style="width: 30px;">Info:</span>
+    <span id="statusline-info" class="statusline-item" style="width: 100%;"></span>
+    <span id="statusline-icons" class="statusline-item" style="width: 50px; margin-right: 5px; text-align: center;">
+      <a class="bi bi-github" id="app.scm" href="https://github.com/integrating-architecture/JamnServer" target="_blank"
+        style="color:white;"></a>
+    </span>
+
+  </div>
+
+</body>
+
+</html>

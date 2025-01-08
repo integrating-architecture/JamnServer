@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 
+import org.isa.ipc.JamnServer.JamnRuntimeException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
@@ -29,16 +30,16 @@ class JamnServerBasicTest {
 
     @Test
     @Order(1)
-    void testCreateAndStartServer() {
+    void testCreateAndStartServer() throws JamnRuntimeException {
         Server = new JamnServer(8099);
         Server.start();
 
-        assertTrue(Server.isRunning(), "Test Server start FAILED");
+        assertTrue(Server.isRunning(), "Error Server start");
     }
 
     @Test
     @Order(2)
-    void testDoGETRquest() throws Exception {
+    void testGETRquest() throws Exception {
         // java jdk http client
         HttpClient lClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
@@ -46,8 +47,11 @@ class JamnServerBasicTest {
 
         HttpResponse<String> lResponse = lClient.send(lRequest, BodyHandlers.ofString());
 
-        // HTTP 204 No Content - but alive
-        assertEquals(204, lResponse.statusCode(), "HTTP Status");
+        // HTTP 200 ok
+        assertEquals(200, lResponse.statusCode(), "Error HTTP Status");
+
+        // return blank-server.html
+        assertTrue(lResponse.body().contains("No Content Provider installed"), "Error blank-server.html content");
     }
 
     @Test

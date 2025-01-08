@@ -436,7 +436,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     public static class ExprString {
         protected static String PatternStart = "${";
         protected static String PatternEnd = "}";
-        protected static Pattern ExprPattern = Pattern.compile("\\$\\{(\\w.+)\\}");
+        protected static Pattern ExprPattern = Pattern.compile("\\$\\{(\\s+\\w.+)\\}");
 
         protected String template = "";
         protected Map<String, String> valueMap = new HashMap<>();
@@ -493,7 +493,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             int lCurrentPos = 0;
             while (lMatcher.find()) {
                 lPart = template.substring(lCurrentPos, lMatcher.start());
-                lName = lMatcher.group().replace(PatternStart, "").replace(PatternEnd, "");
+                lName = lMatcher.group().replace(PatternStart, "").replace(PatternEnd, "").trim();
                 lValue = provider.getValueFor(lName, pCtx);
                 lResult.append(lPart).append(lValue);
                 lCurrentPos = lMatcher.end();

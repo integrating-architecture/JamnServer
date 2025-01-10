@@ -41,7 +41,7 @@ public class DefaultCLICommands {
                 .name("cls")
                 .descr("Cli command clear screen: cls")
                 .function(ctx -> {
-                    app.getSysIFace().functions().shellCmd(new String[] { "cls" }, null, true);
+                    app.getOsIFace().functions().shellCmd(new String[] { "cls" }, null, true);
                     return "";
                 })
                 .build();

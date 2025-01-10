@@ -14,7 +14,7 @@ import org.isa.jps.JamnPersonalServerApp.Config;
 
 /**
  */
-public class SystemInterface {
+public class OperatingSystemInterface {
 
     protected static boolean Windows = true;
     protected static boolean Unix = false;
@@ -23,7 +23,7 @@ public class SystemInterface {
 
     /**
      */
-    protected SystemInterface() {
+    protected OperatingSystemInterface() {
         String lName = System.getProperty("os.name").toLowerCase();
         Windows = lName.contains("win");
         Unix = (lName.contains("nix") || lName.contains("nux") || lName.contains("aix"));
@@ -31,7 +31,7 @@ public class SystemInterface {
 
     /**
      */
-    public SystemInterface(Config pConfig) {
+    public OperatingSystemInterface(Config pConfig) {
         this();
         if (Windows) {
             osFunctions = new WinowsFunctions(pConfig);

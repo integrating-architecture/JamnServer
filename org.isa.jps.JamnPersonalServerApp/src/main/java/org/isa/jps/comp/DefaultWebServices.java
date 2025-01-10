@@ -4,23 +4,29 @@ package org.isa.jps.comp;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.APPLICATION_JSON;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
 import org.isa.ipc.JamnWebServiceProvider.WebService;
+import org.isa.jps.JamnPersonalServerApp;
 
 /**
  * 
  */
 public class DefaultWebServices {
 
-    protected SystemInterface sysIFace;
+    protected OperatingSystemInterface osIFace;
 
     /**
      */
-    public DefaultWebServices(SystemInterface pComp) {
-        sysIFace = pComp;
+    public DefaultWebServices(OperatingSystemInterface pComp) {
+        osIFace = pComp;
     }
 
+    /**********************************************************************************
+     **********************************************************************************/
     /**
      */
     @WebService(methods = { "POST" }, path = ShellRequest.Path, contentType = ShellRequest.ContentType)
@@ -28,7 +34,7 @@ public class DefaultWebServices {
         ShellResponse lResponse = new ShellResponse();
         String[] lCommand = pRequest.command.toArray(new String[0]);
 
-        List<String> lResult = sysIFace.functions().shellCmd(lCommand, pRequest.workingDir, false);
+        List<String> lResult = osIFace.functions().shellCmd(lCommand, pRequest.workingDir, false);
 
         lResponse.output.addAll(lResult);
         return lResponse;
@@ -76,5 +82,81 @@ public class DefaultWebServices {
             return output;
         }
     }
+
+    /**********************************************************************************
+     **********************************************************************************/
+    /**
+     */
+    @WebService(methods = { "POST" }, path = SystemInfoRequest.Path, contentType = SystemInfoRequest.ContentType)
+    public SystemInfoResponse getSystemInfo(SystemInfoRequest pRequest) {
+        Properties lBuildProps = JamnPersonalServerApp.getInstance().getConfig().getBuildProperties();
+        return new SystemInfoResponse()
+                .setName(lBuildProps.getProperty("appname"))
+                .setVersion(lBuildProps.getProperty("version"))
+                .setDescription(lBuildProps.getProperty("description"))
+                .addLink("app.scm", lBuildProps.getProperty("url"))
+                .setConfig(JamnPersonalServerApp.getInstance().getConfig().getProperties());
+    }
+
+    /**
+     */
+    public static class SystemInfoRequest {
+        public static final String Path = "/api/system-infos";
+        public static final String ContentType = APPLICATION_JSON;
+    }
+
+    /**
+     */
+    public static class SystemInfoResponse {
+        protected String name = "";
+        protected String version = "";
+        protected String description = "";
+
+        protected Map<String, String> links = new HashMap<>();
+        protected Properties config = new Properties();
+
+        public SystemInfoResponse setConfig(Properties pProps) {
+            this.config.putAll(pProps);
+            return this;
+        }
+
+        public Map<String, String> getLinks() {
+            return links;
+        }
+
+        public SystemInfoResponse addLink(String pKey, String pValue) {
+            links.put(pKey, pValue);
+            return this;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public SystemInfoResponse setName(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public String getVersion() {
+            return version;
+        }
+
+        public SystemInfoResponse setVersion(String version) {
+            this.version = version;
+            return this;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public SystemInfoResponse setDescription(String description) {
+            this.description = description;
+            return this;
+        }
+    }
+    /**********************************************************************************
+     **********************************************************************************/
 
 }

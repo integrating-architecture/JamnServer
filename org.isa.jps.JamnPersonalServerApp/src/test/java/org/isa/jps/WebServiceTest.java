@@ -61,7 +61,7 @@ public class WebServiceTest {
                 .build();
 
         HttpResponse<String> lResponse = Client.send(lRequest, BodyHandlers.ofString());
-        assertEquals(200, lResponse.statusCode(), "Bad http status");
+        assertEquals(200, lResponse.statusCode(), "Error http status");
 
         lData = lResponse.body();
         ShellResponse lShellResponse = Json.toObject(lData, ShellResponse.class);

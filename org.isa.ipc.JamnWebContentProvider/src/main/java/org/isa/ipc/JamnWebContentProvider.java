@@ -388,13 +388,13 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         protected static Charset Encoding = Charset.forName("UTF-8");
 
         // the ValueProvider for expressions like "${valuekey}"
-        protected ValueProvider lValueProvider = null;
+        protected ValueProvider valueProvider = null;
 
         protected DefaultFileEnricher() {
         }
 
         public DefaultFileEnricher(ValueProvider pProvider) {
-            lValueProvider = pProvider;
+            valueProvider = pProvider;
         }
 
         @Override
@@ -403,7 +403,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             // only process if file has text format and a TEMPLATE_MARKER
             if (pFile.isTextFormat() && hasTemplateMarker(pFile)) {
                 lContent = new String(pFile.getData(), Encoding);
-                lContent = new ExprString(lContent, lValueProvider).build(pFile);
+                lContent = new ExprString(lContent, valueProvider).build(pFile);
                 pFile.setData(lContent.getBytes(Encoding));
             }
         }
@@ -436,7 +436,10 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     public static class ExprString {
         protected static String PatternStart = "${";
         protected static String PatternEnd = "}";
-        protected static Pattern ExprPattern = Pattern.compile("\\$\\{(\\s+\\w.+)\\}");
+        // matches expressions like: ${name}
+        // accepting whitespaces inside of ${}
+        // BUT throwing RuntimeException - if name contains whitespaces
+        protected static Pattern ExprPattern = Pattern.compile("\\$\\{[\\s]*(\\w.+)\\}");
 
         protected String template = "";
         protected Map<String, String> valueMap = new HashMap<>();
@@ -494,6 +497,9 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             while (lMatcher.find()) {
                 lPart = template.substring(lCurrentPos, lMatcher.start());
                 lName = lMatcher.group().replace(PatternStart, "").replace(PatternEnd, "").trim();
+                if (lName.contains(" ")) {
+                    throw new RuntimeException(String.format("ExprString contains whitespace(s) [%s]", lName));
+                }
                 lValue = provider.getValueFor(lName, pCtx);
                 lResult.append(lPart).append(lValue);
                 lCurrentPos = lMatcher.end();
@@ -506,6 +512,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         }
 
         /**
+         * The Value Provider provides the values for the expression substitution.
          */
         public static interface ValueProvider {
             String getValueFor(String pKey, Object pCtx);

@@ -14,7 +14,6 @@ import org.isa.ipc.JamnWebContentProvider.DefaultFileEnricher;
 public class WebContentProviderSampleApp {
 
     /**
-     * @param args
      */
     public static void main(String[] args) {
         // create a Jamn server

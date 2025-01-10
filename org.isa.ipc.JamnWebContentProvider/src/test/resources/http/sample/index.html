@@ -1,100 +1,60 @@
-<!doctype html>
-<html>
+<!--jamn.web.template-->
+
+<!DOCTYPE html>
+<html lang=en>
 
 <head>
-  <meta charset="UTF-8">
-  <title>Jamn Workbench</title>
+	<meta charset="UTF-8">
+	<!--title is injected by the server file provider-->
+	<title>${app.title}}</title>
+	<link rel="stylesheet" href="css/app.css" type="text/css" />
 
-  <!-- external Icon-Font CDN link -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+	<script type="importmap">
+	{
+	    "imports": {
+	        "sample-app": "/jsmod/sample-app.mjs"
+	    }
+	}
+	</script>
 
-  <!-- app main StyleSheet -->
-  <link rel="stylesheet" href="css/workbench.css">
-
-  <script type="importmap">
-    {
-        "imports": {
-            "workbench": "/jsmod/workbench.mjs"
-        }
-    }
-  </script>
-
-  <!-- app js module -->
-  <script type="module">
-    import * as wb from 'workbench';
-    wb.anchorAt("approot");
-    wb.setSidebarTopicIds(["system-topicid", "command-topicid", "tools-topicid"]);
-  </script>
+	<script type="module">
+		import {anchorAt} from 'sample-app';
+		anchorAt("approot");
+	</script>
 
 </head>
 
 <body>
-  <!-- approot -->
-  <div id="approot" class="site-container">
-
-    <!-- app construction -->
-    <!-- header -->
-    <div id="header">
-      <div class="header-item" style="width: 30px;">
-        <img src="images/workbench-logo.png" title="Workbench Logo" alt="logo" width="16px" height="16px" />
-      </div>
-      <div id="header-title-id" class="header-item">Jamn Workbench -</div>
-      <div id="header-title-text-id" class="header-item">[]</div>
-    </div>
-	  <!-- header end -->
-
-    <!-- main container -->
-    <div id="mainContainer">
-      <!-- sidebar -->
-      <div id="sidebar">
-        <div class="sidebar-header">
-          <a class="bi bi-house-gear" href="javascript:void(0)" onclick="" style="font-size: 34px;"></a>
-        </div>
-        <ul class="sbar-topic-list">
-          <li class="sbar-topic"><a id="system-topicid" class="bi bi-laptop" href="#system">&ensp;System</a>
-            <ul class="sbar-topic-entry-list">
-              <li class="sbar-entry"><a id="system-infos-id" onclick="wbapp.test(event)">Infos</a>
-              <li class="sbar-entry"><a id="system-properties-id" href="#properties">Properties</a>
-            </ul>
-          </li>
-          <li class="sbar-topic"><a id="command-topicid" class="bi bi-command" href="#commands">&ensp;Commands</a></li>
-          <li class="sbar-topic"><a id="tools-topicid" class="bi bi-tools" href="#tools">&ensp;Tools</a></li>
-        </ul>
-      </div>
-	    <!-- sidebar end -->
-	  
-      <!-- workarea -->
-      <div id="workarea">
-        <div class="work-view">
-          <div class="work-view-header">Server Infos</div>
-          <div class="work-view-body">
-            <!--this elements are set by the app-->
-            <plb>Name:</plb>
-            <pval id="server.name"></pval></br>
-            <plb>Version:</plb>
-            <pval id="server.version"></pval></br>
-            <plb>Description:</plb>
-            <pval id="server.description"></pval></br>
-          </div>
-        </div>
-      </div>
-     	<!-- workarea end -->
-
-    </div>
-    <!-- main container end -->
-	
-    <!-- status line -->
-    <div id="statusline">
-      <span class="statusline-item" style="width: 30px;">Info:</span>
-      <span id="statusline-info" class="statusline-item" style="width: 100%;"></span>
-      <span id="statusline-icons" class="statusline-item" style="width: 50px; margin-right: 5px; text-align: center;">
-        <a class="bi bi-github" id="app.scm" href="https://github.com/integrating-architecture/JamnServer"
-          target="_blank" style="color:white;"></a>
-      </span>
-    </div>
-	  <!-- status line end -->
-
-  </div>
-</body>
+<!--the approot is hidden by default - it gets visible from sample-app-->
+<div id="approot" class="site-container" >
+	<div class="border-layout">
+	    <div class="top header">
+			<wintitle class="vrel-center" style="text-align: center; color: var(--wintitle);">App Info</wintitle>
+	    </div>
+	    <div class="middle workarea">
+			<div class="workarea-left side border-layout" >
+				<div class="vrel-center h-center">
+					<img src="images/app-logo.png" title="App Logo" alt="app-logo" width="48px" height="48px" />
+				</div>
+			</div>
+			<div class="center workarea-center">
+				<div class="vrel-center" >
+					<!--this elements are set by the app-->
+					<proplb>Name:</proplb><propval id="server.name"></propval></br>
+					<proplb>Version:</proplb><propval id="server.version"></propval></br>
+					<proplb>Description:</proplb><propval id="server.description"></propval></br>
+				</div>
+			</div>
+			<div class="workarea-right side border-layout"></div>
+	    </div>
+	    <div class="bottom footer">
+			<div class="status-bar">
+				<div class="status-part" style="border: none; width: 10%; float: right; display:flex; justify-content: center;">
+					<a id="app.scm" target="_blank"><img src="images/github.png" title="GitHub Source" alt="github-logo" width="18px" height="18px"></a>
+				</div>
+			</div>			
+	    </div>
+	</div>
+</div></body>
 
 </html>

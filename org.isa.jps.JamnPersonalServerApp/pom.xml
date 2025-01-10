@@ -9,9 +9,8 @@
 	<artifactId>org.isa.jps.JamnPersonalServerApp</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
-	<name>org.isa.jps.JamnPersonalServerApp</name>
-	<description>Jamn personal Server. An individual Hub for Tooling and
-		Testing.</description>
+	<name>Jamn Personal Server App</name>
+	<description>A individual custom hub for applications, tools and testing. Combines Java, JavaScript, Web and platform operating system in one network-enabled app.</description>
 	<url>https://github.com/integrating-architecture/JamnServer</url>
 
 	<properties>
@@ -95,6 +94,9 @@
 								<copy
 									file="target/${project.artifactId}-${project.version}.jar"
 									tofile="dist/jps.home/libs/${project.artifactId}-${project.version}.jar" />
+								<copy todir="dist/jps.home/http">
+									<fileset dir="http" includes="**/*" />
+								</copy>
 							</target>
 						</configuration>
 						<goals>
@@ -129,7 +131,16 @@
 					</execution>
 				</executions>
 			</plugin>
+			
 		</plugins>
+
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>   
+
 	</build>
 
 </project>

@@ -36,9 +36,10 @@ import org.isa.ipc.JamnWebServiceProvider;
 import org.isa.ipc.JamnWebServiceProvider.WebServiceDefinitionException;
 import org.isa.jps.comp.CommandLineInterface;
 import org.isa.jps.comp.DefaultCLICommands;
+import org.isa.jps.comp.DefaultFileEnricherValueProvider;
 import org.isa.jps.comp.DefaultWebServices;
 import org.isa.jps.comp.JavaScriptCLICommands;
-import org.isa.jps.comp.SystemInterface;
+import org.isa.jps.comp.OperatingSystemInterface;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -78,6 +79,7 @@ public class JamnPersonalServerApp {
     // files
     protected static final String PROPERTIES_NAME = "jps.properties";
     protected static final String LOGGING_PROPERTIES_NAME = "jps.logging.properties";
+    protected static final String BUILD_INFO_PROPERTIES_NAME = "build.info.properties";
     protected static final String EXTENSION_DEF_FILE = "app-extension-defs.json";
 
     // just a logging text snippet
@@ -121,7 +123,7 @@ public class JamnPersonalServerApp {
     protected JavaScriptExtension javaScript;
 
     // internal components
-    protected SystemInterface sysIFace;
+    protected OperatingSystemInterface osIFace;
     protected CommandLineInterface jpsCli;
 
     // a content dispatcher predicate
@@ -152,7 +154,7 @@ public class JamnPersonalServerApp {
         initLogging();
         initConfig();
         initProgramArgs(pArgs);
-        sysIFace = new SystemInterface(config);
+        osIFace = new OperatingSystemInterface(config);
 
         initJsonTool();
 
@@ -228,8 +230,8 @@ public class JamnPersonalServerApp {
 
     /**
      */
-    public SystemInterface getSysIFace() {
-        return sysIFace;
+    public OperatingSystemInterface getOsIFace() {
+        return osIFace;
     }
 
     /**
@@ -299,6 +301,12 @@ public class JamnPersonalServerApp {
             config = new Config(Tool.getAsInputStream(lDefaultConfig));
             Files.writeString(lConfigPath, lDefaultConfig, StandardEncoding, StandardOpenOption.CREATE);
             LOG.info(() -> String.format("%s default app config loaded and saved to [%s]", INIT_LOGPRFX, lConfigPath));
+        }
+
+        // load build infos
+        InputStream lIn = getClass().getResourceAsStream("/" + BUILD_INFO_PROPERTIES_NAME);
+        if (lIn != null) {
+            config.getBuildProperties().load(lIn);
         }
     }
 
@@ -462,7 +470,8 @@ public class JamnPersonalServerApp {
         // no leading slash because relative path
         JamnWebContentProvider lWebContentProvider = JamnWebContentProvider.Builder(lRootPath)
                 .setConfig(server.getConfig())
-                .setFileEnricher(new DefaultFileEnricher((String pKey, Object pCtx) -> "TODO")).build();
+                .setFileEnricher(new DefaultFileEnricher(new DefaultFileEnricherValueProvider()))
+                .build();
         // add it to server
         server.addContentProvider(CONTENT_PROVIDER_ID, lWebContentProvider);
         LOG.info(() -> String.format("%s content provider installed [%s] on [%s]", INIT_LOGPRFX,
@@ -489,7 +498,7 @@ public class JamnPersonalServerApp {
                 JamnWebServiceProvider.class.getSimpleName()));
 
         // init default app internal services
-        DefaultWebServices lDefaultWS = new DefaultWebServices(sysIFace);
+        DefaultWebServices lDefaultWS = new DefaultWebServices(osIFace);
         webServiceProvider.registerServices(lDefaultWS);
     }
 
@@ -538,12 +547,17 @@ public class JamnPersonalServerApp {
                 "#Unix shell encoding", "unix.shell.encoding=ISO8859_1", "");
 
         protected Properties props = new Properties();
+        protected Properties buildProps = new Properties();
 
         private Config() {
         }
 
         private Config(InputStream pPropsIn) throws IOException {
             props.load(pPropsIn);
+        }
+
+        public Properties getBuildProperties() {
+            return buildProps;
         }
 
         public String getWebFileRoot() {

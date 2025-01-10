@@ -32,7 +32,7 @@ public class FileEnricherValueProvider implements JamnWebContentProvider.ExprStr
                         .setName("JamnServer - Sample WebContent App")
                         .setVersion("0.0.1-SNAPSHOT")
                         .setDescription(
-                                "A web content provider sample app to demonstrate the use of server side content, code and data injection.")
+                                "A simple Web Content Provider sample app.")
                         .addLink("app.scm",
                                 "https://github.com/integrating-architecture/JamnServer/blob/master/org.isa.ipc.JamnWebContentProvider");
                 return JSON.writeValueAsString(lInfo);

@@ -14,6 +14,9 @@ E.g. combined with a small Content-Provider implementation like <a href="/org.is
 
 <a href="/org.isa.ipc.JamnServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java">A basic usage example</a>
 
+# JamnPersonalServerApp
+The App exemplary assembles all jamn components in one application scaffold extended with a sample folder structure. It is a playground for possible use cases.
+
 <br />
 
 ## Disclamer  

@@ -10,9 +10,9 @@ The basic design is a layered separation of socket, protocol and content, so you
 
 E.g. combined with a small Content-Provider implementation like <a href="/org.isa.ipc.JamnWebServiceProvider">JamnWebServiceProvider</a>, Jamn can serve as a basis for lightweight (two classes) and straightforward REST-like Web APIs as you e.g. know from JavaScript.
 
-**NOTE**: Although the current server supports http in a basic form, **it is NOT intended to be a real HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required.
+**NOTE**: Although the current server supports http in a basic form, **it is NOT intended to be a real HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required. <a href="/org.isa.ipc.JamnServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java"> (basic usage example)</a>
 
-<a href="/org.isa.ipc.JamnServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java">A basic usage example</a>
+The goal is to build individual applications on a small integrated server core - instead of writing them for installation in/on an external, general server product.
 
 # JamnPersonalServerApp
 The App exemplary assembles all jamn components in one application scaffold extended with a sample folder structure. It is a sample and a playground for possible use cases.

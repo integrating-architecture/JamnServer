@@ -1,3 +1,3 @@
 # JamnPersonalServerApp
 
-A small scaffold for individual custom apps, tools and testing. Combines Java server, JavaScript, Web and platform operating system in one network-enabled app kernel.
+A small scaffold for individual custom apps, tools and testings. It combines the Java SE based Jamn Server with its provider, a general JavaScript Engine and a Web UI base in one easy customizable startup.

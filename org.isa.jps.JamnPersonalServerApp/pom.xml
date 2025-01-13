@@ -10,13 +10,14 @@
 	<version>0.0.1-SNAPSHOT</version>
 
 	<name>Jamn Personal Server App</name>
-	<description>A individual custom hub for applications, tools and testing. Combines Java, JavaScript, Web and platform operating system in one network-enabled app.</description>
+	<description>A small scaffold for individual custom apps, tools and testings. It combines the Java SE based Jamn Server with its provider, a general JavaScript Engine and a Web UI base in one easy customizable startup.</description>
 	<url>https://github.com/integrating-architecture/JamnServer</url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
+		<do.distribution>false</do.distribution>
 	</properties>
 
 	<dependencies>
@@ -90,7 +91,7 @@
 					<execution>
 						<phase>install</phase>
 						<configuration>
-							<target>
+							<target if="${do.distribution}">
 								<copy
 									file="target/${project.artifactId}-${project.version}.jar"
 									tofile="dist/jps.home/libs/${project.artifactId}-${project.version}.jar" />
@@ -134,6 +135,7 @@
 			
 		</plugins>
 
+		<!-- create a build.info.properties file -->
 		<resources>
 			<resource>
 				<directory>src/main/resources</directory>

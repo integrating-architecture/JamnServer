@@ -27,7 +27,8 @@ public class CommandLineInterface {
 
     protected static final Logger LOG = Logger.getLogger(CommandLineInterface.class.getName());
     protected static final CommonHelper Tool = JamnPersonalServerApp.Tool;
-    protected static final CliCommand UnknownCommand = new CliCommand("", args -> "unknown command");
+    protected static final CliCommand UnknownCommand = new CliCommand("",
+            args -> "unknown command - type: [? | h | help] for help");
 
     protected Thread worker;
     protected boolean work = false;
@@ -35,8 +36,8 @@ public class CommandLineInterface {
     protected Function<String, String> commandProcessor;
     protected ConsoleWrapper console;
 
-    protected Predicate<String> defaultHelpChecker = (
-            input) -> ("?".equals(input) || "h".equals(input) || "help".equals(input));
+    protected Predicate<String> defaultHelpChecker = input -> ("?".equals(input) || "h".equals(input)
+            || "help".equals(input));
 
     public CommandLineInterface() {
         commandProcessor = createDefaultCommandProcessor();
@@ -50,7 +51,8 @@ public class CommandLineInterface {
             if (console.useSysConsole()) {
                 LOG.info(() -> "Start CLI on system console");
             } else {
-                LOG.info(() -> "Start CLI on Standard-IO");
+                LOG.info(
+                        () -> "Start CLI on Standard-IO (limited functionality - cause system console is not available)");
             }
             work = true;
             worker = new Thread(() -> run(commandProcessor));
@@ -75,7 +77,7 @@ public class CommandLineInterface {
      * </pre>
      */
     protected Function<String, String> createDefaultCommandProcessor() {
-        return (commandLine) -> {
+        return commandLine -> {
             if (commandLine != null) {
                 commandLine = commandLine.trim();
             }
@@ -122,9 +124,8 @@ public class CommandLineInterface {
                     console.printValue(lResultValue);
                 }
                 // L-oop
-            } catch (Throwable t) {
-                LOG.severe(
-                        () -> String.format("CLI ERROR [%s]%s%s", t, LS, Tool.getStackTraceFrom(t)));
+            } catch (Exception e) {
+                LOG.severe(() -> String.format("CLI ERROR [%s]%s%s", e, LS, Tool.getStackTraceFrom(e)));
             }
         }
     }
@@ -155,7 +156,7 @@ public class CommandLineInterface {
         }
 
         private CommandCallContext(String[] pArgs, ConsoleWrapper pConsole) {
-            args = Arrays.asList(pArgs);
+            args = new ArrayList<>(Arrays.asList(pArgs));
             console = pConsole;
         }
 
@@ -167,23 +168,20 @@ public class CommandLineInterface {
             return args.contains(pKey);
         }
 
-        public List<String> getArgs() {
+        public List<String> getArgsList() {
             return args;
         }
 
-        Map<String, String> parseArgsToMap() {
+        public String[] getArgsArray() {
+            return args.toArray(new String[args.size()]);
+        }
+
+        public Map<String, String> parseArgsToMap() {
             return parseArgsToMap(Tool.defaultArgParser);
         }
 
-        Map<String, String> parseArgsToMap(Function<String[], Map<String, String>> pParser) {
-            if (argMap == null) {
-                argMap = pParser.apply(args.toArray(new String[] {}));
-            }
-            return argMap;
-        }
-
         public boolean getConfirmation(String pMessage) {
-            return getConfirmation(pMessage, (answer) -> "y".equals(answer));
+            return getConfirmation(pMessage, "y"::equals);
         }
 
         public boolean getConfirmation(String pMessage, Predicate<String> pPredicate) {
@@ -191,6 +189,12 @@ public class CommandLineInterface {
             return pPredicate.test(lRet);
         }
 
+        protected Map<String, String> parseArgsToMap(Function<String[], Map<String, String>> pParser) {
+            if (argMap == null) {
+                argMap = pParser.apply(args.toArray(new String[] {}));
+            }
+            return argMap;
+        }
     }
 
     /**
@@ -198,7 +202,7 @@ public class CommandLineInterface {
     private static class CliCommand {
         private String name = "";
         private String descr = "";
-        private Function<CommandCallContext, String> function = (ctx) -> "";
+        private Function<CommandCallContext, String> function = ctx -> "";
 
         private CliCommand() {
         }

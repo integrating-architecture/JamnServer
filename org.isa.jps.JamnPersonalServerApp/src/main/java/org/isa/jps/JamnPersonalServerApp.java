@@ -37,8 +37,8 @@ import org.isa.ipc.JamnWebServiceProvider.WebServiceDefinitionException;
 import org.isa.jps.comp.CommandLineInterface;
 import org.isa.jps.comp.DefaultCLICommands;
 import org.isa.jps.comp.DefaultFileEnricherValueProvider;
+import org.isa.jps.comp.DefaultJavaScriptHostApp;
 import org.isa.jps.comp.DefaultWebServices;
-import org.isa.jps.comp.JavaScriptCLICommands;
 import org.isa.jps.comp.OperatingSystemInterface;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -59,11 +59,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class JamnPersonalServerApp {
 
+    public static final String AppName = "Jamn Personal Server";
+
+    // a public helper tool for common functions
+    public static final CommonHelper Tool = new CommonHelper();
+
+    /**
+     * a simple singleton construct for this app
+     */
+    protected static JamnPersonalServerApp Instance;
+
+    public static synchronized JamnPersonalServerApp getInstance() {
+        if (Instance == null) {
+            Instance = new JamnPersonalServerApp();
+        }
+        return Instance;
+    }
+
     /**
      * internal constants
      */
-    protected static final String AppName = "Jamn Personal Server";
-
     protected static final String LS = System.lineSeparator();
 
     // internal ids
@@ -92,21 +107,6 @@ public class JamnPersonalServerApp {
     protected static Logger LOG = Logger.getLogger(JamnPersonalServerApp.class.getName());
     protected static Path AppHome = Paths.get(System.getProperty("user.dir"));
 
-    // a helper tool for common functions
-    public static final CommonHelper Tool = new CommonHelper();
-
-    /**
-     * a simple singleton construct for this app
-     */
-    protected static JamnPersonalServerApp Instance;
-
-    public static synchronized JamnPersonalServerApp getInstance() {
-        if (Instance == null) {
-            Instance = new JamnPersonalServerApp();
-        }
-        return Instance;
-    }
-
     private JamnPersonalServerApp() {
     }
 
@@ -120,7 +120,7 @@ public class JamnPersonalServerApp {
     protected JamnWebServiceProvider webServiceProvider;
 
     // JavaScript extension
-    protected JavaScriptExtension javaScript;
+    protected JavaScriptProvider javaScript;
 
     // internal components
     protected OperatingSystemInterface osIFace;
@@ -242,7 +242,7 @@ public class JamnPersonalServerApp {
 
     /**
      */
-    public JavaScriptExtension getJavaScript() {
+    public JavaScriptProvider getJavaScript() {
         return javaScript;
     }
 
@@ -329,13 +329,16 @@ public class JamnPersonalServerApp {
 
             Path lScriptPath = Tool.ensureSubDir(config.getScriptRoot(), AppHome);
 
-            javaScript = new JavaScriptExtension(lScriptPath, config.getProperties());
+            javaScript = new JavaScriptProvider(lScriptPath, config.getProperties());
+            javaScript.setHostApp(new DefaultJavaScriptHostApp(AppName, javaScript, getCli()));
             javaScript.initialize();
 
-            if (jpsCli != null) {
-                new JavaScriptCLICommands(javaScript).createCommandsFor(jpsCli);
+            String lAutoLoadScript = getConfig().getJsAutoLoadScript();
+            if (javaScript.sourceExists(lAutoLoadScript)) {
+                javaScript.eval(lAutoLoadScript);
             }
-            LOG.info(() -> String.format("%s JavaScript Extension initialized [%s]", INIT_LOGPRFX, lScriptPath));
+
+            LOG.info(() -> String.format("%s JavaScript Provider initialized [%s]", INIT_LOGPRFX, lScriptPath));
         } else {
             LOG.info(() -> String.format(
                     "%s JavaScript is Disabled. To enable ensure libraries and set config [%s] property [javascript.enabled=true]",
@@ -480,10 +483,9 @@ public class JamnPersonalServerApp {
     }
 
     /**
-     * @throws IOException
      * @throws WebServiceDefinitionException
      */
-    protected void initWebServiceProvider() throws IOException, WebServiceDefinitionException {
+    protected void initWebServiceProvider() throws WebServiceDefinitionException {
 
         // create the WebService provider
         webServiceProvider = JamnWebServiceProvider.Builder().setJsonTool(jsonTool);
@@ -538,9 +540,11 @@ public class JamnPersonalServerApp {
                 "#Jamn Personal Server extension libraries root folder", "jps.extension.root=" + EXTENSION_ROOT, "",
                 "#JPS Extension definition file name", "jps.extension.def.file=" + EXTENSION_DEF_FILE, "",
                 "#Extensions enabled", "extensions.enabled=true", "",
-                "#JavaScriptExtension script root folder", "script.root=" + SCRIPT_ROOT, "",
+                "#JavaScriptProvider script root folder", "script.root=" + SCRIPT_ROOT, "",
+                "#JavaScript auto-load script", "js.auto.load.script=js-auto-load.js", "",
                 "#CLI enabled", "cli.enabled=true", "",
                 "#JavaScript enabled", "javascript.enabled=false", "",
+                "#JavaScript debug enabled", "javascript.debug.enabled=false", "",
                 "#Server enabled", "server.enabled=true", "",
                 "#Server autostart", "server.autostart=true", "",
                 "#Windows shell encoding", "win.shell.encoding=Cp850", "",
@@ -578,6 +582,10 @@ public class JamnPersonalServerApp {
 
         public String getScriptRoot() {
             return props.getProperty("script.root", SCRIPT_ROOT);
+        }
+
+        public String getJsAutoLoadScript() {
+            return props.getProperty("js.auto.load.script", "js-auto-load.js");
         }
 
         public int getPort() {

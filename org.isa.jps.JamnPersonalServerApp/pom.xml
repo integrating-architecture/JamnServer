@@ -98,6 +98,12 @@
 								<copy todir="dist/jps.home/http">
 									<fileset dir="http" includes="**/*" />
 								</copy>
+								<copy todir="dist/jps.home/scripts">
+									<fileset dir="scripts" includes="**/*" />
+								</copy>
+								<copy todir="dist/jps.home/libs">
+									<fileset dir="libs" includes="*.cmd" />
+								</copy>
 							</target>
 						</configuration>
 						<goals>

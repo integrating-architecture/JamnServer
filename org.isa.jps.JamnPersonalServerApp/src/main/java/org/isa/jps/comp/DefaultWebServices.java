@@ -13,11 +13,19 @@ import org.isa.ipc.JamnWebServiceProvider.WebService;
 import org.isa.jps.JamnPersonalServerApp;
 
 /**
- * 
+ * <pre>
+ * A few default web services. The services use request/response dtos
+ * you can do it that way - but it is not mandatory (see WebServiceProvider).
+ * </pre>
  */
 public class DefaultWebServices {
 
     protected OperatingSystemInterface osIFace;
+
+    /**
+     */
+    protected DefaultWebServices() {
+    }
 
     /**
      */
@@ -103,6 +111,9 @@ public class DefaultWebServices {
     public static class SystemInfoRequest {
         public static final String Path = "/api/system-infos";
         public static final String ContentType = APPLICATION_JSON;
+
+        protected SystemInfoRequest() {
+        }
     }
 
     /**

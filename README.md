@@ -15,7 +15,7 @@ E.g. combined with a small Content-Provider implementation like <a href="/org.is
 The goal is to build individual applications on a small integrated server core - instead of writing them for installation in/on an external, general server product.
 
 # JamnPersonalServerApp
-The App exemplary assembles all jamn components in one application scaffold extended with a sample folder structure. It is a sample and a playground for possible use cases.
+The <a href="/org.isa.jps.JamnPersonalServerApp">App</a> exemplary assembles all Jamn Components in one application scaffolding and extends the combination with a sample folder structure and a web UI base. It is a sample and a playground for possible use cases.
 
 <br />
 

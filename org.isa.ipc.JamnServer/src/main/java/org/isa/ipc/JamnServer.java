@@ -170,7 +170,8 @@ public class JamnServer {
         String lErrorInfo = "";
         try {
             kernel.start();
-            LOG.info(() -> String.format("JamnServer Instance STARTED: [%s]%s", config, LS));
+            LOG.info(() -> String.format("JamnServer Instance STARTED: [%s]%s%s", config, LS,
+                    LS + " http://localhost:" + config.getPort() + LS));
         } catch (Exception e) {
             if (e instanceof BindException) {
                 lErrorInfo = String.format("Probably ALREADY RUNNING SERVER on port [%s]", getConfig().getPort());

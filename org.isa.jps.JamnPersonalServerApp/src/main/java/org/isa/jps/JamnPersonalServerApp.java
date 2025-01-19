@@ -34,11 +34,14 @@ import org.isa.ipc.JamnWebContentProvider;
 import org.isa.ipc.JamnWebContentProvider.DefaultFileEnricher;
 import org.isa.ipc.JamnWebServiceProvider;
 import org.isa.ipc.JamnWebServiceProvider.WebServiceDefinitionException;
+import org.isa.ipc.JamnWebSocketProvider;
+import org.isa.ipc.JamnWebSocketProvider.WsoMessageConsumer;
 import org.isa.jps.comp.CommandLineInterface;
 import org.isa.jps.comp.DefaultCLICommands;
 import org.isa.jps.comp.DefaultFileEnricherValueProvider;
 import org.isa.jps.comp.DefaultJavaScriptHostApp;
 import org.isa.jps.comp.DefaultWebServices;
+import org.isa.jps.comp.DefaultWebSocketMessageConsumer;
 import org.isa.jps.comp.OperatingSystemInterface;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -118,8 +121,9 @@ public class JamnPersonalServerApp {
     protected JamnServer server;
     protected JamnServer.JsonToolWrapper jsonTool;
     protected JamnWebServiceProvider webServiceProvider;
+    protected JamnWebSocketProvider webSocketProvider;
 
-    // JavaScript extension
+    // JavaScript Provider
     protected JavaScriptProvider javaScript;
 
     // internal components
@@ -128,6 +132,7 @@ public class JamnPersonalServerApp {
 
     // a content dispatcher predicate
     // to distinguish content and services
+    // will later be forwarded to the webServiceProvider
     protected Predicate<String> isServiceRequest = path -> false;
 
     /*********************************************************
@@ -253,6 +258,14 @@ public class JamnPersonalServerApp {
      */
     public void registerWebServices(Object pServices) throws WebServiceDefinitionException {
         webServiceProvider.registerServices(pServices);
+    }
+
+    /**
+     */
+    public void addWebSocketMessageConsumer(WsoMessageConsumer pConsumer) {
+        if (this.webSocketProvider != null) {
+            webSocketProvider.addMessageConsumer(pConsumer);
+        }
     }
 
     /**
@@ -486,28 +499,47 @@ public class JamnPersonalServerApp {
      * @throws WebServiceDefinitionException
      */
     protected void initWebServiceProvider() throws WebServiceDefinitionException {
+        if (this.server != null && config.isWebServiceEnabled()) {
 
-        // create the WebService provider
-        webServiceProvider = JamnWebServiceProvider.Builder().setJsonTool(jsonTool);
+            // create the WebService provider
+            webServiceProvider = JamnWebServiceProvider.newBuilder().setJsonTool(jsonTool);
 
-        // set a predicate to identify an webservice request
-        // by default all paths registered at the webservice provider
-        // are ServiceRequests - see initContentDispatcher
-        isServiceRequest = webServiceProvider::isServicePath;
-        server.addContentProvider(SERVICE_PROVIDER_ID, webServiceProvider);
+            // set a predicate to identify a webservice request
+            // by default all paths registered at the webservice provider
+            // are ServiceRequests - see initContentDispatcher
+            isServiceRequest = webServiceProvider::isServicePath;
+            server.addContentProvider(SERVICE_PROVIDER_ID, webServiceProvider);
 
-        LOG.info(() -> String.format("%s web service provider installed [%s]", INIT_LOGPRFX,
-                JamnWebServiceProvider.class.getSimpleName()));
+            LOG.info(() -> String.format("%s web service provider installed [%s]", INIT_LOGPRFX,
+                    JamnWebServiceProvider.class.getSimpleName()));
 
-        // init default app internal services
-        DefaultWebServices lDefaultWS = new DefaultWebServices(osIFace);
-        webServiceProvider.registerServices(lDefaultWS);
+            // install default app web services
+            DefaultWebServices lDefaultWS = new DefaultWebServices(osIFace);
+            registerWebServices(lDefaultWS);
+        }
     }
 
     /**
      */
     protected void initWebSocketProvider() {
-        // TODO
+        if (this.server != null && config.isWebSocketEnabled()) {
+            // create the WebSocketProvider
+            webSocketProvider = JamnWebSocketProvider.newBuilder()
+                    .addConnectionPath(config.getDefaultWebSocketUrlPath())
+                    .setJsonTool(jsonTool)
+                    .build();
+
+            // sample wso message consumer
+            // external creation style
+            DefaultWebSocketMessageConsumer.create();
+
+            server.addContentProvider(WEBSOCKET_PROVIDER_ID, webSocketProvider);
+
+            LOG.info(() -> String.format("%s web socket provider installed [%s] at [%s]", INIT_LOGPRFX,
+                    JamnWebSocketProvider.class.getSimpleName(),
+                    "ws://<host>:" + server.getConfig().getPort() + config.getDefaultWebSocketUrlPath()));
+
+        }
     }
 
     /**
@@ -546,6 +578,9 @@ public class JamnPersonalServerApp {
                 "#JavaScript enabled", "javascript.enabled=false", "",
                 "#JavaScript debug enabled", "javascript.debug.enabled=false", "",
                 "#Server enabled", "server.enabled=true", "",
+                "#WebService enabled", "webservice.enabled=true", "",
+                "#WebSocket enabled", "websocket.enabled=true", "",
+                "#WebSocket default url path", "default.websocket.url.path=/wsoapi", "",
                 "#Server autostart", "server.autostart=true", "",
                 "#Windows shell encoding", "win.shell.encoding=Cp850", "",
                 "#Unix shell encoding", "unix.shell.encoding=ISO8859_1", "");
@@ -600,6 +635,10 @@ public class JamnPersonalServerApp {
             return props.getProperty("unix.shell.encoding", "ISO8859_1");
         }
 
+        public String getDefaultWebSocketUrlPath() {
+            return props.getProperty("default.websocket.url.path", "/wsoapi");
+        }
+
         public boolean isCliEnabled() {
             return Boolean.parseBoolean(props.getProperty("cli.enabled", "false"));
         }
@@ -610,6 +649,14 @@ public class JamnPersonalServerApp {
 
         public boolean isServerEnabled() {
             return Boolean.parseBoolean(props.getProperty("server.enabled", "true"));
+        }
+
+        public boolean isWebServiceEnabled() {
+            return Boolean.parseBoolean(props.getProperty("webservice.enabled", "true"));
+        }
+
+        public boolean isWebSocketEnabled() {
+            return Boolean.parseBoolean(props.getProperty("websocket.enabled", "true"));
         }
 
         public boolean isServerAutostart() {

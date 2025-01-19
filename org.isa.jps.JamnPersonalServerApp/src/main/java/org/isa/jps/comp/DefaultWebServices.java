@@ -16,6 +16,9 @@ import org.isa.jps.JamnPersonalServerApp;
  * <pre>
  * A few default web services. The services use request/response dtos
  * you can do it that way - but it is not mandatory (see WebServiceProvider).
+ * 
+ * Defining path and contentType as static constants of dtos 
+ * is also just a syntactic gimmick - relevant is the annotation @WebService
  * </pre>
  */
 public class DefaultWebServices {

@@ -26,7 +26,7 @@ public class WebServiceProviderSampleApp {
         lServer.getConfig().setCORSEnabled(true);
 
         // create the WebService provider
-        JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.Builder().setConfig(lServer.getConfig())
+        JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.newBuilder().setConfig(lServer.getConfig())
                 // create a json tool wrapper for the JamnWebServiceProvider
                 .setJsonTool(new JamnServer.JsonToolWrapper() {
                     private final ObjectMapper jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD,

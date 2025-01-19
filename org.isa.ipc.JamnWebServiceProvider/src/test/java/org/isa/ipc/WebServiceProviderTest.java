@@ -59,7 +59,7 @@ public class WebServiceProviderTest {
         ServerURL = "http://localhost:" + Server.getConfig().getPort();
 
         // create the WebService provider
-        JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.Builder()
+        JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.newBuilder()
                 .setJsonTool(Jack)
                 // register the Web-API Services
                 .registerServices(SampleWebApiServices.class).build();

@@ -83,7 +83,7 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
 
     /**
      */
-    public static JamnWebServiceProvider Builder() {
+    public static JamnWebServiceProvider newBuilder() {
         return new JamnWebServiceProvider();
     }
 

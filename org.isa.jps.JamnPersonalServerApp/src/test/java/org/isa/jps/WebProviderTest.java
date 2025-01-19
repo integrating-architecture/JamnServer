@@ -23,9 +23,9 @@ import org.junit.jupiter.api.Test;
  * 
  */
 @DisplayName("JamnPersonalServerApp WebService Test")
-public class WebServiceTest {
+public class WebProviderTest {
 
-    private static Logger LOG = Logger.getLogger(WebServiceTest.class.getName());
+    private static Logger LOG = Logger.getLogger(WebProviderTest.class.getName());
 
     private static JamnPersonalServerApp ServerApp;
     private static String ServerURL;
@@ -50,8 +50,18 @@ public class WebServiceTest {
     }
 
     @Test
-    void testShellService() throws Exception {
-        ShellRequest lShellRequest = new ShellRequest("dir").setWorkingDir("/temp");
+    void testHttpWebRoot() throws Exception {
+        HttpRequest lRequest = HttpRequest.newBuilder().uri(new URI(ServerURL + "/"))
+                .headers("Content-Type", "text/html").GET().build();
+
+        HttpResponse<String> lResponse = Client.send(lRequest, BodyHandlers.ofString());
+
+        assertEquals(200, lResponse.statusCode(), "Error HTTP Status");
+    }
+
+    @Test
+    void testShellWebService() throws Exception {
+        ShellRequest lShellRequest = new ShellRequest("dir").setWorkingDir("/");
         String lData = Json.toString(lShellRequest);
 
         HttpRequest lRequest = HttpRequest.newBuilder()

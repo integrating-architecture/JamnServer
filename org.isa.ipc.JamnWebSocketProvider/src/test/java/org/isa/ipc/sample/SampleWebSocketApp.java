@@ -8,6 +8,9 @@ import org.isa.ipc.JamnWebSocketProvider;
 import org.isa.ipc.JamnWebSocketProvider.WsoMessageConsumer;
 
 /**
+ * Create and start a Jamn Server with a WebSocket Provider.
+ * 
+ * Use: test/resources/WebSocketTest.html in a browser for testing.
  * 
  */
 public class SampleWebSocketApp {
@@ -16,31 +19,28 @@ public class SampleWebSocketApp {
      */
     public static void main(String[] args) {
 
-        // create a Jamn server
+        // create a JamnServer
         JamnServer lServer = new JamnServer();
 
-        JamnWebSocketProvider lWebSocketProvider = JamnWebSocketProvider.Builder().setConfig(lServer.getConfig())
+        // create the JamnWebSocketProvider
+        JamnWebSocketProvider lWebSocketProvider = JamnWebSocketProvider.newBuilder()
                 .build();
 
+        // add the Server-Side message consumer for the WebSocket
         lWebSocketProvider.addMessageConsumer(new WsoMessageConsumer() {
 
             @Override
-            public String getTopic() {
-                return "/wsapi";
-            }
-
-            @Override
-            public void onMessage(String pConnectionId, byte[] pMessage) {
+            public byte[] onMessage(String pConnectionId, byte[] pMessage) {
                 String lMsg = new String(pMessage);
                 Logger.getGlobal().info("Message received: " + lMsg);
 
-                lWebSocketProvider.createMessageSenderFor(pConnectionId, getTopic()).send(("ECHO: " + lMsg).getBytes());
+                return ("ECHO: " + lMsg).getBytes();
             }
         });
 
-        lServer.addContentProvider(JamnServer.WEBSOCKET_PROVIDER, lWebSocketProvider);
+        // add the provider to JamnServer
+        lServer.addContentProvider("WebSocketProvider", lWebSocketProvider);
 
         lServer.start();
     }
-
 }

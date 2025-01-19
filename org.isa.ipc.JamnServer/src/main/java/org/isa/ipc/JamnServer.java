@@ -782,7 +782,7 @@ public class JamnServer {
             lMap = new HashMap<>();
             lMap.put(Field.SERVER, JamnServerWebID);
             lMap.put(Field.UPGRADE, FieldValue.WEBSOCKET);
-            lMap.put(Field.CONNECTION, FieldValue.KEEP_ALIVE_UPGRADE);
+            lMap.put(Field.CONNECTION, FieldValue.UPGRADE);
             lMap.put(Field.SEC_WEBSOCKET_ACCEPT, "");
             HTTP_DEFAULT_WEBSOCKET_RESPONSE_ATTRIBUTES = Collections.unmodifiableMap(lMap);
         }
@@ -1030,6 +1030,12 @@ public class JamnServer {
          */
         public HttpHeader setContentType(String pVal) {
             return set(Field.CONTENT_TYPE, pVal);
+        }
+
+        /**
+         */
+        public HttpHeader setConnection(String pVal) {
+            return set(Field.CONNECTION, pVal);
         }
 
         /**

@@ -5,6 +5,7 @@ import static org.isa.ipc.JamnServer.HttpHeader.HTTP_DEFAULT_RESPONSE_ATTRIBUTES
 import static org.isa.ipc.JamnServer.HttpHeader.HTTP_DEFAULT_WEBSOCKET_RESPONSE_ATTRIBUTES;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.HTTP_1_1;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.SEC_WEBSOCKET_ACCEPT;
+import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.UPGRADE;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_101_SWITCH_PROTOCOLS;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_204_NO_CONTENT;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
@@ -25,11 +26,12 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
-import org.isa.ipc.JamnServer.Config;
 import org.isa.ipc.JamnServer.HttpHeader;
 import org.isa.ipc.JamnServer.JsonToolWrapper;
 
@@ -38,19 +40,22 @@ import org.isa.ipc.JamnServer.JsonToolWrapper;
  */
 public class JamnWebSocketProvider implements JamnServer.ContentProvider.UpgradeHandler {
 
+    public static final String DefaultPath = "/wsoapi";
+
     protected static final String LS = System.lineSeparator();
     protected static Logger LOG = Logger.getLogger(JamnWebSocketProvider.class.getName());
 
-    protected static WebSocketMessageBroker WSOMessageBroker = new WebSocketMessageBroker();
+    protected static WsoConnectionManager ConnectionManager = new WsoConnectionManager();
 
+    // a empty default access controller
     protected WsoAccessController accessCtrl = new WsoAccessController() {
 
         @Override
-        public boolean isSupportedTopic(String pTopic, StringBuilder pMsg) {
-            if (pTopic.equalsIgnoreCase("/wsapi")) {
+        public boolean isSupportedPath(String pPath, StringBuilder pMsg) {
+            if (connectionPathNames.contains(pPath)) {
                 return true;
             }
-            pMsg.append("Unsupported path [").append(pTopic).append("]");
+            pMsg.append("Unsupported path [").append(pPath).append("]");
             return false;
         }
 
@@ -61,15 +66,16 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
     };
 
     protected JsonToolWrapper jsonTool;
-    protected Config config = new Config();
+    protected Set<String> connectionPathNames = new HashSet<>();
 
     /**
      */
     private JamnWebSocketProvider() {
+        addConnectionPath(DefaultPath);
     }
 
-    protected static WebSocketMessageBroker getWebSocketBroker() {
-        return WSOMessageBroker;
+    protected static WsoConnectionManager getConnectionManager() {
+        return ConnectionManager;
     }
 
     /*********************************************************
@@ -77,16 +83,21 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
      *********************************************************/
     /**
      */
-    public static JamnWebSocketProvider Builder() {
-        JamnWebSocketProvider lProvider = new JamnWebSocketProvider();
-        return lProvider;
+    public static JamnWebSocketProvider newBuilder() {
+        return new JamnWebSocketProvider();
     }
 
     /**
      */
-    public JamnWebSocketProvider setConfig(Config pConfig) {
-        config = pConfig;
+    public JamnWebSocketProvider addConnectionPath(String pPath) {
+        connectionPathNames.add(pPath);
         return this;
+    }
+
+    /**
+     */
+    public Set<String> getConnectionPathNames() {
+        return connectionPathNames;
     }
 
     /**
@@ -112,14 +123,8 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
     /**
      */
     public JamnWebSocketProvider addMessageConsumer(WsoMessageConsumer pConsumer) {
-        getWebSocketBroker().addMessageConsumer(pConsumer);
+        getConnectionManager().addMessageConsumer(pConsumer);
         return this;
-    }
-
-    /**
-     */
-    public WebSocketMessageBroker.WebSocketSender createMessageSenderFor(String pConnectionId, String pTopic) {
-        return new WebSocketMessageBroker.WebSocketSender(pConnectionId, pTopic);
     }
 
     /*********************************************************
@@ -139,7 +144,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
     public String handleRequest(String pMethod, String pPath, Map<String, String> pRequestAttributes,
             InputStream pSocketInStream, OutputStream pSocketOutStream, Socket pSocket, Map<String, String> pComData) {
 
-        WebSocketConnectionHandler lHandler = new WebSocketConnectionHandler(pPath, false, accessCtrl);
+        WebSocketHandler lHandler = new WebSocketHandler(pPath, false, accessCtrl);
         lHandler.handleRequest(new HttpHeader(pRequestAttributes), pSocketInStream, pSocketOutStream, pSocket,
                 pComData);
         return null;
@@ -152,86 +157,57 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
      *********************************************************/
     /**
      * <pre>
-     * The WebSocketMessageBroker mediates between the established WebSocket connections
-     * and the application specific message consumer and sender.
+     * The WsoConnectionManager manages the established connections.
      * 
-     * The current implementation is very rudimentary, not secure and does not scale.
-     * However it's task is to connect incoming messages with consumers.
-     * A place for your ideas.
+     * A connection is represented by a established WebSocketHandler=WsoConnection.
      * </pre>
      */
-    private static class WebSocketMessageBroker {
-        // connectionId -> topic -> sender/handler
-        Map<String, Map<String, WsoMessageSender>> openConnections = Collections.synchronizedMap(new HashMap<>());
+    private static class WsoConnectionManager {
+        // connectionId -> connection
+        protected Map<String, WsoConnection> openConnections = Collections.synchronizedMap(new HashMap<>());
 
-        // topic -> consumer list
-        Map<String, List<WsoMessageConsumer>> consumerMap = Collections.synchronizedMap(new HashMap<>());
+        // consumer list
+        protected List<WsoMessageConsumer> consumerList = Collections.synchronizedList(new ArrayList<>());
 
         /**
          */
-        protected synchronized void connectionEstablished(String pConnectionId, WsoMessageSender pSender) {
-            Map<String, WsoMessageSender> lTopics = Collections.synchronizedMap(new HashMap<>());
-            openConnections.put(pConnectionId, lTopics);
-            lTopics.put(pSender.getTopic(), pSender);
+        protected synchronized void connectionEstablished(String pConnectionId, WsoConnection pConnection) {
+            openConnections.put(pConnectionId, pConnection);
         }
 
         /**
          */
-        protected synchronized void connectionClosed(String pConnectionId, WsoMessageSender pSender) {
+        protected synchronized void connectionClosed(String pConnectionId) {
             openConnections.remove(pConnectionId);
+            LOG.info(() -> String.format("Closed WebSocket connection [%s]", pConnectionId));
         }
 
         /**
          * <pre>
          * This method is called for every incoming client "message" read from a WebSocketConnection.
-         * The current implementation does not scale because all known consumers for the topic are simply called synchronously.
          * </pre>
          */
-        protected void publishMessageFor(String pConnectionId, String pTopic, byte[] pMessage) {
-            List<WsoMessageConsumer> lList = consumerMap.get(pTopic);
-            if (lList != null) {
-                lList.forEach(consumer -> consumer.onMessage(pConnectionId, pMessage));
-            }
+        protected void publishMessageFor(String pConnectionId, byte[] pMessage) {
+            consumerList.forEach(consumer -> {
+                byte[] lResponse = consumer.onMessage(pConnectionId, pMessage);
+                if (lResponse != null && lResponse.length > 0) {
+                    sendMessageFor(pConnectionId, lResponse);
+                }
+            });
         }
 
         /**
          */
         protected void addMessageConsumer(WsoMessageConsumer pConsumer) {
-            List<WsoMessageConsumer> lList = consumerMap.get(pConsumer.getTopic());
-            if (lList == null) {
-                lList = new ArrayList<WsoMessageConsumer>();
-                consumerMap.put(pConsumer.getTopic(), lList);
-            }
-            lList.add(pConsumer);
+            consumerList.add(pConsumer);
         }
 
         /**
          */
-        protected void sendMessageFor(String pConnectionId, String pTopic, byte[] pMessage) {
-            Map<String, WsoMessageSender> lTopics = openConnections.getOrDefault(pConnectionId, null);
-            if (lTopics != null && lTopics.containsKey(pTopic)) {
-                lTopics.get(pTopic).sendMessage(pMessage);
-            }
-        }
-
-        /**
-         */
-        public static class WebSocketSender {
-            private String connectionId = "";
-            private String topic = "";
-
-            private WebSocketSender() {
-            }
-
-            private WebSocketSender(String pConnectionId, String pTopic) {
-                this();
-                connectionId = pConnectionId;
-                topic = pTopic;
-            }
-
-            @SuppressWarnings("unused")
-            public void send(byte[] pMessage) {
-                getWebSocketBroker().sendMessageFor(connectionId, topic, pMessage);
+        protected void sendMessageFor(String pConnectionId, byte[] pMessage) {
+            WsoConnection lCon = openConnections.getOrDefault(pConnectionId, null);
+            if (lCon != null) {
+                lCon.sendMessage(pMessage);
             }
         }
     }
@@ -248,20 +224,20 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
     /**
      */
-    protected static class WebSocketConnectionHandler implements WsoMessageSender {
+    protected static class WebSocketHandler implements WsoConnection {
 
         protected String connectionId = "";
-        protected String topic = "/";
+        protected String initUrlPath = "";
         protected boolean isCORSEnabled = false;
         protected OutputStream outStream;
         protected WsoAccessController accessCtrl;
 
-        protected WebSocketConnectionHandler() {
+        protected WebSocketHandler() {
         }
 
-        public WebSocketConnectionHandler(String pTopic, boolean pCORSEnabled, WsoAccessController pCtrl) {
+        public WebSocketHandler(String pInitUrlPath, boolean pCORSEnabled, WsoAccessController pCtrl) {
             this();
-            topic = pTopic;
+            initUrlPath = pInitUrlPath;
             isCORSEnabled = pCORSEnabled;
             accessCtrl = pCtrl;
         }
@@ -271,13 +247,6 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
         @Override
         public String geConnectiontId() {
             return connectionId;
-        }
-
-        /**
-         */
-        @Override
-        public String getTopic() {
-            return topic;
         }
 
         @Override
@@ -312,7 +281,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
             try {
                 // check accessibility
-                if (!accessCtrl.isSupportedTopic(topic, lErrorMsg)
+                if (!accessCtrl.isSupportedPath(initUrlPath, lErrorMsg)
                         || !accessCtrl.isAccessGranted(pRequestHeader.getAttributes(), lErrorMsg)) {
                     lHandShakeHeader.writeTo(outStream);
                     throw new WebSocketConnectionRejectedException(
@@ -322,14 +291,16 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                     // accept handshake
                     lHandShakeHeader.initWith(HTTP_DEFAULT_WEBSOCKET_RESPONSE_ATTRIBUTES).setHttpVersion(HTTP_1_1)
                             .setHttpStatus(SC_101_SWITCH_PROTOCOLS)
+                            .setConnection(UPGRADE)
                             .set(SEC_WEBSOCKET_ACCEPT, createWebSocketAcceptKey(pRequestHeader.getWebSocketKey()));
 
                     lHandShakeHeader.writeTo(outStream);
 
                     // create a unique connectionId
-                    connectionId = topic + " - " + Integer.toHexString(pSocket.hashCode()) + "-" + pSocket.toString();
-                    // register this connection at the WebSocketBroker
-                    getWebSocketBroker().connectionEstablished(connectionId, this);
+                    connectionId = initUrlPath + " - " + Integer.toHexString(pSocket.hashCode()) + "-"
+                            + pSocket.toString();
+                    // register this connection at the WsoConnectionManager
+                    getConnectionManager().connectionEstablished(connectionId, this);
 
                     LOG.info(() -> String.format("WebSocket connection established [%s]%s%s", connectionId, LS,
                             lHandShakeHeader));
@@ -347,7 +318,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 // and is forwarded to the WebSocketMessageBroker
                 // that tries to find a consumer for it
                 pSocket.setSoTimeout(0);
-                readIncomingMessages(lInStream, outStream, getWebSocketBroker(), connectionId, topic);
+                readIncomingMessages(lInStream, outStream, getConnectionManager(), connectionId);
 
                 // returning from reading lInStream
                 // means the stream returned -1, end of stream and closed
@@ -358,8 +329,8 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 LOG.severe(() -> String.format("WebSocket request handling error: %s %s %s", e.toString(), LS,
                         getStackTraceFrom(e)));
             } finally {
-                // remove connection from the broker
-                getWebSocketBroker().connectionClosed(connectionId, this);
+                // remove connection from the ConnectionManager
+                getConnectionManager().connectionClosed(connectionId);
                 try {
                     pSocket.close();
                 } catch (IOException e) {
@@ -388,7 +359,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
          * </pre>
          */
         protected void readIncomingMessages(InputStream pInStream, OutputStream pOutStream,
-                WebSocketMessageBroker pBroker, String pConnectionId, String pTopic) throws IOException {
+                WsoConnectionManager pWsoManager, String pConnectionId) throws IOException {
 
             boolean connected = true;
             int readPacketLength = 0;
@@ -480,7 +451,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
                     // after reading and hopefully decoding
                     // forward message to the message broker for delivery
-                    pBroker.publishMessageFor(pConnectionId, pTopic, message);
+                    pWsoManager.publishMessageFor(pConnectionId, message);
                 }
             }
         }
@@ -540,23 +511,14 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
     /**
      * <pre>
-     * The WebSocketMessageConsumer defines a message listener for a topic.
-     * 
-     * Once registered at the MessageBroker this consumer receives all messages
-     * with the declared topic - from any client - identified by the pConnectionId.
+     * The WsoMessageConsumer defines the message listener on the Server Side.
      * </pre>
      */
     public static interface WsoMessageConsumer {
 
         /**
          */
-        public default String getTopic() {
-            return "/";
-        }
-
-        /**
-         */
-        public void onMessage(String pConnectionId, byte[] pMessage);
+        public byte[] onMessage(String pConnectionId, byte[] pMessage);
 
     }
 
@@ -564,17 +526,11 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
      * <pre>
      * </pre>
      */
-    public static interface WsoMessageSender {
+    public static interface WsoConnection {
 
         /**
          */
         public String geConnectiontId();
-
-        /**
-         */
-        public default String getTopic() {
-            return "/";
-        }
 
         /**
          */
@@ -584,12 +540,13 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
     /**
      * <pre>
+     * A rudimentary "security" interface.
      * </pre>
      */
     public static interface WsoAccessController {
         /**
          */
-        public boolean isSupportedTopic(String pTopic, StringBuilder pMsg);
+        public boolean isSupportedPath(String pPath, StringBuilder pMsg);
 
         /**
          */

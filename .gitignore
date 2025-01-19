@@ -8,6 +8,8 @@
 **/siks
 *snippets*
 
+org.xyz*/**
+
 # Files #
 *.class
 *.log

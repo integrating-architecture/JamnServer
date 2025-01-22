@@ -99,7 +99,7 @@
 									<fileset dir="http" includes="**/*" />
 								</copy>
 								<copy todir="dist/jps.home/scripts">
-									<fileset dir="scripts" includes="**/*" />
+									<fileset dir="scripts" excludes="junit_tests/**" includes="**/*" />
 								</copy>
 								<copy todir="dist/jps.home/libs">
 									<fileset dir="libs" includes="*.cmd" />

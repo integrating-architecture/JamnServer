@@ -30,6 +30,8 @@ import org.junit.jupiter.api.TestMethodOrder;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class WebSocketProviderTest {
 
+    private static Logger LOG = Logger.getGlobal();
+
     private static JamnServer Server;
     private static WebSocket WSClient;
 
@@ -53,10 +55,10 @@ public class WebSocketProviderTest {
         JamnWebSocketProvider lWebSocketProvider = JamnWebSocketProvider.newBuilder()
                 .build();
 
-        // add a Server-Side message consumer for the WebSocket
-        lWebSocketProvider.addMessageConsumer((String pConnectionId, byte[] pMessage) -> {
+        // add a Server-Side message processor for the WebSocket
+        lWebSocketProvider.addMessageProcessor((String pConnectionId, byte[] pMessage) -> {
             String lMsg = new String(pMessage);
-            Logger.getGlobal().info("Message received: " + lMsg);
+            LOG.info("Request received: " + lMsg);
 
             return ("ECHO: " + lMsg).getBytes();
         });
@@ -127,7 +129,7 @@ public class WebSocketProviderTest {
             Data = pData;
             // unlock the current latch
             Latch.countDown();
-            System.out.println(pName);
+            LOG.info(String.join(" ", "Event:", Event, "Data:", Data));
         }
 
         @Override

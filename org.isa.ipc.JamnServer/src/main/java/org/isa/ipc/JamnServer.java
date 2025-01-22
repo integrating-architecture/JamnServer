@@ -118,7 +118,7 @@ public class JamnServer {
             }
         } catch (SecurityException | IOException e) {
             e.printStackTrace();
-            throw new JamnRuntimeException(e, "Jamn Server static initialization failed");
+            throw new UncheckedJamnServerException(e, "Jamn Server static initialization failed");
         }
     }
 
@@ -182,7 +182,7 @@ public class JamnServer {
                 lErrorInfo = e.getMessage();
             }
             stop();
-            throw new JamnRuntimeException(String.format("JamnServer start failed [%s]", lErrorInfo));
+            throw new UncheckedJamnServerException(String.format("JamnServer start failed [%s]", lErrorInfo));
         }
     }
 
@@ -330,16 +330,20 @@ public class JamnServer {
          * @throws IOException
          */
         protected ServerSocket createServerSocket() throws IOException {
+            int lPort = config.getPort();
             ServerSocket lSocket = null;
 
             if (!System.getProperty("javax.net.ssl.keyStore", "").isEmpty()
                     && !System.getProperty("javax.net.ssl.keyStorePassword", "").isEmpty()) {
-                lSocket = SSLServerSocketFactory.getDefault().createServerSocket(config.getPort());
+                lSocket = SSLServerSocketFactory.getDefault().createServerSocket(lPort);
             } else {
-                lSocket = ServerSocketFactory.getDefault().createServerSocket(config.getPort());
+                lSocket = ServerSocketFactory.getDefault().createServerSocket(lPort);
             }
 
             lSocket.setReuseAddress(true);
+            if (lPort == 0) {
+                config.setActualPort(lSocket.getLocalPort());
+            }
             return lSocket;
         }
 
@@ -1321,6 +1325,19 @@ public class JamnServer {
 
         /**
          */
+        public int getActualPort() {
+            return Integer.valueOf(props.getProperty("actual.port", "-1"));
+        }
+
+        /**
+         */
+        public Config setActualPort(int pPort) {
+            props.setProperty("actual.port", String.valueOf(pPort));
+            return this;
+        }
+
+        /**
+         */
         public String getEncoding() {
             return props.getProperty("encoding", "UTF-8");
         }
@@ -1371,7 +1388,7 @@ public class JamnServer {
                 lProps.load(new StringReader(pDef));
             } catch (IOException e) {
                 LOG.severe(String.format("ERROR parsing config to properties string [%s] [%s]", pDef, e));
-                throw new JamnRuntimeException("Config properties creation/initialization error");
+                throw new UncheckedJamnServerException("Config properties creation/initialization error");
             }
             return lProps;
         }
@@ -1419,14 +1436,14 @@ public class JamnServer {
      *********************************************************/
     /**
      */
-    public static class JamnRuntimeException extends RuntimeException {
+    public static class UncheckedJamnServerException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
-        public JamnRuntimeException(Throwable pCause, String pMsg) {
+        public UncheckedJamnServerException(Throwable pCause, String pMsg) {
             super(pMsg, pCause);
         }
 
-        public JamnRuntimeException(String pMsg) {
+        public UncheckedJamnServerException(String pMsg) {
             super(pMsg);
         }
 

@@ -5,7 +5,7 @@ import java.util.logging.Logger;
 
 import org.isa.ipc.JamnServer;
 import org.isa.ipc.JamnWebSocketProvider;
-import org.isa.ipc.JamnWebSocketProvider.WsoMessageConsumer;
+import org.isa.ipc.JamnWebSocketProvider.WsoMessageProcessor;
 
 /**
  * Create and start a Jamn Server with a WebSocket Provider.
@@ -26,8 +26,8 @@ public class SampleWebSocketApp {
         JamnWebSocketProvider lWebSocketProvider = JamnWebSocketProvider.newBuilder()
                 .build();
 
-        // add the Server-Side message consumer for the WebSocket
-        lWebSocketProvider.addMessageConsumer(new WsoMessageConsumer() {
+        // add the Server-Side message processor for the WebSocket
+        lWebSocketProvider.addMessageProcessor(new WsoMessageProcessor() {
 
             @Override
             public byte[] onMessage(String pConnectionId, byte[] pMessage) {

@@ -16,9 +16,4 @@ public class TestHostApp implements JavaScriptHostApp {
         return name;
     }
 
-    @Override
-    public void installScript(String pSource, String pName, String pDescr, String pType) {
-        // Auto-generated method stub
-    }
-
 }

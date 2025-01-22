@@ -35,13 +35,15 @@ import org.isa.ipc.JamnWebContentProvider.DefaultFileEnricher;
 import org.isa.ipc.JamnWebServiceProvider;
 import org.isa.ipc.JamnWebServiceProvider.WebServiceDefinitionException;
 import org.isa.ipc.JamnWebSocketProvider;
-import org.isa.ipc.JamnWebSocketProvider.WsoMessageConsumer;
+import org.isa.ipc.JamnWebSocketProvider.WsoMessageProcessor;
+import org.isa.jps.comp.ChildProcessManager;
+import org.isa.jps.comp.ChildProcessWebSocketConnection;
 import org.isa.jps.comp.CommandLineInterface;
 import org.isa.jps.comp.DefaultCLICommands;
 import org.isa.jps.comp.DefaultFileEnricherValueProvider;
 import org.isa.jps.comp.DefaultJavaScriptHostApp;
 import org.isa.jps.comp.DefaultWebServices;
-import org.isa.jps.comp.DefaultWebSocketMessageConsumer;
+import org.isa.jps.comp.DefaultWebSocketMessageProcessor;
 import org.isa.jps.comp.OperatingSystemInterface;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -79,6 +81,10 @@ public class JamnPersonalServerApp {
         return Instance;
     }
 
+    protected static synchronized void closeInstance() {
+        Instance = null;
+    }
+
     /**
      * internal constants
      */
@@ -94,11 +100,20 @@ public class JamnPersonalServerApp {
     protected static final String WEB_FILE_ROOT = "http";
     protected static final String SCRIPT_ROOT = "scripts";
     protected static final String EXTENSION_ROOT = "extensions";
+    protected static final String WORKSPACE_ROOT = "workspace";
+
     // files
     protected static final String PROPERTIES_NAME = "jps.properties";
     protected static final String LOGGING_PROPERTIES_NAME = "jps.logging.properties";
     protected static final String BUILD_INFO_PROPERTIES_NAME = "build.info.properties";
     protected static final String EXTENSION_DEF_FILE = "app-extension-defs.json";
+    protected static final String DEV_LIBS_PATH = "dev.libs.path";
+
+    public static final String JPS_PROFILE = "jps.profile";
+    public static final String APP_PROFILE = "app";
+    public static final String CHILD_PROFILE = "child";
+    public static final String JPS_CHILD_ID = "jps.child.id";
+    public static final String JPS_PARENT_URL = "jps.parent.url";
 
     // just a logging text snippet
     protected static final String INIT_LOGPRFX = "JPS init -";
@@ -129,6 +144,7 @@ public class JamnPersonalServerApp {
     // internal components
     protected OperatingSystemInterface osIFace;
     protected CommandLineInterface jpsCli;
+    protected ChildProcessManager childManager;
 
     // a content dispatcher predicate
     // to distinguish content and services
@@ -157,9 +173,28 @@ public class JamnPersonalServerApp {
                 String.join(" ", pArgs)));
 
         initLogging();
-        initConfig();
-        initProgramArgs(pArgs);
-        osIFace = new OperatingSystemInterface(config);
+        initConfig(pArgs);
+
+        if (config.hasAppProfile()) {
+            doAppInitialization();
+        } else if (config.hasChildProfile()) {
+            doChildInitialization();
+        } else {
+            throw new UncheckedJPSException(String.format(
+                    "NO valid App Profile defined. Supported profiles are: [profile= %s || %s]", APP_PROFILE,
+                    CHILD_PROFILE));
+        }
+
+        return this;
+    }
+
+    /**
+     */
+    protected void doAppInitialization()
+            throws IOException, WebServiceDefinitionException, AppExtensionDefinitionException {
+
+        osIFace = new OperatingSystemInterface(config, null);
+        childManager = new ChildProcessManager(osIFace, AppHome, config);
 
         initJsonTool();
 
@@ -176,7 +211,26 @@ public class JamnPersonalServerApp {
 
         initExtensions();
 
-        return this;
+    }
+
+    /**
+     * <pre>
+     * Default Initialization of a child app startet from JamnPersonalServerApp ChildProcessManager.
+     * Child apps are intended to do work for the Parent ;-)
+     * 
+     * One option for communication is that the child
+     * connects to the Parent via WebSocket.
+     * </pre>
+     * 
+     * @throws IOException
+     * @throws AppExtensionDefinitionException
+     */
+    protected void doChildInitialization() throws IOException {
+        LOG.info(() -> String.format("Child Process startet [%s] [%s]", config.getJPSChildId(),
+                config.getJPSParentUrl()));
+
+        ChildProcessWebSocketConnection lParentWebSocket = new ChildProcessWebSocketConnection(config);
+        lParentWebSocket.connect();
     }
 
     /**
@@ -184,35 +238,37 @@ public class JamnPersonalServerApp {
     public JamnPersonalServerApp start(String[] pArgs) {
         try {
             initialize(pArgs);
-            if (config.isServerAutostart()) {
+
+            if (config.isServerAutostart() && server != null) {
                 server.start();
             }
-            if (config.isCliEnabled()) {
+            if (config.isCliEnabled() && jpsCli != null) {
                 jpsCli.start();
             }
         } catch (Exception e) {
-            stop();
-            LOG.severe(() -> String.format("%sERROR starting %s: %s%s%s", LS, AppName, e, LS,
-                    Tool.getStackTraceFrom(e)));
+            close();
+            throw new UncheckedJPSException(
+                    String.format("%sERROR starting %s: [%s]%s", LS, AppName, e.getMessage(), LS), e);
         }
         return this;
     }
 
     /**
      */
-    public void stop() {
+    public synchronized void close() {
         if (server != null) {
             server.stop();
         }
         if (jpsCli != null) {
             jpsCli.stop();
         }
+        closeInstance();
     }
 
     /**
      */
     public boolean isRunning() {
-        return server.isRunning();
+        return server != null ? server.isRunning() : false;
     }
 
     /**
@@ -241,6 +297,12 @@ public class JamnPersonalServerApp {
 
     /**
      */
+    public ChildProcessManager getChildProcessManager() {
+        return childManager;
+    }
+
+    /**
+     */
     public CommandLineInterface getCli() {
         return jpsCli;
     }
@@ -262,9 +324,9 @@ public class JamnPersonalServerApp {
 
     /**
      */
-    public void addWebSocketMessageConsumer(WsoMessageConsumer pConsumer) {
-        if (this.webSocketProvider != null) {
-            webSocketProvider.addMessageConsumer(pConsumer);
+    public void addWebSocketMessageProcessor(WsoMessageProcessor pProcessor) {
+        if (webSocketProvider != null) {
+            webSocketProvider.addMessageProcessor(pProcessor);
         }
     }
 
@@ -302,7 +364,10 @@ public class JamnPersonalServerApp {
 
     /**
      */
-    protected void initConfig() throws IOException {
+    protected void initConfig(String[] pArgs) throws IOException {
+        boolean lSaveConfig = false;
+        String lDefaultConfig = "";
+        Map<String, String> lArgs = Tool.defaultArgParser.apply(pArgs);
         Path lConfigPath = getHomePath(PROPERTIES_NAME);
 
         // load config
@@ -310,16 +375,27 @@ public class JamnPersonalServerApp {
             config = new Config(Files.newInputStream(lConfigPath));
             LOG.info(() -> String.format("%s user app config file read [%s]", INIT_LOGPRFX, lConfigPath));
         } else {
-            String lDefaultConfig = String.join(LS, Config.DEFAULT_CONFIG, JamnServer.Config.DEFAULT_CONFIG);
+            lDefaultConfig = String.join(LS, Config.DEFAULT_CONFIG, JamnServer.Config.DEFAULT_CONFIG);
             config = new Config(Tool.getAsInputStream(lDefaultConfig));
-            Files.writeString(lConfigPath, lDefaultConfig, StandardEncoding, StandardOpenOption.CREATE);
-            LOG.info(() -> String.format("%s default app config loaded and saved to [%s]", INIT_LOGPRFX, lConfigPath));
+            lSaveConfig = true;
         }
 
         // load build infos
         InputStream lIn = getClass().getResourceAsStream("/" + BUILD_INFO_PROPERTIES_NAME);
         if (lIn != null) {
             config.getBuildProperties().load(lIn);
+        }
+
+        // search -D options
+        config.searchDynamicOption(JPS_PROFILE, APP_PROFILE);
+        config.searchDynamicOption(DEV_LIBS_PATH, "");
+
+        // at last merge program args
+        config.getProperties().putAll(lArgs);
+
+        if (lSaveConfig && config.hasAppProfile()) {
+            Files.writeString(lConfigPath, lDefaultConfig, StandardEncoding, StandardOpenOption.CREATE);
+            LOG.info(() -> String.format("%s default app config loaded and saved to [%s]", INIT_LOGPRFX, lConfigPath));
         }
     }
 
@@ -343,7 +419,7 @@ public class JamnPersonalServerApp {
             Path lScriptPath = Tool.ensureSubDir(config.getScriptRoot(), AppHome);
 
             javaScript = new JavaScriptProvider(lScriptPath, config.getProperties());
-            javaScript.setHostApp(new DefaultJavaScriptHostApp(AppName, javaScript, getCli()));
+            javaScript.setHostApp(new DefaultJavaScriptHostApp(this));
             javaScript.initialize();
 
             String lAutoLoadScript = getConfig().getJsAutoLoadScript();
@@ -357,6 +433,12 @@ public class JamnPersonalServerApp {
                     "%s JavaScript is Disabled. To enable ensure libraries and set config [%s] property [javascript.enabled=true]",
                     INIT_LOGPRFX, PROPERTIES_NAME));
         }
+    }
+
+    /**
+     */
+    protected void initJavaScriptAgentProfile() throws IOException {
+
     }
 
     /**
@@ -526,12 +608,11 @@ public class JamnPersonalServerApp {
             // create the WebSocketProvider
             webSocketProvider = JamnWebSocketProvider.newBuilder()
                     .addConnectionPath(config.getDefaultWebSocketUrlPath())
-                    .setJsonTool(jsonTool)
                     .build();
 
-            // sample wso message consumer
+            // sample wso message processor
             // external creation style
-            DefaultWebSocketMessageConsumer.create();
+            DefaultWebSocketMessageProcessor.create();
 
             server.addContentProvider(WEBSOCKET_PROVIDER_ID, webSocketProvider);
 
@@ -568,8 +649,10 @@ public class JamnPersonalServerApp {
                 "##",
                 "## " + AppName + " Config Properties",
                 "##", "",
+                "#JPS Profile", JPS_PROFILE + "=" + APP_PROFILE, "",
                 "#JamnWebContentProvider files root folder", "web.file.root=" + WEB_FILE_ROOT, "",
                 "#Jamn Personal Server extension libraries root folder", "jps.extension.root=" + EXTENSION_ROOT, "",
+                "#Jamn Personal Server workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
                 "#JPS Extension definition file name", "jps.extension.def.file=" + EXTENSION_DEF_FILE, "",
                 "#Extensions enabled", "extensions.enabled=true", "",
                 "#JavaScriptProvider script root folder", "script.root=" + SCRIPT_ROOT, "",
@@ -595,8 +678,29 @@ public class JamnPersonalServerApp {
             props.load(pPropsIn);
         }
 
+        public void searchDynamicOption(String pKey, String pDefault) {
+            // overwriting: if -D present -> use it or leave current
+            props.put(pKey, System.getProperty(pKey, props.getProperty(pKey, pDefault)));
+        }
+
         public Properties getBuildProperties() {
             return buildProps;
+        }
+
+        public String getProfile() {
+            return props.getProperty(JPS_PROFILE, APP_PROFILE);
+        }
+
+        public String getJPSChildId() {
+            return props.getProperty(JPS_CHILD_ID, "");
+        }
+
+        public String getJPSParentUrl() {
+            return props.getProperty(JPS_PARENT_URL, "");
+        }
+
+        public String getDevLibsPath() {
+            return props.getProperty(DEV_LIBS_PATH, "");
         }
 
         public String getWebFileRoot() {
@@ -605,6 +709,10 @@ public class JamnPersonalServerApp {
 
         public String getExtensionRoot() {
             return props.getProperty("jps.extension.root", EXTENSION_ROOT);
+        }
+
+        public String getWorkspaceRoot() {
+            return props.getProperty("jps.workspace.root", WORKSPACE_ROOT);
         }
 
         public String getExtensionDefFileName() {
@@ -637,6 +745,14 @@ public class JamnPersonalServerApp {
 
         public String getDefaultWebSocketUrlPath() {
             return props.getProperty("default.websocket.url.path", "/wsoapi");
+        }
+
+        public boolean hasAppProfile() {
+            return props.getProperty(JPS_PROFILE, APP_PROFILE).equals(APP_PROFILE);
+        }
+
+        public boolean hasChildProfile() {
+            return props.getProperty(JPS_PROFILE, "").equals(CHILD_PROFILE);
         }
 
         public boolean isCliEnabled() {
@@ -725,6 +841,20 @@ public class JamnPersonalServerApp {
 
     }
 
+    /**
+     */
+    public static class UncheckedJPSException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        UncheckedJPSException(String pMsg) {
+            super(pMsg);
+        }
+
+        UncheckedJPSException(String pMsg, Exception pCause) {
+            super(pMsg, pCause);
+        }
+    }
+
     /*********************************************************
      * Common Helper class
      *********************************************************/
@@ -733,6 +863,7 @@ public class JamnPersonalServerApp {
     public static class CommonHelper {
 
         /**
+         * Arg Format: [-]<name>=<value>
          */
         public final Function<String[], Map<String, String>> defaultArgParser = (String[] args) -> {
             Map<String, String> lArgMap = new LinkedHashMap<>();
@@ -799,6 +930,39 @@ public class JamnPersonalServerApp {
                 pErrors
                         .add(String.format("File does NOT exist [%s] [%s]", pFile, pInfo));
             }
+        }
+
+        /**
+         */
+        public String[] rebuildQuotedWhitespaceStrings(String[] pToken, boolean pRemoveQuotes) {
+            List<String> newToken = new ArrayList<>();
+            StringBuilder lBuffer = new StringBuilder();
+            String tok = "";
+            boolean inQuote = false;
+
+            for (int i = 0; i < pToken.length; i++) {
+                tok = pToken[i];
+                if (!inQuote && tok.contains("\"")) {
+                    inQuote = true;
+                    lBuffer = new StringBuilder(tok);
+                    continue;
+                }
+                if (inQuote && tok.contains("\"")) {
+                    inQuote = false;
+                    lBuffer.append(" ").append(tok);
+                    newToken.add(lBuffer.toString());
+                } else if (inQuote) {
+                    lBuffer.append(" ").append(tok);
+                } else {
+                    newToken.add(tok);
+                }
+            }
+
+            if (inQuote) {
+                throw new RuntimeException("Missing start/end quote in command line string");
+            }
+
+            return newToken.toArray(new String[newToken.size()]);
         }
 
     }

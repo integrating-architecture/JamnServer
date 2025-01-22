@@ -11,7 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 
-import org.isa.ipc.JamnServer.JamnRuntimeException;
+import org.isa.ipc.JamnServer.UncheckedJamnServerException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
@@ -30,7 +30,7 @@ class JamnServerBasicTest {
 
     @Test
     @Order(1)
-    void testCreateAndStartServer() throws JamnRuntimeException {
+    void testCreateAndStartServer() throws UncheckedJamnServerException {
         Server = new JamnServer(8099);
         Server.start();
 

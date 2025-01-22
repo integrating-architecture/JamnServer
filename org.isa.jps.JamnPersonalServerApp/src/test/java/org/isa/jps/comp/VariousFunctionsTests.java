@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.isa.jps.JamnPersonalServerApp;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -17,7 +18,7 @@ public class VariousFunctionsTests {
         String lTestString = "copy \"C:/Program Files (x86)/Mozilla Maintenance Service/\" C:/temp /all /y /\"some strange other\" whitespaces";
         String[] lToken = lTestString.split(" ");
 
-        lToken = CommandLineInterface.rebuildQuotedWhitespaceStrings(lToken, false);
+        lToken = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lToken, false);
         assertEquals(lTestString, String.join(" ", lToken));
     }
 
@@ -29,7 +30,7 @@ public class VariousFunctionsTests {
 
         Exception lExeption = assertThrows(
                 RuntimeException.class,
-                () -> CommandLineInterface.rebuildQuotedWhitespaceStrings(lFailureToken, false),
+                () -> JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lFailureToken, false),
                 "RuntimeException expected");
 
         assertTrue(lExeption.getMessage().contains("Missing start/end quote"));

@@ -45,7 +45,7 @@ public class DefaultWebServices {
         ShellResponse lResponse = new ShellResponse();
         String[] lCommand = pRequest.command.toArray(new String[0]);
 
-        List<String> lResult = osIFace.functions().shellCmd(lCommand, pRequest.workingDir, false);
+        List<String> lResult = osIFace.fnc().shellCmd(lCommand, pRequest.workingDir, false);
 
         lResponse.output.addAll(lResult);
         return lResponse;

@@ -2,17 +2,26 @@
 package org.isa.jps.comp;
 
 import java.io.BufferedReader;
-import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.isa.jps.JamnPersonalServerApp;
 import org.isa.jps.JamnPersonalServerApp.Config;
 
 /**
+ * <pre>
+ * The class provides a rudimentary abstraction for operating system specifics.
+ * The main Interface is "OSFunctions" accessible via the fnc() method.
+ * 
+ * The main functionality is a "ShellProcess" wrapper and a "shellCmd" method.
+ * </pre>
  */
 public class OperatingSystemInterface {
 
@@ -20,23 +29,30 @@ public class OperatingSystemInterface {
     protected static boolean Unix = false;
 
     protected OSFunctions osFunctions;
+    protected OSIFaceSecurityController securityCtrl = new OSIFaceSecurityController() {
+
+    };
+
+    protected Charset shellEncoding = StandardCharsets.UTF_8;
+    protected Config config;
 
     /**
      */
-    protected OperatingSystemInterface() {
+    public OperatingSystemInterface(Config pConfig, OSIFaceSecurityController pSecCtrl) {
+        config = pConfig;
         String lName = System.getProperty("os.name").toLowerCase();
         Windows = lName.contains("win");
         Unix = (lName.contains("nix") || lName.contains("nux") || lName.contains("aix"));
-    }
+        if (pSecCtrl != null) {
+            securityCtrl = pSecCtrl;
+        }
 
-    /**
-     */
-    public OperatingSystemInterface(Config pConfig) {
-        this();
         if (Windows) {
-            osFunctions = new WinowsFunctions(pConfig);
+            shellEncoding = Charset.forName(config.getWinShellEncoding());
+            osFunctions = new WinowsFunctions(config);
         } else if (Unix) {
-            osFunctions = new UnixFunctions(pConfig);
+            shellEncoding = Charset.forName(config.getUnixShellEncoding());
+            osFunctions = new UnixFunctions(config);
         }
     }
 
@@ -54,80 +70,164 @@ public class OperatingSystemInterface {
 
     /**
      */
-    public OSFunctions functions() {
+    public OSFunctions fnc() {
         return osFunctions;
     }
 
     /**
+     * The function interface
      */
     public static interface OSFunctions {
-        /**
-         */
-        public Charset getShellEncoding();
 
         /**
          */
         public List<String> shellCmd(String[] pCmdParts, String pWorkingDir, boolean pInherit);
+
     }
 
     /**
      */
-    protected abstract static class AbstractOSFunctions implements OSFunctions {
-        protected Charset shellEncoding;
-        protected Config config;
-
-        AbstractOSFunctions(Config pConfig) {
-            config = pConfig;
+    public static interface OSIFaceSecurityController {
+        default boolean isPathAccessAlowed(String pPath) {
+            return true;
         }
+    }
 
-        @Override
-        public Charset getShellEncoding() {
-            if (shellEncoding == null) {
-                if (Windows) {
-                    shellEncoding = Charset.forName(config.getWinShellEncoding());
-                } else if (Unix) {
-                    shellEncoding = Charset.forName(config.getUnixShellEncoding());
-                } else {
-                    shellEncoding = StandardCharsets.UTF_8;
-                }
-            }
-            return shellEncoding;
+    /**
+     */
+    protected abstract class AbstractOSFunctions implements OSFunctions {
+
+        protected AbstractOSFunctions() {
         }
 
         @Override
         public List<String> shellCmd(String[] pCmdParts, String pWorkingDir, boolean pInherit) {
-            String line = "";
-            ProcessBuilder builder = null;
-            Process process = null;
-            BufferedReader stdInput = null;
-            BufferedReader stdError = null;
-            List<String> result = new ArrayList<>();
-            List<String> errResult = new ArrayList<>();
+            ShellProcess lSh = new ShellProcess()
+                    .setCommand(pCmdParts)
+                    .setWorkingDir(pWorkingDir)
+                    .setInherit(pInherit);
+            lSh.start();
+            return lSh.getResult();
+        }
+    }
 
-            List<String> command = new ArrayList<>(Arrays.asList(pCmdParts));
+    /**
+     */
+    public static interface ShellProcessListener {
+        /**
+         */
+        void onClose(String pId);
+    }
+
+    /**
+     */
+    public class ShellProcess {
+        protected String id = "";
+        protected ShellProcessListener listener = id -> {
+        };
+        protected List<String> command;
+        protected String workingDir;
+        protected boolean inherit = false;
+
+        protected Process process = null;
+        protected List<String> result = new ArrayList<>();
+        protected List<String> errResult = new ArrayList<>();
+
+        protected ShellProcess() {
+        }
+
+        public ShellProcess(String pId) {
+            id = pId;
+        }
+
+        /**
+         */
+        public ShellProcess setCommand(String[] pCmdParts) {
+            command = new ArrayList<>(Arrays.asList(pCmdParts));
 
             if (Windows) {
                 command.add(0, "cmd");
                 command.add(1, "/c");
             }
 
-            try {
-                try {
-                    builder = new ProcessBuilder();
-                    builder.command(command);
-                    if (pInherit) {
-                        builder.inheritIO();
-                    }
-                    if (pWorkingDir != null && !pWorkingDir.isEmpty()) {
-                        builder.directory(new File(pWorkingDir));
-                    }
-                    process = builder.start();
+            return this;
+        }
 
-                    stdInput = new BufferedReader(new InputStreamReader(process.getInputStream(), getShellEncoding()));
+        /**
+         */
+        public ShellProcess setWorkingDir(String pWorkingDir) {
+            workingDir = resolveWorkingDir(pWorkingDir);
+            return this;
+        }
+
+        /**
+         */
+        public ShellProcess setListener(ShellProcessListener pListener) {
+            this.listener = pListener;
+            return this;
+        }
+
+        /**
+         */
+        public ShellProcess setInherit(boolean pInherit) {
+            inherit = pInherit;
+            return this;
+        }
+
+        /**
+         */
+        public Process getProcess() {
+            return process;
+        }
+
+        /**
+         */
+        public List<String> getResult() {
+            return result;
+        }
+
+        /**
+         */
+        public List<String> getErrResult() {
+            return errResult;
+        }
+
+        /**
+         */
+        public String getId() {
+            return id;
+        }
+
+        /**
+         */
+        public void start() {
+            String line = "";
+            ProcessBuilder builder = null;
+
+            try {
+
+                builder = new ProcessBuilder();
+                builder.command(command);
+                if (inherit) {
+                    builder.inheritIO();
+                }
+
+                if (workingDir != null && !workingDir.isEmpty()) {
+                    Path lPath = Paths.get(workingDir);
+                    builder.directory(lPath.toFile());
+                }
+                process = builder.start();
+
+                try (
+                        BufferedReader stdInput = new BufferedReader(
+                                new InputStreamReader(process.getInputStream(), shellEncoding));
+
+                        BufferedReader stdError = new BufferedReader(
+                                new InputStreamReader(process.getErrorStream(), shellEncoding));) {
                     while ((line = stdInput.readLine()) != null) {
                         result.add(line);
                     }
-                    stdError = new BufferedReader(new InputStreamReader(process.getErrorStream(), getShellEncoding()));
+
                     while ((line = stdError.readLine()) != null) {
                         errResult.add(line);
                     }
@@ -135,41 +235,72 @@ public class OperatingSystemInterface {
                     if (result.isEmpty()) {
                         result.addAll(errResult);
                     }
-
-                    process.waitFor();
-
-                } finally {
-                    if (process != null) {
-                        process.destroy();
-                        process.destroyForcibly();
-                    }
-                    if (stdInput != null) {
-                        stdInput.close();
-                    }
-                    if (stdError != null) {
-                        stdError.close();
-                    }
                 }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+
+                process.waitFor();
+
+            } catch (InterruptedException | IOException e) {
+                Thread.currentThread().interrupt();
+                throw new UncheckedOSIFaceException("ERROR executing ShellProcess", e);
+            } finally {
+                close();
             }
-            return result;
+        }
+
+        /**
+         */
+        public void close() {
+            if (process != null) {
+                process.destroy();
+                process.destroyForcibly();
+            }
+            if (listener != null) {
+                listener.onClose(id);
+            }
         }
     }
 
     /**
      */
-    protected static class WinowsFunctions extends AbstractOSFunctions {
+    protected String resolveWorkingDir(String pPath) {
+        if (pPath == null || pPath.isEmpty()) {
+            pPath = JamnPersonalServerApp.getInstance().getHomePath().toString();
+        }
+
+        if (!securityCtrl.isPathAccessAlowed(pPath)) {
+            throw new UncheckedOSIFaceException(String.format("Path Access denied [%s]", pPath));
+        }
+        return pPath;
+    }
+
+    /**
+     */
+    protected class WinowsFunctions extends AbstractOSFunctions {
         protected WinowsFunctions(Config pConfig) {
-            super(pConfig);
+            super();
         }
     }
 
     /**
      */
-    protected static class UnixFunctions extends AbstractOSFunctions {
+    protected class UnixFunctions extends AbstractOSFunctions {
         protected UnixFunctions(Config pConfig) {
-            super(pConfig);
+            super();
         }
     }
+
+    /**
+     */
+    public static class UncheckedOSIFaceException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public UncheckedOSIFaceException(String pMsg) {
+            super(pMsg);
+        }
+
+        public UncheckedOSIFaceException(String pMsg, Exception pCause) {
+            super(pMsg, pCause);
+        }
+    }
+
 }

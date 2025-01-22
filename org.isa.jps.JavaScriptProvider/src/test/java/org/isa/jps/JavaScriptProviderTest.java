@@ -38,6 +38,17 @@ class JavaScriptProviderTest {
     }
 
     @Test
+    void testEvalAndArgs() {
+
+        JsValue lVal = JavaScript.eval("js-eval-and-args.js");
+        assertEquals("no args", lVal.asString(), "EvalAndArgs error");
+
+        lVal = JavaScript.eval("js-eval-and-args.js", "arg-0");
+        assertEquals("arg-0", lVal.asString(), "EvalAndArgs error");
+
+    }
+
+    @Test
     void testHostAppAccess() {
 
         JsValue lVal = JavaScript.eval("host-app-access.js");

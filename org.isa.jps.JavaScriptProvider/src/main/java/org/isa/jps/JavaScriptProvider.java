@@ -128,7 +128,7 @@ public class JavaScriptProvider {
         try {
             return Source.newBuilder(JSID, lSrcPath.toFile()).build();
         } catch (IOException e) {
-            throw new JavaScriptRuntimeException(
+            throw new UncheckedJavaScriptException(
                     String.format("Could not load source file [%s]", lSrcPath), e);
         }
     }
@@ -194,6 +194,10 @@ public class JavaScriptProvider {
     }
 
     /**
+     * <pre>
+     * A rudimentary "marker" interface for JavaScript Host App implementations.
+     * Just to provide a Java Type instead of raw Object.
+     * </pre>
      */
     public static interface JavaScriptHostApp {
         public default String name() {
@@ -202,8 +206,6 @@ public class JavaScriptProvider {
 
         public default void initialize() {
         }
-
-        public void installScript(String pSource, String pName, String pDescr, String pType);
     }
 
     /**
@@ -261,10 +263,10 @@ public class JavaScriptProvider {
 
     /**
      */
-    public static class JavaScriptRuntimeException extends RuntimeException {
+    public static class UncheckedJavaScriptException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
-        public JavaScriptRuntimeException(String pMsg, Exception pCause) {
+        public UncheckedJavaScriptException(String pMsg, Exception pCause) {
             super(pMsg, pCause);
         }
     }

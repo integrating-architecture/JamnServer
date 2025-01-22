@@ -66,6 +66,12 @@ public class CommandLineInterface {
         work = false;
     }
 
+    /**
+     */
+    public String execCmdBlank(String pCmdLine) {
+        return commandProcessor.apply(pCmdLine);
+    }
+
     /*********************************************************
      * internal methods and classes
      *********************************************************/
@@ -141,6 +147,7 @@ public class CommandLineInterface {
     protected String getHelp() {
         return commands.entrySet()
                 .stream()
+                .sorted(Map.Entry.comparingByKey())
                 .map(e -> e.getValue().getDescr())
                 .collect(Collectors.joining(LS));
     }
@@ -345,39 +352,6 @@ public class CommandLineInterface {
     /**
      */
     protected static String[] tokenizeCmdLine(String pCmdLine) {
-        return rebuildQuotedWhitespaceStrings(pCmdLine.split(" "), false);
-    }
-
-    /**
-     */
-    protected static String[] rebuildQuotedWhitespaceStrings(String[] pToken, boolean pRemoveQuotes) {
-        List<String> newToken = new ArrayList<>();
-        StringBuilder lBuffer = new StringBuilder();
-        String tok = "";
-        boolean inQuote = false;
-
-        for (int i = 0; i < pToken.length; i++) {
-            tok = pToken[i];
-            if (!inQuote && tok.contains("\"")) {
-                inQuote = true;
-                lBuffer = new StringBuilder(tok);
-                continue;
-            }
-            if (inQuote && tok.contains("\"")) {
-                inQuote = false;
-                lBuffer.append(" ").append(tok);
-                newToken.add(lBuffer.toString());
-            } else if (inQuote) {
-                lBuffer.append(" ").append(tok);
-            } else {
-                newToken.add(tok);
-            }
-        }
-
-        if (inQuote) {
-            throw new RuntimeException("Missing start/end quote in command line string");
-        }
-
-        return newToken.toArray(new String[newToken.size()]);
+        return Tool.rebuildQuotedWhitespaceStrings(pCmdLine.split(" "), false);
     }
 }

@@ -22,10 +22,10 @@ import org.junit.jupiter.api.Test;
 /**
  * 
  */
-@DisplayName("JamnPersonalServerApp WebService Test")
-public class WebProviderTest {
+@DisplayName("JPS WebProvider Test")
+public class JPSWebProviderTest {
 
-    private static Logger LOG = Logger.getLogger(WebProviderTest.class.getName());
+    private static Logger LOG = Logger.getLogger(JPSWebProviderTest.class.getName());
 
     private static JamnPersonalServerApp ServerApp;
     private static String ServerURL;
@@ -33,7 +33,7 @@ public class WebProviderTest {
     private static JsonToolWrapper Json;
 
     @BeforeAll
-    public static void setupEnvironment() throws Exception {
+    public static void setupEnvironment() {
         ServerApp = JamnPersonalServerApp.getInstance();
         ServerApp.start(new String[] {});
         assertTrue(ServerApp.isRunning(), "Test Server start FAILED");
@@ -46,7 +46,8 @@ public class WebProviderTest {
 
     @AfterAll
     public static void shutDownServer() {
-        ServerApp.stop();
+        ServerApp.close();
+        LOG.info("Test(s) finished");
     }
 
     @Test

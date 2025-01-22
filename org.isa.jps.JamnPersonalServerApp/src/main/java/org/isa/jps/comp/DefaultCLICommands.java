@@ -1,6 +1,10 @@
 /* Authored by www.integrating-architecture.de */
 package org.isa.jps.comp;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -42,7 +46,7 @@ public class DefaultCLICommands {
                 .descr("Cli command clear screen: cls")
                 .function(ctx -> {
                     String lCmd = app.getOsIFace().isOnUnix() ? "clear" : "cls";
-                    app.getOsIFace().functions().shellCmd(new String[] { lCmd }, null, true);
+                    app.getOsIFace().fnc().shellCmd(new String[] { lCmd }, null, true);
                     return "";
                 })
                 .build();
@@ -60,7 +64,7 @@ public class DefaultCLICommands {
                                 System.exit(1);
                             } else {
                                 LOG.info("Going to shutdown application");
-                                app.stop();
+                                app.close();
                                 System.exit(0);
                             }
                         } else {
@@ -69,18 +73,41 @@ public class DefaultCLICommands {
                     }
 
                     if (ctx.hasArg("config")) {
-                        lResult = app.getConfig().getProperties().entrySet()
+                        lResult = propsToMap.apply(app.getConfig().getProperties())
+                                .entrySet()
                                 .stream()
+                                .sorted(Map.Entry.comparingByKey())
                                 .map(e -> e.getKey() + "=" + e.getValue())
                                 .collect(Collectors.joining(LS));
                     } else if (ctx.hasArg("properties")) {
-                        lResult = System.getProperties().entrySet()
+                        lResult = propsToMap.apply(System.getProperties())
+                                .entrySet()
                                 .stream()
+                                .sorted(Map.Entry.comparingByKey())
                                 .map(e -> e.getKey() + "=" + e.getValue())
                                 .collect(Collectors.joining(LS));
                     }
                     return lResult;
                 })
                 .build();
+
+        cli.newCommandBuilder()
+                .name("process")
+                .descr("Child process Manager: process")
+                .function(ctx -> {
+                    String lResult = "";
+                    if (ctx.hasArg("create")) {
+                        lResult = app.getChildProcessManager().createProcess();
+                    } else if (ctx.hasArg("close")) {
+                        app.getChildProcessManager().closeProcess(ctx.get(1));
+                    } else if (ctx.hasArg("list")) {
+                        lResult = String.join(LS, app.getChildProcessManager().getProcessList());
+                    }
+                    return lResult;
+                })
+                .build();
     }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private static final Function<Properties, Map<String, String>> propsToMap = props -> new HashMap<>((Map) props);
 }

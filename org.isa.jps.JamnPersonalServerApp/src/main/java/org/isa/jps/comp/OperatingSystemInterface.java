@@ -10,7 +10,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.isa.jps.JamnPersonalServerApp;
 import org.isa.jps.JamnPersonalServerApp.Config;
@@ -107,7 +109,7 @@ public class OperatingSystemInterface {
                     .setWorkingDir(pWorkingDir)
                     .setInherit(pInherit);
             lSh.start();
-            return lSh.getResult();
+            return lSh.getOutput();
         }
     }
 
@@ -116,7 +118,7 @@ public class OperatingSystemInterface {
     public static interface ShellProcessListener {
         /**
          */
-        void onClose(String pId);
+        void onShellClosed(String pId);
     }
 
     /**
@@ -130,8 +132,7 @@ public class OperatingSystemInterface {
         protected boolean inherit = false;
 
         protected Process process = null;
-        protected List<String> result = new ArrayList<>();
-        protected List<String> errResult = new ArrayList<>();
+        protected Set<String> outPut = new LinkedHashSet<>();
 
         protected ShellProcess() {
         }
@@ -182,14 +183,8 @@ public class OperatingSystemInterface {
 
         /**
          */
-        public List<String> getResult() {
-            return result;
-        }
-
-        /**
-         */
-        public List<String> getErrResult() {
-            return errResult;
+        public List<String> getOutput() {
+            return new ArrayList<>(this.outPut);
         }
 
         /**
@@ -225,15 +220,11 @@ public class OperatingSystemInterface {
                         BufferedReader stdError = new BufferedReader(
                                 new InputStreamReader(process.getErrorStream(), shellEncoding));) {
                     while ((line = stdInput.readLine()) != null) {
-                        result.add(line);
+                        outPut.add(line);
                     }
 
                     while ((line = stdError.readLine()) != null) {
-                        errResult.add(line);
-                    }
-
-                    if (result.isEmpty()) {
-                        result.addAll(errResult);
+                        outPut.add(line);
                     }
                 }
 
@@ -255,7 +246,7 @@ public class OperatingSystemInterface {
                 process.destroyForcibly();
             }
             if (listener != null) {
-                listener.onClose(id);
+                listener.onShellClosed(id);
             }
         }
     }

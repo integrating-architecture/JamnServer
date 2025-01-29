@@ -96,12 +96,14 @@ public class DefaultCLICommands {
                 .descr("Child process Manager: process")
                 .function(ctx -> {
                     String lResult = "";
-                    if (ctx.hasArg("create")) {
+                    if (ctx.hasArg(0, "create")) {
                         lResult = app.getChildProcessManager().createProcess();
-                    } else if (ctx.hasArg("close")) {
+                    } else if (ctx.hasArg(0, "close")) {
                         app.getChildProcessManager().closeProcess(ctx.get(1));
-                    } else if (ctx.hasArg("list")) {
+                    } else if (ctx.hasArg(0, "list")) {
                         lResult = String.join(LS, app.getChildProcessManager().getProcessList());
+                    } else if (ctx.hasArg(0, "send")) {
+                        lResult = app.getChildProcessManager().sendCommand(ctx.get(1), ctx.get(2));
                     }
                     return lResult;
                 })

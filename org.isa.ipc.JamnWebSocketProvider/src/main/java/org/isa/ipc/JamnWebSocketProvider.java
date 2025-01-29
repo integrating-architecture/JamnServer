@@ -141,6 +141,14 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
     /**
      */
+    public void sendMessageTo(String pConnectionId, byte[] pMessage) {
+        if (connectionManager.isConnectionAvailable(pConnectionId)) {
+            connectionManager.sendMessageFor(pConnectionId, pMessage);
+        }
+    }
+
+    /**
+     */
     public JamnWebSocketProvider build() {
         return this;
     }
@@ -245,6 +253,13 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 lCon.sendMessage(pMessage);
             }
         }
+
+        /**
+         */
+        protected boolean isConnectionAvailable(String pConnectionId) {
+            return openConnections.containsKey(pConnectionId);
+        }
+
     }
 
     /**

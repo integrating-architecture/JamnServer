@@ -1,6 +1,6 @@
 /*jamn.web.template*/
 
-import * as tool from '/jsmod/tools.mjs';
+import * as tool from '../jsmod/tools.mjs';
 
 /**
  * Public

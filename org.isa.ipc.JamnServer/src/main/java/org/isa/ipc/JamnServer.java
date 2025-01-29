@@ -1408,6 +1408,12 @@ public class JamnServer {
          */
         public String toString(Object pObj) throws IOException;
 
+        /**
+         */
+        public default Object getNativeTool() {
+            return null;
+        }
+
     }
 
     /*********************************************************

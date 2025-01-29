@@ -1,11 +1,14 @@
 /* Authored by www.integrating-architecture.de */
 package org.isa.jps.comp;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import org.isa.jps.JamnPersonalServerApp;
+import org.isa.jps.JamnPersonalServerApp.Config;
 import org.isa.jps.JavaScriptProvider;
 import org.isa.jps.JavaScriptProvider.JavaScriptHostApp;
 
@@ -26,11 +29,15 @@ public class DefaultJavaScriptHostApp implements JavaScriptHostApp {
     protected JavaScriptProvider javaScript;
     protected CommandLineInterface cli;
     protected OperatingSystemInterface osIFace;
+    protected Path appHome;
+    protected Config appConfig;
 
     /**
      */
     public DefaultJavaScriptHostApp(JamnPersonalServerApp pApp) {
         name = JamnPersonalServerApp.AppName;
+        appHome = pApp.getHomePath("");
+        appConfig = pApp.getConfig();
         javaScript = pApp.getJavaScript();
         cli = pApp.getCli();
         osIFace = pApp.getOsIFace();
@@ -63,6 +70,18 @@ public class DefaultJavaScriptHostApp implements JavaScriptHostApp {
     }
 
     /**
+     */
+    public String homePath(String... pParts) {
+        return Paths.get(appHome.toString(), pParts).toString();
+    }
+
+    /**
+     */
+    public String workspacePath(String... pParts) {
+        return Paths.get(homePath(appConfig.getWorkspaceRoot()), pParts).toString();
+    }
+
+    /**
      * Create a Cli Command for a JavaScript.
      */
     public void createJSCliCommand(String pName, String pSource, String pDescr) {
@@ -83,11 +102,11 @@ public class DefaultJavaScriptHostApp implements JavaScriptHostApp {
 
     /**
      */
-    public List<String> shellCmd(String pCmdLine, String pWorkingDir) {
+    public List<String> shellCmd(String pCmdLine, String pWorkingDir, Consumer<String> pOutputConsumer) {
         List<String> lResult;
         String[] lCmdParts = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(pCmdLine.split(" "), false);
 
-        lResult = osIFace.fnc().shellCmd(lCmdParts, pWorkingDir, false);
+        lResult = osIFace.fnc().shellCmd(lCmdParts, pWorkingDir, false, pOutputConsumer);
         return lResult;
     }
 

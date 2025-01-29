@@ -1,8 +1,8 @@
 /*jamn.web.template*/
 
-import * as tool from '/jsmod/tools.mjs';
-import * as sidebar from '/jsmod/wb-sidebar.mjs';
-import * as systemInfos from '/jsmod/system-infos.mjs';
+import * as tool from '../jsmod/tools.mjs';
+import * as sidebar from '../jsmod/wb-sidebar.mjs';
+import * as systemInfos from '../jsmod/system-infos.mjs';
 
 /**
  * Public

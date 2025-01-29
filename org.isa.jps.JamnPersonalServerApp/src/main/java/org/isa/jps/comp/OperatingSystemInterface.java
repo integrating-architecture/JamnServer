@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.isa.jps.JamnPersonalServerApp;
 import org.isa.jps.JamnPersonalServerApp.Config;
@@ -81,7 +82,8 @@ public class OperatingSystemInterface {
 
         /**
          */
-        public List<String> shellCmd(String[] pCmdParts, String pWorkingDir, boolean pInherit);
+        public List<String> shellCmd(String[] pCmdParts, String pWorkingDir, boolean pInherit,
+                Consumer<String> pOutputConsumer);
 
     }
 
@@ -101,13 +103,15 @@ public class OperatingSystemInterface {
         }
 
         @Override
-        public List<String> shellCmd(String[] pCmdParts, String pWorkingDir, boolean pInherit) {
+        public List<String> shellCmd(String[] pCmdParts, String pWorkingDir, boolean pInherit,
+                Consumer<String> pOutputConsumer) {
             ShellProcess lSh = new ShellProcess()
                     .setCommand(pCmdParts)
                     .setWorkingDir(pWorkingDir)
-                    .setInherit(pInherit);
+                    .setInherit(pInherit)
+                    .setOutputConsumer(pOutputConsumer);
             lSh.start();
-            return lSh.getResult();
+            return lSh.getOutput();
         }
     }
 
@@ -116,7 +120,7 @@ public class OperatingSystemInterface {
     public static interface ShellProcessListener {
         /**
          */
-        void onClose(String pId);
+        void onShellClosed(String pId);
     }
 
     /**
@@ -125,13 +129,13 @@ public class OperatingSystemInterface {
         protected String id = "";
         protected ShellProcessListener listener = id -> {
         };
+        protected Consumer<String> outputConsumer = null;
         protected List<String> command;
         protected String workingDir;
         protected boolean inherit = false;
 
         protected Process process = null;
-        protected List<String> result = new ArrayList<>();
-        protected List<String> errResult = new ArrayList<>();
+        protected List<String> outPut = new ArrayList<>();
 
         protected ShellProcess() {
         }
@@ -143,13 +147,13 @@ public class OperatingSystemInterface {
         /**
          */
         public ShellProcess setCommand(String[] pCmdParts) {
-            command = new ArrayList<>(Arrays.asList(pCmdParts));
+            command = new ArrayList<>();
 
             if (Windows) {
                 command.add(0, "cmd");
                 command.add(1, "/c");
             }
-
+            command.addAll(Arrays.asList(pCmdParts));
             return this;
         }
 
@@ -169,6 +173,13 @@ public class OperatingSystemInterface {
 
         /**
          */
+        public ShellProcess setOutputConsumer(Consumer<String> pConsumer) {
+            this.outputConsumer = pConsumer;
+            return this;
+        }
+
+        /**
+         */
         public ShellProcess setInherit(boolean pInherit) {
             inherit = pInherit;
             return this;
@@ -182,14 +193,8 @@ public class OperatingSystemInterface {
 
         /**
          */
-        public List<String> getResult() {
-            return result;
-        }
-
-        /**
-         */
-        public List<String> getErrResult() {
-            return errResult;
+        public List<String> getOutput() {
+            return new ArrayList<>(this.outPut);
         }
 
         /**
@@ -208,6 +213,7 @@ public class OperatingSystemInterface {
 
                 builder = new ProcessBuilder();
                 builder.command(command);
+                builder.redirectErrorStream(true);
                 if (inherit) {
                     builder.inheritIO();
                 }
@@ -218,30 +224,24 @@ public class OperatingSystemInterface {
                 }
                 process = builder.start();
 
-                try (
-                        BufferedReader stdInput = new BufferedReader(
-                                new InputStreamReader(process.getInputStream(), shellEncoding));
+                try (BufferedReader stdInput = new BufferedReader(
+                        new InputStreamReader(process.getInputStream(), shellEncoding));) {
 
-                        BufferedReader stdError = new BufferedReader(
-                                new InputStreamReader(process.getErrorStream(), shellEncoding));) {
                     while ((line = stdInput.readLine()) != null) {
-                        result.add(line);
-                    }
-
-                    while ((line = stdError.readLine()) != null) {
-                        errResult.add(line);
-                    }
-
-                    if (result.isEmpty()) {
-                        result.addAll(errResult);
+                        if (outputConsumer != null) {
+                            outputConsumer.accept(line);
+                        } else {
+                            outPut.add(line);
+                        }
                     }
                 }
 
                 process.waitFor();
 
             } catch (InterruptedException | IOException e) {
-                Thread.currentThread().interrupt();
-                throw new UncheckedOSIFaceException("ERROR executing ShellProcess", e);
+                // Thread.currentThread().interrupt();
+                throw new UncheckedOSIFaceException(
+                        String.format("ERROR executing ShellProcess [%s]", e.getMessage()), e);
             } finally {
                 close();
             }
@@ -255,7 +255,7 @@ public class OperatingSystemInterface {
                 process.destroyForcibly();
             }
             if (listener != null) {
-                listener.onClose(id);
+                listener.onShellClosed(id);
             }
         }
     }

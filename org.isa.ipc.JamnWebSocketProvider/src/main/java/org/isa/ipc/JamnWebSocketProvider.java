@@ -128,7 +128,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
     /**
      */
-    public JamnWebSocketProvider addMessageProcessor(WsoMessageProcessor pProcessor, String... pPath) {
+    public void addMessageProcessor(WsoMessageProcessor pProcessor, String... pPath) {
         String lPath = (pPath != null && pPath.length == 1) ? pPath[0] : DefaultPath;
         if (connectionPathNames.contains(lPath)) {
             connectionManager.addMessageProcessor(pProcessor, lPath);
@@ -136,7 +136,14 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
             throw new UncheckedWebSocketException(
                     String.format("WebSocket Message Processor for unknown path [%s]", lPath));
         }
-        return this;
+    }
+
+    /**
+     */
+    public void sendMessageTo(String pConnectionId, byte[] pMessage) {
+        if (connectionManager.isConnectionAvailable(pConnectionId)) {
+            connectionManager.sendMessageFor(pConnectionId, pMessage);
+        }
     }
 
     /**
@@ -245,6 +252,13 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 lCon.sendMessage(pMessage);
             }
         }
+
+        /**
+         */
+        protected boolean isConnectionAvailable(String pConnectionId) {
+            return openConnections.containsKey(pConnectionId);
+        }
+
     }
 
     /**

@@ -1,5 +1,5 @@
 /* Authored by www.integrating-architecture.de */
-package org.testcomp;
+package org.isa.jps;
 
 /**
  * 

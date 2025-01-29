@@ -6,7 +6,9 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Properties;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import org.graalvm.polyglot.Context;
@@ -38,7 +40,7 @@ public class JavaScriptProvider {
     protected Config config = new Config();
     protected Path sourcePathBase;
 
-    protected JavaScriptHostApp hostApp;
+    protected JavaScriptHostAppAdapter hostAdapter;
 
     /**
      */
@@ -49,21 +51,8 @@ public class JavaScriptProvider {
 
     /**
      */
-    public JavaScriptProvider setHostApp(JavaScriptHostApp pHostApp) {
-        hostApp = pHostApp;
-        return this;
-    }
-
-    /**
-     */
-    public boolean sourceExists(String pSource) {
-        return Files.exists(getSourcePath(pSource));
-    }
-
-    /**
-     */
-    public Path getSourcePath(String pSource) {
-        return Paths.get(sourcePathBase.toString(), pSource);
+    public void setHostAppAdapter(JavaScriptHostAppAdapter pHostAdapter) {
+        hostAdapter = pHostAdapter;
     }
 
     /**
@@ -80,22 +69,31 @@ public class JavaScriptProvider {
                 System.setProperty(Config.GRAAL_INSPECT_SUSPEND, config.getInspectSuspend());
             }
         }
-        hostApp.initialize();
+        hostAdapter.initialize();
+    }
+
+    /**
+     */
+    public boolean sourceExists(String pSource) {
+        return Files.exists(getSourcePath(pSource));
+    }
+
+    /**
+     */
+    public Path getSourcePath(String pSource) {
+        return Paths.get(sourcePathBase.toString(), pSource);
     }
 
     /**
      */
     protected Context newContext() {
-        Context lCtx = Context.newBuilder(JSID)
+        return Context.newBuilder(JSID)
                 .allowIO(true)
                 .currentWorkingDirectory(sourcePathBase.toAbsolutePath())
                 .option("engine.WarnInterpreterOnly", config.getWarnInterpreterOnly())
                 .allowHostAccess(HostAccess.ALL)
                 .allowHostClassLookup(className -> true)
                 .build();
-
-        lCtx.getBindings(JSID).putMember(JSHostAppId, hostApp);
-        return lCtx;
     }
 
     /**
@@ -106,19 +104,35 @@ public class JavaScriptProvider {
      * </pre>
      */
     public JsValue eval(String pFileName, String... pArgsMember) {
+        JSCallContext lCallCtx = new JSCallContext();
+        eval(lCallCtx, pFileName, pArgsMember);
+        return lCallCtx.getResult();
+    }
+
+    /**
+     */
+    public void eval(JSCallContext pCallCtx, String pFileName, String... pArgsMember) {
+
         Source lSrc;
         Value lBindings;
         Value lValue;
-        JsValue lRet = JsValue.DefaultNullValue;
+        JsValue lResultValue = JsValue.DefaultNullValue;
 
-        try (Context lCtx = newContext()) {
+        // every script execution
+        // has its own CallCtx/HostApp instance
+        JavaScriptHostApp lHostApp = hostAdapter.newHostApp(pCallCtx);
+
+        try (Context lJsCtx = newContext()) {
+            lJsCtx.getBindings(JSID).putMember(JSHostAppId, lHostApp);
+
             lSrc = getSourceFile(pFileName);
-            lBindings = lCtx.getBindings(JSID);
+            lBindings = lJsCtx.getBindings(JSID);
             lBindings.putMember("args", pArgsMember);
-            lValue = lCtx.eval(lSrc);
-            lRet = new JsValue(lValue);
+
+            lValue = lJsCtx.eval(lSrc);
+            lResultValue = new JsValue(lValue);
+            pCallCtx.setResult(lResultValue);
         }
-        return lRet;
     }
 
     /**
@@ -195,16 +209,84 @@ public class JavaScriptProvider {
 
     /**
      * <pre>
-     * A rudimentary "marker" interface for JavaScript Host App implementations.
-     * Just to provide a Java Type instead of raw Object.
+     * </pre>
+     */
+    public static interface JavaScriptHostAppAdapter {
+        public default void initialize() {
+        }
+
+        public JavaScriptHostApp newHostApp(JSCallContext pCallCtx);
+    }
+
+    /**
+     * <pre>
+     * The Java Host App Interface defines the basic app specific methods exposed to JavaScript.
+     * HINT: even though it is easily possible to call almost any Java class from JS
+     * a central interface should be easier to maintain.
      * </pre>
      */
     public static interface JavaScriptHostApp {
-        public default String name() {
-            return "unknown";
+
+        /**
+         * System dependent line separator
+         */
+        public String ls();
+
+        /**
+         */
+        public void echo(String pText);
+
+        /**
+         */
+        public String path(String pPath, String... pParts);
+
+        /**
+         */
+        public String homePath(String... pParts);
+
+        /**
+         */
+        public String workspacePath(String... pParts);
+
+        /**
+         */
+        public List<String> shellCmd(String pCmdLine, String pWorkingDir, Consumer<String> pOutputConsumer);
+
+        /**
+         */
+        public void createJSCliCommand(String pName, String pSource, String pDescr);
+
+    }
+
+    /**
+     * <pre>
+     * The call context represents a JS-Script execution from the Java point of view.
+     * 1 JS-Call => 1 Context object
+     * </pre>
+     */
+    public static class JSCallContext {
+
+        // the output consumer is used to forward java shell process output
+        private Consumer<String> outputConsumer = null;
+        private JsValue result = null;
+
+        public JSCallContext() {
         }
 
-        public default void initialize() {
+        public JSCallContext(Consumer<String> outputConsumer) {
+            this.outputConsumer = outputConsumer;
+        }
+
+        public Consumer<String> getOutputConsumer() {
+            return outputConsumer;
+        }
+
+        public JsValue getResult() {
+            return result;
+        }
+
+        public void setResult(JsValue result) {
+            this.result = result;
         }
     }
 

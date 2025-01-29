@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 
 import org.isa.ipc.JamnServer;
 import org.isa.ipc.JamnServer.HttpHeader.Field;
+import org.isa.ipc.JamnServer.UncheckedJsonException;
 import org.isa.ipc.JamnWebContentProvider;
 import org.isa.ipc.JamnWebContentProvider.DefaultFileEnricher;
 import org.isa.ipc.JamnWebServiceProvider;
@@ -37,17 +38,18 @@ import org.isa.ipc.JamnWebServiceProvider.WebServiceDefinitionException;
 import org.isa.ipc.JamnWebSocketProvider;
 import org.isa.ipc.JamnWebSocketProvider.WsoMessageProcessor;
 import org.isa.jps.comp.ChildProcessManager;
-import org.isa.jps.comp.ChildProcessWebSocketConnection;
+import org.isa.jps.comp.ChildProcessor;
 import org.isa.jps.comp.CommandLineInterface;
 import org.isa.jps.comp.DefaultCLICommands;
 import org.isa.jps.comp.DefaultFileEnricherValueProvider;
-import org.isa.jps.comp.DefaultJavaScriptHostApp;
+import org.isa.jps.comp.DefaultJavaScriptHostAppAdapter;
 import org.isa.jps.comp.DefaultWebServices;
 import org.isa.jps.comp.DefaultWebSocketMessageProcessor;
 import org.isa.jps.comp.OperatingSystemInterface;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -145,6 +147,7 @@ public class JamnPersonalServerApp {
     protected OperatingSystemInterface osIFace;
     protected CommandLineInterface jpsCli;
     protected ChildProcessManager childManager;
+    protected ChildProcessor childProcessor;
 
     // a content dispatcher predicate
     // to distinguish content and services
@@ -189,14 +192,15 @@ public class JamnPersonalServerApp {
     }
 
     /**
+     * Default JamnPersonalServer-App initialization routine
      */
     protected void doAppInitialization()
             throws IOException, WebServiceDefinitionException, AppExtensionDefinitionException {
 
         osIFace = new OperatingSystemInterface(config, null);
-        childManager = new ChildProcessManager(osIFace, AppHome, config);
 
         initJsonTool();
+        initCli();
 
         if (config.isServerEnabled()) {
             initServer();
@@ -206,7 +210,7 @@ public class JamnPersonalServerApp {
             initContentDispatcher();
         }
 
-        initCli();
+        initChildManagement();
         initJavaScript();
 
         initExtensions();
@@ -215,35 +219,38 @@ public class JamnPersonalServerApp {
 
     /**
      * <pre>
-     * Default Initialization of a child app startet from JamnPersonalServerApp ChildProcessManager.
-     * Child apps are intended to do work for the Parent ;-)
+     * Initialization of a Child-App
+     * started from a remote JamnPersonalServerApp ChildProcessManager.
      * 
-     * One option for communication is that the child
-     * connects to the Parent via WebSocket.
+     * The child connects to the parent using WebSocket.
      * </pre>
      * 
-     * @throws IOException
-     * @throws AppExtensionDefinitionException
      */
-    protected void doChildInitialization() throws IOException {
-        LOG.info(() -> String.format("Child Process startet [%s] [%s]", config.getJPSChildId(),
-                config.getJPSParentUrl()));
+    protected void doChildInitialization() {
+        initJsonTool();
 
-        ChildProcessWebSocketConnection lParentWebSocket = new ChildProcessWebSocketConnection(config);
-        lParentWebSocket.connect();
+        childProcessor = new ChildProcessor(config, jsonTool);
+        childProcessor.connect();
     }
 
     /**
+     * Top level Start method - called from main.
      */
     public JamnPersonalServerApp start(String[] pArgs) {
         try {
             initialize(pArgs);
 
-            if (config.isServerAutostart() && server != null) {
-                server.start();
-            }
-            if (config.isCliEnabled() && jpsCli != null) {
-                jpsCli.start();
+            // if standard top level App profile
+            if (config.hasAppProfile()) {
+                if (config.isServerAutostart() && server != null) {
+                    server.start();
+                }
+                if (config.isCliEnabled() && jpsCli != null) {
+                    jpsCli.start();
+                }
+            } else if (config.hasChildProfile() && childProcessor != null) {
+                // if Child profile
+                childProcessor.start();
             }
         } catch (Exception e) {
             close();
@@ -261,6 +268,10 @@ public class JamnPersonalServerApp {
         }
         if (jpsCli != null) {
             jpsCli.stop();
+        }
+        // only present in child process
+        if (childProcessor != null) {
+            childProcessor.stop();
         }
         closeInstance();
     }
@@ -400,6 +411,22 @@ public class JamnPersonalServerApp {
     }
 
     /**
+     * @throws IOException
+     */
+    protected void initChildManagement() throws IOException {
+        if (osIFace != null && webSocketProvider != null) {
+            childManager = ChildProcessManager.newBuilder()
+                    .setWebSocketProvider(webSocketProvider)
+                    .setOperatingSystemInterface(osIFace)
+                    .setJsonTool(jsonTool)
+                    .setAppHome(AppHome)
+                    .setConfig(config)
+                    .build();
+            childManager.initialize();
+        }
+    }
+
+    /**
      */
     protected void initCli() {
         jpsCli = new CommandLineInterface();
@@ -419,7 +446,8 @@ public class JamnPersonalServerApp {
             Path lScriptPath = Tool.ensureSubDir(config.getScriptRoot(), AppHome);
 
             javaScript = new JavaScriptProvider(lScriptPath, config.getProperties());
-            javaScript.setHostApp(new DefaultJavaScriptHostApp(this));
+            javaScript.setHostAppAdapter(new DefaultJavaScriptHostAppAdapter(javaScript, this));
+
             javaScript.initialize();
 
             String lAutoLoadScript = getConfig().getJsAutoLoadScript();
@@ -540,13 +568,21 @@ public class JamnPersonalServerApp {
                     .setVisibility(PropertyAccessor.IS_GETTER, Visibility.NONE);
 
             @Override
-            public <T> T toObject(String pSrc, Class<T> pType) throws IOException {
-                return jack.readValue(pSrc, pType);
+            public <T> T toObject(String pSrc, Class<T> pType) throws UncheckedJsonException {
+                try {
+                    return jack.readValue(pSrc, pType);
+                } catch (JsonProcessingException e) {
+                    throw new UncheckedJsonException(UncheckedJsonException.TOOBJ_ERROR, e);
+                }
             }
 
             @Override
-            public String toString(Object pObj) throws IOException {
-                return jack.writeValueAsString(pObj);
+            public String toString(Object pObj) {
+                try {
+                    return jack.writeValueAsString(pObj);
+                } catch (JsonProcessingException e) {
+                    throw new UncheckedJsonException(UncheckedJsonException.TOJSON_ERROR, e);
+                }
             }
         };
         LOG.info(() -> String.format("%s json tool installed [%s]", INIT_LOGPRFX, ObjectMapper.class.getName()));
@@ -610,9 +646,8 @@ public class JamnPersonalServerApp {
                     .addConnectionPath(config.getDefaultWebSocketUrlPath())
                     .build();
 
-            // sample wso message processor
-            // external creation style
-            DefaultWebSocketMessageProcessor.create();
+            webSocketProvider.addMessageProcessor(
+                    new DefaultWebSocketMessageProcessor(getConfig(), getJsonTool(), webSocketProvider));
 
             server.addContentProvider(WEBSOCKET_PROVIDER_ID, webSocketProvider);
 
@@ -654,7 +689,7 @@ public class JamnPersonalServerApp {
                 "#Jamn Personal Server extension libraries root folder", "jps.extension.root=" + EXTENSION_ROOT, "",
                 "#Jamn Personal Server workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
                 "#JPS Extension definition file name", "jps.extension.def.file=" + EXTENSION_DEF_FILE, "",
-                "#Extensions enabled", "extensions.enabled=true", "",
+                "#Extensions enabled", "extensions.enabled=false", "",
                 "#JavaScriptProvider script root folder", "script.root=" + SCRIPT_ROOT, "",
                 "#JavaScript auto-load script", "js.auto.load.script=js-auto-load.js", "",
                 "#CLI enabled", "cli.enabled=true", "",
@@ -664,7 +699,11 @@ public class JamnPersonalServerApp {
                 "#WebService enabled", "webservice.enabled=true", "",
                 "#WebSocket enabled", "websocket.enabled=true", "",
                 "#WebSocket default url path", "default.websocket.url.path=/wsoapi", "",
+                "#Child WebSocket default url path", "default.child.websocket.url.path=/childapi", "",
+                "#JVM debug option",
+                "jvm.debug.option=-agentlib:jdwp=transport=dt_socket,address=localhost:9009,server=y,suspend=y", "",
                 "#Server autostart", "server.autostart=true", "",
+                "#Child process debug", "child.process.debug.enabled=false", "",
                 "#Windows shell encoding", "win.shell.encoding=Cp850", "",
                 "#Unix shell encoding", "unix.shell.encoding=ISO8859_1", "");
 
@@ -743,8 +782,16 @@ public class JamnPersonalServerApp {
             return props.getProperty("unix.shell.encoding", "ISO8859_1");
         }
 
+        public String getJVMDebugOption() {
+            return props.getProperty("jvm.debug.option", "");
+        }
+
         public String getDefaultWebSocketUrlPath() {
             return props.getProperty("default.websocket.url.path", "/wsoapi");
+        }
+
+        public String getDefaultChildWebSocketUrlPath() {
+            return props.getProperty("default.child.websocket.url.path", "/childapi");
         }
 
         public boolean hasAppProfile() {
@@ -759,8 +806,16 @@ public class JamnPersonalServerApp {
             return Boolean.parseBoolean(props.getProperty("cli.enabled", "false"));
         }
 
+        public boolean isChildProcessDebugEnabled() {
+            return Boolean.parseBoolean(props.getProperty("child.process.debug.enabled", "false"));
+        }
+
         public boolean isJavaScriptEnabled() {
             return Boolean.parseBoolean(props.getProperty("javascript.enabled", "false"));
+        }
+
+        public boolean isJavaScriptDebugEnabled() {
+            return Boolean.parseBoolean(props.getProperty("javascript.debug.enabled", "false"));
         }
 
         public boolean isServerEnabled() {
@@ -942,19 +997,24 @@ public class JamnPersonalServerApp {
 
             for (int i = 0; i < pToken.length; i++) {
                 tok = pToken[i];
-                if (!inQuote && tok.contains("\"")) {
-                    inQuote = true;
-                    lBuffer = new StringBuilder(tok);
-                    continue;
-                }
-                if (inQuote && tok.contains("\"")) {
-                    inQuote = false;
-                    lBuffer.append(" ").append(tok);
-                    newToken.add(lBuffer.toString());
-                } else if (inQuote) {
-                    lBuffer.append(" ").append(tok);
-                } else {
+
+                if (tok.trim().startsWith("\"") && tok.trim().endsWith("\"")) {
                     newToken.add(tok);
+                } else {
+                    if (!inQuote && tok.contains("\"")) {
+                        inQuote = true;
+                        lBuffer = new StringBuilder(tok);
+                        continue;
+                    }
+                    if (inQuote && tok.contains("\"")) {
+                        inQuote = false;
+                        lBuffer.append(" ").append(tok);
+                        newToken.add(lBuffer.toString());
+                    } else if (inQuote) {
+                        lBuffer.append(" ").append(tok);
+                    } else {
+                        newToken.add(tok);
+                    }
                 }
             }
 

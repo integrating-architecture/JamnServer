@@ -1,7 +1,9 @@
+/* Authored by www.integrating-architecture.de */
+
 /**
  * Public
  */
-export function initialize() {
+export function build() {
 	buildTopicList();
 	initTopicBehavior();
 	initItemAction();
@@ -27,9 +29,11 @@ export function newTopicHtml(clazz="", text){
 }
 
 /**
+ * Stores an id value in the value attribute of the item element.
+ * This id is pushed to the onClick callback.
  */
-export function newtItemHtml(id, text){
-	return `<li class="sbar-item" id="${id}">${text}</li>`;
+export function newtItemHtml(idValue, text){
+	return `<li class="sbar-item" value="${idValue}">${text}</li>`;
 }
 
 /**
@@ -106,16 +110,19 @@ function initTopicBehavior() {
  */
 function initItemAction() {
 	let items = document.getElementsByClassName("sbar-item");
-
+	let val = null;
+	
 	for (const item of items) {
-		if (item.id && item.id.length > 0) {
-			const id = item.id;
+		val = item.getAttribute("value");
+		if (val && val.length > 0) {
+			//use the value attribute to forword an id to the click action
+			const value = item.getAttribute("value");
 			item.addEventListener("click", (evt) => {
-				itemAction(id);
+				itemAction(value);
 				evt.stopImmediatePropagation();
 			});
 		} else {
-			console.log("Warning init item: " + item + " - id:" + item.id);
+			console.warn("Missing sidebar item value: [" + item + "]");
 		}
 	}
 };

@@ -4,7 +4,6 @@ package org.isa.ipc;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -12,6 +11,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 
 import org.isa.ipc.JamnServer.JsonToolWrapper;
+import org.isa.ipc.JamnServer.UncheckedJsonException;
 import org.isa.ipc.sample.web.api.SampleWebApiServices;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -34,16 +35,26 @@ public class WebServiceProviderTest {
 
     // JSON Tool
     private static JsonToolWrapper Jack = new JamnServer.JsonToolWrapper() {
-        ObjectMapper jack = new ObjectMapper().setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+        private final ObjectMapper jack = new ObjectMapper()
+                .setVisibility(PropertyAccessor.FIELD, Visibility.ANY)
+                .setVisibility(PropertyAccessor.IS_GETTER, Visibility.NONE);
 
         @Override
-        public <T> T toObject(String pSrc, Class<T> pType) throws IOException {
-            return jack.readValue(pSrc, pType);
+        public <T> T toObject(String pSrc, Class<T> pType) throws UncheckedJsonException {
+            try {
+                return jack.readValue(pSrc, pType);
+            } catch (JsonProcessingException e) {
+                throw new UncheckedJsonException(UncheckedJsonException.TOOBJ_ERROR, e);
+            }
         }
 
         @Override
-        public String toString(Object pObj) throws IOException {
-            return jack.writeValueAsString(pObj);
+        public String toString(Object pObj) {
+            try {
+                return jack.writeValueAsString(pObj);
+            } catch (JsonProcessingException e) {
+                throw new UncheckedJsonException(UncheckedJsonException.TOJSON_ERROR, e);
+            }
         }
     };
 

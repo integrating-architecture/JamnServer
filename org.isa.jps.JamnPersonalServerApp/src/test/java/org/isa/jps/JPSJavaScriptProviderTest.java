@@ -10,7 +10,6 @@ import java.util.logging.Logger;
 
 import org.isa.ipc.JamnServer.JsonToolWrapper;
 import org.isa.jps.JavaScriptProvider.JsValue;
-import org.isa.jps.comp.OperatingSystemInterface;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -27,12 +26,15 @@ public class JPSJavaScriptProviderTest {
     private static JamnPersonalServerApp ServerApp;
     private static JsonToolWrapper Json;
     private static JavaScriptProvider JavaScript;
-    private static OperatingSystemInterface OsIFace;
 
     @BeforeAll
     public static void setupEnvironment() {
         ServerApp = JamnPersonalServerApp.getInstance();
 
+        // IMPORTANT
+        // uses the default runtime script path
+        // - org.isa.jps.JamnPersonalServerApp\scripts
+        // NOT test/resources
         ServerApp.start(new String[] {
                 "javascript.enabled=true"
         });
@@ -43,9 +45,6 @@ public class JPSJavaScriptProviderTest {
 
         JavaScript = ServerApp.getJavaScript();
         assertNotNull(JavaScript, "JavaScript init FAILED");
-
-        OsIFace = ServerApp.getOsIFace();
-        assertNotNull(JavaScript, "OSIFace init FAILED");
     }
 
     @AfterAll

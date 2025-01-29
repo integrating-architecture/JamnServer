@@ -1,66 +1,59 @@
-/*jamn.web.template*/
+/* Authored by www.integrating-architecture.de */
 
-import * as tool from '/jsmod/tools.mjs';
+import { callWebService } from '../jsmod/tools.mjs';
+import { BaseView } from '../jsmod/view-classes.mjs';
 
 /**
- * Public
+ * Concrete view class for this info component
  */
-//the view's dom element id
-export const viewId = "systemInfoView";
-
-//add the view to the workarea
-export function open() {
-	getViewHtml((html)=>{
-		showView(html);
-	});
+class SystemInfoView extends BaseView {
+		
+	initialize() {	
+		super.initialize();
+		this.setTitle("System Infos");
+		
+		elem.name = this.getElement("server.name");
+		elem.version = this.getElement("server.version");
+		elem.description = this.getElement("server.description");
+		
+		this.isInitialized = true;
+	}
+	
+	writeDataToView(){
+		getInfos((data)=>{
+			elem.name.innerHTML = data.name;
+			elem.version.innerHTML = data.version;
+			elem.description.innerHTML = data.description;
+		});
+	}	
 }
 
-//remove the view from the workarea
-export function close() {
-	tool.setHTML("workarea", "");
-}
+//export this view component as singleton instance
+const viewInstance = new SystemInfoView("systemInfoView", "/jsmod/system-infos.html");
+export function getView(){
+	return viewInstance;
+} 
 
+// using module scope for data handling
+// avoids the class "this"" boilerplate
+let elem = {
+	name : null,
+	version : null,
+	description : null
+};
+
+let infos = null;
+
+/**
+ */
 export function getInfos(cb){
 	if (infos) {
 		cb(infos);
 	} else {
 		//load the infos from server
-		tool.callWebService("/api/system-infos").then((data) => {
+		callWebService("/api/system-infos").then((data) => {
 			infos = data;
 			cb(infos);
 		});
 	}	
-}
-
-/**
- * Internals
- */
-let viewHtml = null;
-let infos = null;
-
-//get the view html 
-function getViewHtml(cb) {
-	if (viewHtml) {
-		cb(viewHtml);
-	} else {
-		//load the html from server
-		tool.fetchPlainText("/jsmod/system-infos.html").then((html) => {
-			viewHtml = html;
-			cb(viewHtml);
-		});
-	}
-}
-
-function showView(html) {
-	tool.setHTML("workarea", html);
-	setData();
-	tool.setStyle(viewId, "visibility", "visible");
-}
-
-function setData() {
-	getInfos((data)=>{
-		tool.setChildHTML(viewId, "server.name", data.name);
-		tool.setChildHTML(viewId, "server.version", data.version);
-		tool.setChildHTML(viewId, "server.description", data.description);		
-	});
 }

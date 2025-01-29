@@ -14,7 +14,6 @@ import org.isa.jps.JavaScriptProvider.JsValue;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.testcomp.TestHostApp;
 
 /**
  * 
@@ -23,7 +22,6 @@ import org.testcomp.TestHostApp;
 class JavaScriptProviderTest {
 
     private static Path SourcePathBase = Paths.get("src", "test", "resources", "jsmod");
-    private static final String AppName = "Jamn Personal Server";
 
     private static JavaScriptProvider JavaScript;
 
@@ -32,7 +30,7 @@ class JavaScriptProviderTest {
 
         Properties lConfig = new Properties();
         JavaScript = new JavaScriptProvider(SourcePathBase, lConfig);
-        JavaScript.setHostApp(new TestHostApp(AppName));
+        JavaScript.setHostAppAdapter(new TestJSHostAppAdapter());
         JavaScript.initialize();
 
     }
@@ -46,13 +44,6 @@ class JavaScriptProviderTest {
         lVal = JavaScript.eval("js-eval-and-args.js", "arg-0");
         assertEquals("arg-0", lVal.asString(), "EvalAndArgs error");
 
-    }
-
-    @Test
-    void testHostAppAccess() {
-
-        JsValue lVal = JavaScript.eval("host-app-access.js");
-        assertEquals(AppName, lVal.asString(), "HostApp error");
     }
 
     @Test

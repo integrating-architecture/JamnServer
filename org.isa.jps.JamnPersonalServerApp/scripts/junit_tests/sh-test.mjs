@@ -1,4 +1,4 @@
-import * as tools from "tools.mjs";
+import {sh, LS} from "tools.mjs";
 
 let val = "";
 let workDir = null;
@@ -14,9 +14,9 @@ if(args && args.length>=1){
 }
 
 if(workDir!=null){
-	val = tools.sh(cmd, workDir);
+	val = sh(cmd, workDir);
 }else{
-	val = tools.sh(cmd);	
+	val = sh(cmd);	
 }
 
-val.join(tools.LS);
+val.join(LS);

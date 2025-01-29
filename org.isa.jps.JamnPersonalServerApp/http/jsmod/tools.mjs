@@ -1,60 +1,71 @@
-/**
- * Some simple helper functions
- */
-
-export const serverOrigin = window.location.origin;
+/* Authored by www.integrating-architecture.de */
 
 /**
+ * Some simple helper constants and functions
  */
-export function setHTML(id, html) {
-	let elem = document.getElementById(id);
-	elem.innerHTML = html;
-}
 
-export function setChildHTML(parentId, childId, html) {
-	let elem = document.getElementById(parentId);
-	if (elem) {
-		elem = getChildOf(elem, childId);
-		if (elem) {
-			elem.innerHTML = html;
-		}
+export const NL = "\n";
+
+/**
+ */
+export function ServerOrigin(...path) {
+	let url = window.location.origin;
+	let urlPath = path.join("/");
+	if(urlPath.startsWith("/")){
+		url = url+urlPath;
+	}else{
+		url = url+"/"+urlPath;
 	}
+	return url;
 }
 
+/**
+ */
 export function getChildOf(parent, childId) {
-	let elem = null;
-	for (let i = 0; i < parent.childNodes.length; i++) {
-		elem = parent.childNodes[i];
-		if (elem && elem.id == childId) {
+	if(typeof parent === 'string'){
+		parent = document.getElementById(parent);
+	}
+	
+	let innerElem=null;
+	for (let elem of parent.childNodes) {
+		if (elem?.id == childId) {
 			return elem;
 		} else {
-			elem = getChildOf(elem, childId);
-			if (elem && elem.id == childId) {
-				return elem;
+			innerElem = getChildOf(elem, childId);
+			if (innerElem?.id == childId) {
+				return innerElem;
 			}
-		}
-	}
+		}	  
+	}	
 	return null;
 }
 
 /**
  */
-export function setAttr(id, name, value) {
-	let elem = document.getElementById(id);
-	elem.setAttribute(name, value);
+export function setVisibility(elem, flag) {
+	elem.style["visibility"] = flag ? "visible": "hidden";
+	return elem;
 }
 
 /**
+ * Get a view html file 
  */
-export function setStyle(id, name, value) {
-	let elem = document.getElementById(id);
-	elem.style[name] = value;
+export function getViewHtml(viewSrc, cb) {
+	if (viewSrc.html) {
+		cb(viewSrc.html);
+	} else {
+		//load the html from server
+		fetchPlainText(viewSrc.file).then((html) => {
+			viewSrc.html = html;
+			cb(viewSrc.html);
+		});
+	}
 }
 
 /**
  */
 export async function fetchPlainText(path) {
-	const url = serverOrigin + path;
+	const url = ServerOrigin(path);
 	let data = "";
 
 	const response = await fetch(url, {
@@ -72,7 +83,7 @@ export async function fetchPlainText(path) {
 /**
  */
 export async function callWebService(path, requestData="{}") {
-	const url = serverOrigin + path;
+	const url = ServerOrigin(path);
 	let data = "";
 
 	const response = await fetch(url, {
@@ -86,4 +97,8 @@ export async function callWebService(path, requestData="{}") {
 	data = await response.text();
 	data = JSON.parse(data);
 	return data;
+}
+
+export function newSimpleId(prfx=""){
+	return prfx+Math.random().toString(16).slice(2);
 }

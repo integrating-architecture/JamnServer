@@ -1,0 +1,22 @@
+<!-- work view -->
+<div class="work-view" style="visibility: hidden;">
+  <div class="work-view-header">
+    <span id="view.title" class="wkv-header-item">Run Command</span>
+	<span class="wkv-header-item-right wkv-header-close-ctrl"><i class="bi bi-pin"
+	    onclick="" title="Keep open"></i></span>
+    <span class="wkv-header-item-right wkv-header-close-ctrl"><i class="bi bi-x-lg"
+        onclick="WbApp.onViewClose(event)" title="Close View"></i></span>
+  </div>
+  <div class="work-view-body">
+	<plb style="width: 70px;">Command:</plb>
+	<button id="pbRun" class="cmd-button" title="Run Command"></button>
+	<img id="run.indicator" src="images/working-indicator-small.gif" style="vertical-align:middle; visibility: hidden;"></br>
+	<plb style="width: 70px;">Args:</plb>
+	<input type="text" id="cmd.args" style="width: 400px;"><br>
+	<div style="display: flex; align-items: top;">
+		<plb style="min-width: 70px;">Output:</plb>
+		<textarea id="cmd.output" class="output-textarea" style="width: 100%; height: 400px; margin-left: 3px;"  readonly></textarea>
+	</div>
+  </div>
+</div>
+<!-- work view end -->

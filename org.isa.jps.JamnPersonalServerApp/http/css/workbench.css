@@ -10,7 +10,12 @@
 	--statusline-bg: #292828;
 	--text-gray: #c3c3c3;
 	--text-light-gray: #f8f8f8;
+	--text-dark-gray: var(--border-gray);
 	--title-blue: #4493f8;
+	--cmd-button-text: var(--text-gray);
+	--cmd-button-bg: var(--site-bg);
+	--cmd-button-hover-bg: green;
+	--cmd-button-border: var(--border-gray);
 } 
 
 html,
@@ -60,7 +65,7 @@ div#header .header-item {
  * Sidebar 
  */
 div#sidebar {
-    width: 200px;
+    width: 225px;
     flex: none;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border-gray);
@@ -224,4 +229,46 @@ pval {
 	font-weight: 300;
 	text-align: justify;
 	color: var(--text-light-gray);
+}
+
+.cmd-button {
+	cursor: pointer;
+	text-align: center;
+	border: 1px solid var(--cmd-button-border);
+	color: var(--cmd-button-text);
+	background-color: var(--cmd-button-bg);
+	font-size: 1.0em;
+	height: 30px;
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
+.cmd-button:hover{
+	color: var(--text-light-gray);
+	border-color: #8A9A5B;
+}
+
+.cmd-button:active {
+  transform: translateY(1px);
+}
+
+.cmd-button-disabled {
+	cursor: auto;
+	text-align: center;
+	border: 1px solid var(--cmd-button-border);
+	color: var(--text-dark-gray);
+	background-color: var(--cmd-button-bg);
+	font-size: 1.0em;
+	height: 30px;
+	padding-left: 10px;
+	padding-right: 10px;	
+}
+
+.output-textarea {
+	outline: none;
+	color: var(--text-gray);
+	background-color: var(--site-bg);
+	border-color: var(--border-gray);
+	font-family: Lucida Console, monospace;
+	font-size: 13px;
 }

@@ -168,11 +168,18 @@ public class CommandLineInterface {
         }
 
         public String get(int pIdx) {
-            return args.get(pIdx);
+            if (pIdx < args.size()) {
+                return args.get(pIdx);
+            }
+            return "";
         }
 
         public boolean hasArg(String pKey) {
             return args.contains(pKey);
+        }
+
+        public boolean hasArg(int pIdx, String pKey) {
+            return get(pIdx).equals(pKey);
         }
 
         public List<String> getArgsList() {

@@ -1,4 +1,4 @@
-const TestClass = Java.type("org.testcomp.TestClass");
+const TestClass = Java.type("org.isa.jps.TestClass");
 
 const testObj = new TestClass();
 

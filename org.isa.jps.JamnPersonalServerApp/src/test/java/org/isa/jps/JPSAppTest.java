@@ -50,7 +50,7 @@ public class JPSAppTest {
 
     @Test
     void testShellCall() {
-        String lVal = String.join("\n", ServerApp.getOsIFace().fnc().shellCmd(new String[] { "dir" }, "", false));
+        String lVal = String.join("\n", ServerApp.getOsIFace().fnc().shellCmd(new String[] { "dir" }, "", false, null));
         assertTrue(lVal.contains("jps.properties"), "Error Shell call");
     }
 

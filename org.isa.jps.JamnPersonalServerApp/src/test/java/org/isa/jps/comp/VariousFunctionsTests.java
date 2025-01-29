@@ -15,11 +15,18 @@ public class VariousFunctionsTests {
 
     @Test
     void testQuotedStringRebuild() {
-        String lTestString = "copy \"C:/Program Files (x86)/Mozilla Maintenance Service/\" C:/temp /all /y /\"some strange other\" whitespaces";
+        String lTestString = "\"-Dmaven.repo.local=\\org.isa.jps.JamnPersonalServerApp\\workspace\\.m2ws\"";
         String[] lToken = lTestString.split(" ");
 
         lToken = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lToken, false);
         assertEquals(lTestString, String.join(" ", lToken));
+
+        lTestString = "copy \"C:/Program Files (x86)/Mozilla Maintenance Service/\" C:/temp /all /y /\"some strange other\" whitespaces";
+        lToken = lTestString.split(" ");
+
+        lToken = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lToken, false);
+        assertEquals(lTestString, String.join(" ", lToken));
+
     }
 
     @Test

@@ -184,7 +184,7 @@ div#workarea .work-view {
     color: var(--work-view-header-ctrl);
 }
 
-.wkv-header-close-ctrl a, i:hover {
+.wkv-header-action-ctrl a, i:hover {
     color: var(--text-light-gray);
     font-size: 18px;
     cursor: pointer;

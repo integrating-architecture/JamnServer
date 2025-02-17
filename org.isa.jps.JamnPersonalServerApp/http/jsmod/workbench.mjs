@@ -1,6 +1,6 @@
 /* Authored by www.integrating-architecture.de */
 
-import { ServerOrigin, setVisibility } from '../jsmod/tools.mjs';
+import { ServerOrigin, setVisibility, getWorkViewOf, getViewHtml } from '../jsmod/tools.mjs';
 import * as websocket from '../jsmod/websocket.mjs';
 import * as sidebar from '../jsmod/sidebar.mjs';
 import * as sidebarContent from '../jsmod/sidebar-content.mjs';
@@ -39,10 +39,9 @@ export function anchorAt(rootId) {
  */
 export const WorkbenchInterface = {
 
-	//public close request from anywhere
-	//e.g. onclick="WbApp.onViewClose(event)" see view html
-	onViewClose: (evt) => {
-		viewManager.onViewClose(evt);
+	//public view action request
+	onViewAction: (evt, action) => {
+		viewManager.onViewAction(evt, action);
 	},
 	
 	sendWsoMessage : (wsoMsg, sentCb=null) => {
@@ -58,7 +57,6 @@ export const WorkbenchInterface = {
  * Internals
  */
 let rootElement = null;
-let registeredSidebarItems = {};
 let workarea = document.getElementById("workarea");
 
 /**
@@ -73,63 +71,92 @@ let workarea = document.getElementById("workarea");
  */
 class WorkbenchViewManager {
 	
-	currentView = null;
-	catridgeId = (viewId)=>"view.cartridge."+viewId;
+	registeredViews={};
 	
-	getViewCatridge(viewId){
-		return document.getElementById(this.catridgeId(viewId));
+	getAsCartridgeId = (viewId)=>"view.cartridge."+viewId;
+	
+	registerView(view, viewData){
+		this.registeredViews[view.id] = {view: view, data:viewData, cart:null};
 	}
 
-	createViewCatridge(viewId, html){
-		let viewCat = document.createElement("div");
-		viewCat.id = this.catridgeId(viewId);
-		viewCat.style = "visibility: visible; display: block;"
-		viewCat.innerHTML = html;
-		viewCat.children[0].id = viewId;
-		return viewCat;
-	}
-
-	open(view, html) {
-		let viewCat = this.getViewCatridge(view.id);
-		if(!viewCat){
-			viewCat = this.createViewCatridge(view.id, html);
-			workarea.append(viewCat);			
+	setViewCartVisible(viewCart, flag) {
+		if(flag){
+			viewCart.style = "visibility: visible; display: block;"
 		}else{
-			viewCat.style = "visibility: visible; display: block;"
+			viewCart.style.display = "none"	
 		}
 	}
 
-	close(view) {
-		let viewCat = this.getViewCatridge(view.id);
-		viewCat.style.display = "none"
+	createViewCartridge(viewId, html){
+		let viewCart = document.createElement("div");
+		viewCart.id = this.getAsCartridgeId(viewId);
+		viewCart.style = "visibility: visible; display: block;"
+		viewCart.innerHTML = html;
+		viewCart.children[0].id = viewId;
+		this.registeredViews[viewId].cart = viewCart;
+		return viewCart;
 	}
-	
-	onSidebarOpenView(id) {
-		let itemDef = registeredSidebarItems[id];
-		 
-		if(itemDef?.view){
-			//ask view if it can be closed
-			if(this.currentView?.isCloseable(itemDef)){
-				this.currentView.close();
-				this.currentView = itemDef.view;		
-				this.currentView.open(itemDef.data);
-			}else if(!this.currentView){
-				//if no view is present
-				this.currentView = itemDef.view;		
-				this.currentView.open(itemDef.data);
+
+	closeAllCloseableViews(){
+		for(let key in this.registeredViews){
+			let viewItem = this.registeredViews[key];
+			if(viewItem.cart){
+				this.closeView(viewItem);
 			}
 		}
 	}
-	
-	//close request from anywhere
-	onViewClose(evt) {
-		if (this.currentView) {
-			//view decides if it can be closed
-			if(this.currentView.close()){
-				this.currentView = null;				
-			}
+
+	closeView(viewItem){
+		// view is expected handle close itself 
+		// and return true if it was closeabel and did close
+		if(viewItem.view.close()){
+			this.setViewCartVisible(viewItem.cart, false);
 		}
+	}
+
+	openView(viewItem) {
+		this.closeAllCloseableViews();
+
+		viewItem.view.open();
+		this.setViewCartVisible(viewItem.cart, true);
+	}
+		
+	//default action requests 
+	onViewAction(evt, action) {
+		let workView = getWorkViewOf(evt.target);
+		let viewItem = this.registeredViews[workView.id];
+
+		if(!viewItem){
+			throw new Error(`UNKNOWN WorkView [${workView.id}]`);
+		}
+		
+		if("close"===action){
+			this.closeView(viewItem);
+		}else if("pin"===action){
+			viewItem.view.togglePinned();
+		}else if("collapse"===action){
+			viewItem.view.toggleCollapsed();
+		}	
+
 		evt.stopImmediatePropagation();
+	}
+	
+	// ViewManager public view open request method for components
+	// in this case the sidebar
+	onComponentOpenViewRequest(comp, viewItemId) {
+		let viewItem = this.registeredViews[viewItemId]
+		 
+		if(viewItem){
+			if(viewItem.cart){
+				this.openView(viewItem);				
+			}else{
+				getViewHtml(viewItem.view.viewSource, (html)=>{
+					let viewCart = this.createViewCartridge(viewItem.view.id, html);
+					workarea.append(viewCart);
+					this.openView(viewItem);
+				});
+			}
+		}
 	}
 }
 
@@ -173,16 +200,14 @@ function initUI() {
 			itemKey = topicKey+"_"+key;
 			itemDef = topicDef.items[key];
 			if(itemDef?.view){
-				//set this view manager to all views
-				itemDef.view.setViewManager(viewManager);
 				itemDef.view.onInstallation(itemKey, itemDef?.data);
+				viewManager.registerView(itemDef.view, itemDef?.data);
+				topic.addItem(sidebar.newtItemHtml(itemDef.view.id, itemDef.title));
 			}
-			registeredSidebarItems[itemKey] = itemDef;
-			topic.addItem(sidebar.newtItemHtml(itemKey, itemDef.title));
 		}
 	}
 
-	sidebar.setItemAction((id)=>viewManager.onSidebarOpenView(id));
+	sidebar.setItemAction((id)=>viewManager.onComponentOpenViewRequest(sidebar, id));
 	sidebar.build();
 	
 	//set statusline github icon href

@@ -53,4 +53,8 @@ export class ViewSource {
 	constructor(file) {
 		this.file = file;
 	}
+	
+	isEmpty(){
+		return this.html==null;
+	}
 };

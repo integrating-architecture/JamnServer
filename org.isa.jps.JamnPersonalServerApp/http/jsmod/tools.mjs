@@ -40,10 +40,20 @@ export function getChildOf(parent, childId) {
 	return null;
 }
 
+export function getWorkViewOf(viewElem) {
+	while ((viewElem = viewElem.parentElement) && !viewElem.classList.contains("work-view"));
+	return viewElem;
+}
+
 /**
  */
 export function setVisibility(elem, flag) {
-	elem.style["visibility"] = flag ? "visible": "hidden";
+	elem.style["visibility"] = flag ? "visible" : "hidden";
+	return elem;
+}
+
+export function setDisplay(elem, flag) {
+	elem.style["display"] = flag ? "block" : "none";
 	return elem;
 }
 

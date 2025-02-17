@@ -7,7 +7,7 @@ export function build() {
 	buildTopicList();
 	initTopicBehavior();
 	initItemAction();
-}
+};
 
 /**
  */
@@ -20,13 +20,13 @@ export function createTopic(topicHtml){
 		return addItem;
 	}};
 	return addItem;
-}
+};
 
 /**
  */
 export function newTopicHtml(clazz="", text){
 	return `<li class="sbar-topic"><span class="${clazz}">${text}</span>`;
-}
+};
 
 /**
  * Stores an id value in the value attribute of the item element.
@@ -34,20 +34,20 @@ export function newTopicHtml(clazz="", text){
  */
 export function newtItemHtml(idValue, text){
 	return `<li class="sbar-item" value="${idValue}">${text}</li>`;
-}
+};
 
 /**
  */
 export function setItemAction(action){
 	itemAction = action;
-}
+};
 
 /**
  * Internals
  */
 let topicListDef = [];
 let topicListId = "sidebarTopics";
-let itemAction = (id)=>{console.log("No action for: "+id);};
+let itemAction = (id)=>{console.warn("Sidebar NO action for: "+id);};
 
 /**
  */
@@ -57,7 +57,7 @@ function buildTopicList() {
 		let listElem = document.getElementById(topicListId);
 		listElem.innerHTML = html;
 	}
-}
+};
 
 /**
  */
@@ -80,7 +80,7 @@ function createTopicListHtml() {
 	});
 	html = lines.join("\n");
 	return html;
-}
+};
 
 /**
  * add click behavior show/hide to topics

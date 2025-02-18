@@ -2,4 +2,5 @@
 
 An example of a slim, independent web gui e.g. for individual tools.
 
-<img src="https://github.com/user-attachments/assets/147f3d5f-44d1-4e32-9f69-eab3d9143309" width="600" height="400">
+<img src="https://github.com/user-attachments/assets/6ca821a1-3a77-401f-ad61-9dda93b89903" width="600" height="400">
+

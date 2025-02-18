@@ -60,14 +60,14 @@ let rootElement = null;
 let workarea = document.getElementById("workarea");
 
 /**
- * A simple manager to handle dom creation/manipulation
- * for the on demand view html loading
+ * <pre>
+ * A simple manager to handle the on demand view html loading
  * and the workarea display logic.
  * 
- * A view element is instantiated as the child of a view catridge div
+ * A view element is instantiated as the child of a view cartridg div
  * that becomes added to the workbench-workarea.
+ * </pre>
  * 
- * The manager handles the view catriges while the view is responsible for itself.
  */
 class WorkbenchViewManager {
 	
@@ -107,7 +107,7 @@ class WorkbenchViewManager {
 	}
 
 	closeView(viewItem){
-		// view is expected handle close itself 
+		// view is expected to handle close itself 
 		// and return true if it was closeabel and did close
 		if(viewItem.view.close()){
 			this.setViewCartVisible(viewItem.cart, false);
@@ -136,9 +136,12 @@ class WorkbenchViewManager {
 			viewItem.view.togglePinned();
 		}else if("collapse"===action){
 			viewItem.view.toggleCollapsed();
-		}	
+		}else if("header.menu"===action){
+			viewItem.view.toggleHeaderMenu();
+			evt.stopImmediatePropagation();
+		}
 
-		evt.stopImmediatePropagation();
+		//evt.stopImmediatePropagation();
 	}
 	
 	// ViewManager public view open request method for components

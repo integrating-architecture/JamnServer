@@ -19,7 +19,6 @@ class CommandView extends BaseCommandView {
 		this.runButton.innerHTML = this.commandName;
 		this.runButton.addEventListener("click", (evt) => {
 			this.runCommand();
-			evt.stopImmediatePropagation();
 		});
 
 		this.runArgs.setAttribute("placeholder", this.commandDef.args);

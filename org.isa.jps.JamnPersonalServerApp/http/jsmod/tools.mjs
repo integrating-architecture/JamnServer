@@ -57,6 +57,7 @@ export function setDisplay(elem, flag) {
 	return elem;
 }
 
+
 /**
  * Get a view html file 
  */

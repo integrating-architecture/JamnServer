@@ -175,6 +175,7 @@ div#workarea .work-view {
     width: 40px;
     min-width: 40px;
     text-align: left;
+	color: var(--work-view-header-ctrl);
 }
 
 .wkv-header-item-right {
@@ -184,10 +185,22 @@ div#workarea .work-view {
     color: var(--work-view-header-ctrl);
 }
 
-.wkv-header-action-ctrl a, i:hover {
-    color: var(--text-light-gray);
+.wkv-header-action-ctrl {
     font-size: 18px;
-    cursor: pointer;
+}
+
+i.wkv-header-action-ctrl:hover {
+	color: var(--text-light-gray);
+	cursor: pointer;
+}
+
+.wkv-header-menu-ctrl {
+	font-size: 18px;
+}
+
+i.wkv-header-menu-ctrl:hover {
+	color: var(--text-light-gray);
+	cursor: pointer;
 }
 
 /**
@@ -271,4 +284,28 @@ pval {
 	border-color: var(--border-gray);
 	font-family: Lucida Console, monospace;
 	font-size: 13px;
+}
+
+.wkv-header-menu {
+	display: none;
+	position: absolute; 
+	min-width: 100px; 
+	background-color: var(--site-bg);
+	z-index: 1; 
+	border: 1px solid var(--border-gray);
+	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	padding: 5px;
+}
+
+.wkv-header-menu a {
+	font-size: 12px; 
+	color: var(--text-gray);
+	padding: 5px 10px; 
+	text-decoration: none; 
+	display: block;
+}
+
+.wkv-header-menu a:hover{
+	color: var(--text-light-gray);
+	//border: 1px solid #8A9A5B;
 }

@@ -15,7 +15,7 @@ class SystemInfoView extends BaseView {
 		elem.name = this.getElement("server.name");
 		elem.version = this.getElement("server.version");
 		elem.description = this.getElement("server.description");
-		
+				
 		this.isInitialized = true;
 	}
 	

@@ -24,6 +24,8 @@ export class BaseView  {
 	collapseIcon = null;
 	pinIcon = null;
 
+	headerMenu = null;
+
 	isInitialized = false;
 	isRunning = false;
 	isOpen = false;
@@ -67,6 +69,15 @@ export class BaseView  {
 		this.closeIcon = this.getElement("close.icon");
 		this.pinIcon = this.getElement("pin.icon");
 		this.collapseIcon = this.getElement("collapse.icon");
+		
+		let elem = this.getElement("header.menu"); 
+		if(elem && this.closeIcon){
+			this.headerMenu = new ViewHeaderMenu(elem);
+			
+			this.headerMenu.addItem("Close", (evt)=>{
+				this.closeIcon.click();
+			});
+		}
 	}
 
 	writeDataToView(){
@@ -129,6 +140,10 @@ export class BaseView  {
 		return this.isCollapsed;
 	}
 
+	toggleHeaderMenu() {
+		this.headerMenu.toggleVisibility();
+	}
+
 }
 
 
@@ -163,6 +178,13 @@ export class BaseCommandView  extends BaseView {
 		this.runIndicator = this.getElement("run.indicator");
 		this.runArgs = this.getElement("cmd.args");
 		this.outputArea = this.getElement("cmd.output");
+		
+		if(this.headerMenu){			
+			this.headerMenu.addItem("Clear Output", (evt)=>{
+				this.clearOutput();
+			});
+		}
+
 	}
 		
 	clearOutput() {
@@ -192,3 +214,50 @@ export class BaseCommandView  extends BaseView {
 	}
 }
 
+/**
+ */
+export class ViewHeaderMenu {
+	
+	containerElem = null;
+	iconElem = null;
+	menuElem = null;
+	isVisible = false;
+	
+	constructor(containerElem){
+		this.containerElem = containerElem; 
+		this.iconElem =  containerElem.children[0];
+		this.menuElem =  containerElem.children[1];
+		
+		window.addEventListener("click", (event) =>{
+			this.onAnyWindowClick(event)
+		});
+	}
+	
+	hasItems(){
+		return this.menuElem?.children.length>0;
+	}
+	
+	addItem(text, cb, id=""){
+		let item = document.createElement("a");
+		item.id = id;
+		item.href="javascript:void(0)";
+		item.innerHTML = text;
+		item.onclick = (evt)=>cb(evt);
+		
+		this.menuElem.appendChild(item);
+	}
+	
+	toggleVisibility(){
+		if(this.hasItems()){
+			this.isVisible = !this.isVisible
+			setDisplay(this.menuElem, this.isVisible);
+		}
+	}
+	
+	onAnyWindowClick(event){
+		if(this.isVisible){
+			this.toggleVisibility();
+		}
+	}
+
+}

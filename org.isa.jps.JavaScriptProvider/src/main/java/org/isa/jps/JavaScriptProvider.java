@@ -234,6 +234,10 @@ public class JavaScriptProvider {
 
         /**
          */
+        public boolean isOnUnix();
+
+        /**
+         */
         public void echo(String pText);
 
         /**

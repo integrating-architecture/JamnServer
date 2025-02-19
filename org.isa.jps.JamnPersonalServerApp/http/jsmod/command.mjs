@@ -37,6 +37,9 @@ class CommandView extends BaseCommandView {
 				}else{
 					this.addOutputLine(wsoMsg.textdata);
 				}
+			}else if(wsoMsg.hasStatusError && wsoMsg.error.includes("connection")){
+				this.addOutputLine(NL+wsoMsg.error);
+				this.setRunning(false);
 			}
 		});		
 		

@@ -19,6 +19,12 @@ export function sh(command, workDir="", outputConsumer=null) {
 };
 
 /**
+ */
+export function isOnUnix(){
+	return HostApp.isOnUnix();
+};
+
+/**
  * echo/print/log text to java host app
  */
 export function echo(text){

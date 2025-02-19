@@ -53,7 +53,11 @@ export function setVisibility(elem, flag) {
 }
 
 export function setDisplay(elem, flag) {
-	elem.style["display"] = flag ? "block" : "none";
+	if(typeof flag == "boolean"){
+		elem.style["display"] = flag ? "block" : "none";
+	}else if (typeof flag == "string"){
+		elem.style["display"] = flag;
+	}
 	return elem;
 }
 

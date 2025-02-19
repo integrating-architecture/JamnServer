@@ -11,8 +11,8 @@ export function build() {
 
 /**
  */
-export function createTopic(topicHtml){
-	let topic = {"html":topicHtml, items:[]};
+export function createTopic(id, topicHtml){
+	let topic = {"id":id, "html":topicHtml, items:[]};
 	topicListDef.push(topic);
 	
 	let addItem = {addItem : (itemHtml) => {
@@ -34,6 +34,10 @@ export function newTopicHtml(clazz="", text){
  */
 export function newtItemHtml(idValue, text){
 	return `<li class="sbar-item" value="${idValue}">${text}</li>`;
+};
+
+export function newIdentifiableItemHtml(idValue, text){
+	return `<li class="sbar-item" id="${idValue}">${text}</li>`;
 };
 
 /**
@@ -121,8 +125,8 @@ function initItemAction() {
 				itemAction(value);
 				evt.stopImmediatePropagation();
 			});
-		} else {
-			console.warn("Missing sidebar item value: [" + item + "]");
+		} else if(!item.getAttribute("id")) {
+			console.warn("Missing sidebar item value or id: [" + item + "]");
 		}
 	}
 };

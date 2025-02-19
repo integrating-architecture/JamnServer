@@ -2,6 +2,7 @@
 	--site-bg: #1e1e1e;
 	--border-gray: #6c6c6c;
 	--work-view-header-bg: #292828;
+	--work-view-menu-bg: #292828;
 	--work-view-header-ctrl: #c3c3c3;
 	--header-bg: #292828;
 	--sidebar-bg: #292828;
@@ -14,8 +15,28 @@
 	--title-blue: #4493f8;
 	--cmd-button-text: var(--text-gray);
 	--cmd-button-bg: var(--site-bg);
-	--cmd-button-hover-bg: green;
+	--cmd-button-hover-border: #8A9A5B;
 	--cmd-button-border: var(--border-gray);
+
+    --modal-dlg-content-bg:  #c3c3c3;
+    --modal-dlg-content-fg:  #1e1e1e;
+    --modal-dlg-header-bg:  #292828;
+    --modal-dlg-header-fg:  #c3c3c3;
+    --modal-dlg-border:  #6c6c6c;
+
+    --confirm-dlg-content-bg:  #f5f5f5; 
+    --confirm-dlg-content-fg:  #1e1e1e;
+    --confirm-dlg-header-bg:  #e3e3e3;
+    --confirm-dlg-command-bg:  #e3e3e3;
+    --confirm-dlg-header-fg:  #c3c3c3;
+    --confirm-dlg-border:  #6c6c6c;
+
+    --standard-button-bg: #292828;
+    --standard-button-fg: #c3c3c3;
+    --standard-button-hlfg: #f8f8f8;
+    --standard-button-hover-border: #8A9A5B;
+    --standard-button-border: #6c6c6c;
+
 } 
 
 html,
@@ -27,6 +48,167 @@ body {
 	color: var(--text-gray);
     font-size: 14px;
 }
+
+/** 
+ * Confirm  Dialog 
+ */
+
+.confirm-dialog-container {
+    border: solid 1px var(--confirm-dlg-border);
+    margin: 0;
+    transform: translateX(-50%);
+    top: 20%;
+    left: 50%;
+    width: 400px;
+    background: var(--confirm-dlg-content-bg);
+    color: var(--confirm-dlg-content-fg);
+    padding: 0px;
+}
+
+.confirm-dialog-header-area {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center; 
+    text-align: center;
+    font-size: 1.2em;
+    padding: 10px;
+    background: var(--confirm-dlg-header-bg);
+}
+
+.confirm-dialog-content-area {
+    display: block;
+    font-size: 1.2em;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.confirm-dialog-command-area {
+    display: flex;
+    flex-direction: row;
+    justify-content: right;
+    padding: 10px;
+    background: var(--confirm-dlg-command-bg);
+}
+
+.confirm-dialog-close-icon {
+    font-size: 16px;
+}
+
+.confirm-dialog-close-icon:hover{
+    cursor: pointer;
+}
+
+.confirm-dialog-button {
+    text-align: center;
+    border: 1px solid var(--standard-button-border);
+    color: var(--standard-button-fg);
+    background-color: var(--standard-button-bg);
+    font-size: 1.0em;
+    height: 30px;
+    width: 100px;
+    margin-left: 20px;
+    padding: 0;
+    border-radius: 0;
+}
+
+.confirm-dialog-button:hover {
+    cursor: pointer;
+    color: var(--standard-button-hlfg);
+    border-color: var(--cmd-button-hover-border);
+}
+
+.confirm-dialog-button:active {
+    transform: translateY(1px);
+}
+
+.confirm-dialog-button:focus {
+    outline: 0;
+    color: var(--standard-button-hlfg);
+}
+
+/** 
+ * Modal Dialog 
+ */
+
+.modal-dialog-container {
+  display: none; 
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto; 
+  background-color: rgba(0, 0, 0, 0.4); 
+  text-align: center;
+}
+
+.modal-dialog-content {
+    background-color: var(--modal-dlg-content-bg);
+    color: var(--modal-dlg-content-fg);
+    margin-top: 100px;
+    border: 1px solid var(--modal-dlg-border);
+    position: relative; 
+    display: inline-block;
+  }
+  
+.modal-dialog-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center; 
+    background-color: var(--modal-dlg-header-bg);
+    color: var(--modal-dlg-header-fg);
+    min-height: 40px;
+    width: 100%;
+}
+
+.modal-dialog-view-area{
+    display: inline-block;
+ }
+
+.modal-dialog-view-area-overlay{
+    width: 100%;
+    height: 100%;            
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 9;
+    background: var(--modal-dlg-content-bg);
+    display: none;
+    font-size: 18px;
+    color: black;
+    align-content: top;
+    text-align: center;
+}
+
+.mdlg-header-item {
+    text-align: center;
+}
+
+.mdlg-logo-icon {
+    margin-left: 10px;
+}
+
+.mdlg-title {
+    font-size: 18px;
+    width: 100%;
+}
+ 
+.mdlg-close-icon {
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+.mdlg-close-icon:hover{
+    cursor: pointer;
+    color: #f8f8f8;
+}
+
+/** 
+ * End Modal Dialog 
+ */
 
 .site-container {
     height: 100vh;
@@ -78,6 +260,9 @@ div#sidebar .sidebar-header {
     line-height: 50px;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border-gray);
+	display: flex;
+	flex-direction: row;
+	justify-content: left;
 }
 
 div#sidebar .sbar-topic-list {
@@ -130,6 +315,12 @@ div#sidebar li a {
     display:block;
     color: inherit;
     text-decoration: none;
+}
+
+.sidebar-header-icon {
+    width: 30%; 
+    margin-right: 20px; 
+    font-size: 32px;
 }
 
 /**
@@ -185,6 +376,10 @@ div#workarea .work-view {
     color: var(--work-view-header-ctrl);
 }
 
+.wkv-header-item-menu {
+	min-width: 20px;
+}
+
 .wkv-header-action-ctrl {
     font-size: 18px;
 }
@@ -201,6 +396,12 @@ i.wkv-header-action-ctrl:hover {
 i.wkv-header-menu-ctrl:hover {
 	color: var(--text-light-gray);
 	cursor: pointer;
+}
+
+.wkv-header-work-indicator {
+	visibility: hidden;
+	width: 24px; 
+	height: 24px;
 }
 
 /**
@@ -224,26 +425,8 @@ div#statusline .statusline-item {
 }
 
 /**
- * Helper and others 
+ * Work views 
  */
-/* property lable */
-plb {
-	display: inline-block;
-	font-size: 1.0em;
-	font-weight: 300;
-	margin-right: 10px;
-	margin-bottom: 10px;
-	color: var(--text-gray);
-}
-
-/* property value */
-pval {
-	font-size: 1.0em;
-	font-weight: 300;
-	text-align: justify;
-	color: var(--text-light-gray);
-}
-
 .cmd-button {
 	cursor: pointer;
 	text-align: center;
@@ -258,7 +441,7 @@ pval {
 
 .cmd-button:hover{
 	color: var(--text-light-gray);
-	border-color: #8A9A5B;
+	border-color: var(--cmd-button-hover-border);
 }
 
 .cmd-button:active {
@@ -286,15 +469,31 @@ pval {
 	font-size: 13px;
 }
 
+.wkv-header-menu-container {
+	align-self: self-start; 
+	margin-top: 10px;
+}
+
 .wkv-header-menu {
 	display: none;
-	position: absolute; 
+	position: relative; 
 	min-width: 100px; 
-	background-color: var(--site-bg);
+	background-color: var(--work-view-menu-bg);
 	z-index: 1; 
 	border: 1px solid var(--border-gray);
-	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
 	padding: 5px;
+}
+
+/* left nose*/
+.wkv-header-menu::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 10px;
+  transform: translateY(-50%); 
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 5px solid var(--work-view-header-ctrl); 
 }
 
 .wkv-header-menu a {
@@ -309,3 +508,38 @@ pval {
 	color: var(--text-light-gray);
 	//border: 1px solid #8A9A5B;
 }
+
+.menu-separator-top {
+ 	border-top: 1px solid var(--border-gray);
+}
+
+.menu-separator-bottom {
+ 	border-bottom: 1px solid var(--border-gray);
+}
+
+
+/**
+ * Helper and others 
+ */
+/* property lable */
+plb {
+	display: inline-block;
+	font-size: 1.0em;
+	font-weight: 300;
+	margin-right: 10px;
+	margin-bottom: 10px;
+	color: var(--text-gray);
+}
+
+/* property value */
+pval {
+	font-size: 1.0em;
+	font-weight: 300;
+	text-align: justify;
+	color: var(--text-light-gray);
+}
+
+hr.solid {
+ 	border: 1px solid var(--border-gray);
+}
+

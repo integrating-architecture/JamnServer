@@ -373,8 +373,8 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                     // register this connection at the WsoConnectionManager
                     connectionManager.connectionEstablished(connectionId, this);
 
-                    LOG.info(() -> String.format("WebSocket connection established [%s]%s%s", connectionId, LS,
-                            lHandShakeHeader));
+                    LOG.info(() -> String.format("%sWebSocket connection established [%s]%s%s", LS, connectionId, LS,
+                            lHandShakeHeader.toString().trim()));
 
                 } catch (Exception e) {
                     lHandShakeHeader.setHttpStatus(SC_500_INTERNAL_ERROR).writeTo(outStream);

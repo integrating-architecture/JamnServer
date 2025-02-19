@@ -29,6 +29,11 @@ export class WsoCommonMessage {
 		return "error" === this.status.toLowerCase();
 	}
 
+	setStatusError(errorInfo){
+		this.status = "error";
+		this.error = errorInfo;
+	}
+
 };
 
 export class CommandDef {

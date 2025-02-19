@@ -45,6 +45,7 @@ import org.isa.jps.comp.DefaultFileEnricherValueProvider;
 import org.isa.jps.comp.DefaultJavaScriptHostAppAdapter;
 import org.isa.jps.comp.DefaultWebServices;
 import org.isa.jps.comp.DefaultWebSocketMessageProcessor;
+import org.isa.jps.comp.JPSSecurityController;
 import org.isa.jps.comp.OperatingSystemInterface;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -123,9 +124,10 @@ public class JamnPersonalServerApp {
     /**
      * internal static variables
      */
-    protected static Charset StandardEncoding = StandardCharsets.UTF_8;
     protected static Logger LOG = Logger.getLogger(JamnPersonalServerApp.class.getName());
     protected static Path AppHome = Paths.get(System.getProperty("user.dir"));
+
+    protected Charset standardEncoding = StandardCharsets.UTF_8;
 
     private JamnPersonalServerApp() {
     }
@@ -404,8 +406,11 @@ public class JamnPersonalServerApp {
         // at last merge program args
         config.getProperties().putAll(lArgs);
 
+        standardEncoding = Charset.forName(config.getStandardEncoding());
+        CommonHelper.setEncoding(standardEncoding);
+
         if (lSaveConfig && config.hasAppProfile()) {
-            Files.writeString(lConfigPath, lDefaultConfig, StandardEncoding, StandardOpenOption.CREATE);
+            Files.writeString(lConfigPath, lDefaultConfig, standardEncoding, StandardOpenOption.CREATE);
             LOG.info(() -> String.format("%s default app config loaded and saved to [%s]", INIT_LOGPRFX, lConfigPath));
         }
     }
@@ -481,7 +486,7 @@ public class JamnPersonalServerApp {
             Path lDefFile = Paths.get(lRootPath.toString(), config.getExtensionDefFileName());
             if (!Files.exists(lDefFile)) {
                 String lDefJson = jsonTool.toString(new AppExtensionDef[] { new AppExtensionDef() });
-                Files.writeString(lDefFile, lDefJson, StandardEncoding, StandardOpenOption.CREATE);
+                Files.writeString(lDefFile, lDefJson, standardEncoding, StandardOpenOption.CREATE);
 
                 LOG.info(() -> String.format("%s default EMPTY App Extension definition created [%s]%s%s", INIT_LOGPRFX,
                         lDefFile, LS,
@@ -592,6 +597,7 @@ public class JamnPersonalServerApp {
      */
     protected void initServer() {
         server = new JamnServer(config.getProperties());
+        server.setSecurityController(new JPSSecurityController(config));
     }
 
     /**
@@ -604,7 +610,8 @@ public class JamnPersonalServerApp {
         // no leading slash because relative path
         JamnWebContentProvider lWebContentProvider = JamnWebContentProvider.Builder(lRootPath)
                 .setConfig(server.getConfig())
-                .setFileEnricher(new DefaultFileEnricher(new DefaultFileEnricherValueProvider()))
+                .setFileEnricher(new DefaultFileEnricher(
+                        new DefaultFileEnricherValueProvider(AppHome, config)))
                 .build();
         // add it to server
         server.addContentProvider(CONTENT_PROVIDER_ID, lWebContentProvider);
@@ -647,7 +654,8 @@ public class JamnPersonalServerApp {
                     .build();
 
             webSocketProvider.addMessageProcessor(
-                    new DefaultWebSocketMessageProcessor(getConfig(), getJsonTool(), webSocketProvider));
+                    new DefaultWebSocketMessageProcessor(getConfig(), getJsonTool(), webSocketProvider,
+                            standardEncoding));
 
             server.addContentProvider(WEBSOCKET_PROVIDER_ID, webSocketProvider);
 
@@ -685,9 +693,10 @@ public class JamnPersonalServerApp {
                 "## " + AppName + " Config Properties",
                 "##", "",
                 "#JPS Profile", JPS_PROFILE + "=" + APP_PROFILE, "",
-                "#JamnWebContentProvider files root folder", "web.file.root=" + WEB_FILE_ROOT, "",
-                "#Jamn Personal Server extension libraries root folder", "jps.extension.root=" + EXTENSION_ROOT, "",
-                "#Jamn Personal Server workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
+                "#WebContentProvider files root folder", "web.file.root=" + WEB_FILE_ROOT, "",
+                "#Web File-Enricher root folder", "web.file.enricher.root=http/jsmod/html-components", "",
+                "#JPS extension libraries root folder", "jps.extension.root=" + EXTENSION_ROOT, "",
+                "#JPS workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
                 "#JPS Extension definition file name", "jps.extension.def.file=" + EXTENSION_DEF_FILE, "",
                 "#Extensions enabled", "extensions.enabled=false", "",
                 "#JavaScriptProvider script root folder", "script.root=" + SCRIPT_ROOT, "",
@@ -704,6 +713,7 @@ public class JamnPersonalServerApp {
                 "jvm.debug.option=-agentlib:jdwp=transport=dt_socket,address=localhost:9009,server=y,suspend=y", "",
                 "#Server autostart", "server.autostart=true", "",
                 "#Child process debug", "child.process.debug.enabled=false", "",
+                "#Standard encoding", "standard.encoding=UTF-8", "",
                 "#Windows shell encoding", "win.shell.encoding=Cp850", "",
                 "#Unix shell encoding", "unix.shell.encoding=ISO8859_1", "");
 
@@ -746,6 +756,10 @@ public class JamnPersonalServerApp {
             return props.getProperty("web.file.root", WEB_FILE_ROOT);
         }
 
+        public String getWebFileEnricherRoot() {
+            return props.getProperty("web.file.enricher.root", "http/jsmod/html-components");
+        }
+
         public String getExtensionRoot() {
             return props.getProperty("jps.extension.root", EXTENSION_ROOT);
         }
@@ -772,6 +786,10 @@ public class JamnPersonalServerApp {
 
         public int getPort() {
             return Integer.valueOf(props.getProperty("port", "8099"));
+        }
+
+        public String getStandardEncoding() {
+            return props.getProperty("standard.encoding", "UTF-8");
         }
 
         public String getWinShellEncoding() {
@@ -916,6 +934,12 @@ public class JamnPersonalServerApp {
     /**
      */
     public static class CommonHelper {
+
+        protected static Charset StandardEncoding = StandardCharsets.UTF_8;
+
+        protected static void setEncoding(Charset pEncoding) {
+            StandardEncoding = pEncoding;
+        }
 
         /**
          * Arg Format: [-]<name>=<value>

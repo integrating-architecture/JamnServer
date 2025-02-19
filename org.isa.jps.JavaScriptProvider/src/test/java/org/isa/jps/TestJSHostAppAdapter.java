@@ -70,6 +70,11 @@ public class TestJSHostAppAdapter implements JavaScriptHostAppAdapter {
         @Override
         public void createJSCliCommand(String pName, String pSource, String pDescr) {
         }
+
+        @Override
+        public boolean isOnUnix() {
+            return false;
+        }
     }
 
 }

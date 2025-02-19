@@ -91,6 +91,13 @@ public class DefaultJavaScriptHostAppAdapter implements JavaScriptHostAppAdapter
         /**
          */
         @Override
+        public boolean isOnUnix() {
+            return osIFace.isOnUnix();
+        }
+
+        /**
+         */
+        @Override
         public void echo(String pText) {
             if (callCtx.getOutputConsumer() != null) {
                 callCtx.getOutputConsumer().accept(pText);

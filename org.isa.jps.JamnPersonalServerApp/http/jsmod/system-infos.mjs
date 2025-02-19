@@ -1,12 +1,12 @@
 /* Authored by www.integrating-architecture.de */
 
 import { callWebService } from '../jsmod/tools.mjs';
-import { BaseView } from '../jsmod/view-classes.mjs';
+import { WorkView } from '../jsmod/view-classes.mjs';
 
 /**
  * Concrete view class for this info component
  */
-class SystemInfoView extends BaseView {
+class SystemInfoView extends WorkView {
 		
 	initialize() {	
 		super.initialize();

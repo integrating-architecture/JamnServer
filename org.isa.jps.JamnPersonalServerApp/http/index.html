@@ -30,9 +30,9 @@
 </head>
 
 <body>
+
   <!-- approot -->
   <div id="approot" class="site-container">
-
     <!-- app construction -->
     <!-- header -->
     <div id="header">
@@ -42,14 +42,21 @@
       <div id="headerTitle" class="header-item">Jamn Workbench -</div>
       <div id="headerTitleText" class="header-item">[ ]</div>
     </div>
-	  <!-- header end -->
+    <!-- header end -->
 
     <!-- main container -->
     <div id="mainContainer">
       <!-- sidebar -->
       <div id="sidebar">
         <div class="sidebar-header">
-          <a class="bi bi-house-gear" href="" style="font-size: 34px;" title="Home"></a>
+          <div class="sidebar-header-icon">
+            <a id="sidebar.header.home.icon" class="bi bi-house" href="" title="Home/Reload"></a>
+          </div>
+          <div class="sidebar-header-icon">
+            <a id="sidebar.header.login.icon" class="bi bi-person" href="javascript:void(0)" title="Login"></a>
+          </div>
+          <div style="width: 100%;">
+          </div>
         </div>
 
         <!-- topic list -->
@@ -57,17 +64,36 @@
         </ul>
         <!-- topic list end -->
       </div>
-	    <!-- sidebar end -->
-	  
+      <!-- sidebar end -->
+
       <!-- workarea -->
       <div id="workarea">
-		
+
       </div>
-     	<!-- workarea end -->
+      <!-- workarea end -->
 
     </div>
     <!-- main container end -->
-	
+
+    <!-- modal dialog overlay container -->
+    <div id="modal.dialog" class="modal-dialog-container">
+      <div id="modal.dialog.content" class="modal-dialog-content">
+        <div id="modal.dialog.header" class="modal-dialog-header">
+
+          <div id="dialog.icon" class="mdlg-header-item mdlg-logo-icon">
+          </div>
+          <div id="dialog.title" class="mdlg-header-item mdlg-title"></div>
+          <i id="close.icon" class="bi bi-x-lg mdlg-header-item mdlg-close-icon" title="Close"></i>
+
+        </div>
+        <div id="modal.dialog.view.area" class="modal-dialog-view-area">
+        </div>
+        <div id="modal.dialog.command.area">
+        </div>
+      </div>
+    </div>
+    <!-- modal dialog overlay container end -->
+
     <!-- status line -->
     <div id="statusline">
       <span class="statusline-item" style="width: 30px;">Info:</span>
@@ -76,9 +102,26 @@
         <a class="bi bi-github" id="statusLineScmLink" href="" target="_blank" style="color:white;"></a>
       </span>
     </div>
-	  <!-- status line end -->
-
+    <!-- status line end -->
   </div>
+
+  <!-- confirm dialog -->
+  <dialog id="confirmDialog" class="confirm-dialog-container">
+    <div id="confirm.dialog.header.area" class="confirm-dialog-header-area ">
+      <div id="confirm.dialog.title" style="width: 100%;"></div>
+      <i id="confirm.dialog.close.icon" class="bi bi-x-lg confirm-dialog-close-icon" title="Cancel"></i>
+    </div>
+    <div id="confirm.dialog.content.area" class="confirm-dialog-content-area">
+      <p>Die Ausführung bestätigen?</p>
+    </div>
+    <div id="confirm.dialog.command.area" class="confirm-dialog-command-area">
+      <button id="pb.confirm.yes" class="confirm-dialog-button">Yes</button>
+      <button id="pb.confirm.no" class="confirm-dialog-button" autofocus>No</button>
+    </div>
+  </dialog>
+  <!-- confirm dialog end -->
+
 </body>
+
 
 </html>

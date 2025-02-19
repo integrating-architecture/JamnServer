@@ -1,6 +1,8 @@
 /* Authored by www.integrating-architecture.de */
 package org.isa.jps.comp;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,11 +39,20 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     protected JavaScriptProvider jsProvider;
     protected JamnWebSocketProvider wsoProvider;
 
-    public DefaultWebSocketMessageProcessor(Config pConfig, JsonToolWrapper pJson, JamnWebSocketProvider pWsoProvider) {
+    protected Charset encoding = StandardCharsets.UTF_8;
+
+    public DefaultWebSocketMessageProcessor(Config pConfig, JsonToolWrapper pJson, JamnWebSocketProvider pWsoProvider,
+            Charset pEncoding) {
         config = pConfig;
         json = pJson;
         wsoProvider = pWsoProvider;
         isAvailable = new AtomicBoolean(true);
+
+        if (pEncoding != null) {
+            encoding = pEncoding;
+        } else {
+            encoding = Charset.forName(config.getStandardEncoding());
+        }
     }
 
     /**
@@ -97,7 +108,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
         JSCallContext lCallCtx = new JSCallContext((String output) -> {
             lOutputMsg.setTextdata(output);
             String lJsonMsg = json.toString(lOutputMsg);
-            wsoProvider.sendMessageTo(pConnectionId, lJsonMsg.getBytes());
+            wsoProvider.sendMessageTo(pConnectionId, lJsonMsg.getBytes(encoding));
         });
         js().eval(lCallCtx, pRequestMsg.getScript());
     }

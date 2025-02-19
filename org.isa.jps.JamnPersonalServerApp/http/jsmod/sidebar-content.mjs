@@ -17,12 +17,18 @@ import { getView as commandView } from '../jsmod/command.mjs';
 export const topicList = {
 	system : {icon:"bi bi-laptop", title:"&ensp;System",
 		items : {
-			"infos" : {title:"Infos", view:systemInfosView(), data:null}
+			//create a view item 
+			"infos" : {title:"Infos", view:systemInfosView()},
+			
+			//create a functional item with just an id
+			//that gets explicite wired by the app
+			"login" : {title:"Login", id:"sidebar.system.login"}
 		}
 	},
 	
 	commands : {icon:"bi bi-command", title:"&ensp;Commands",
 		items : {
+			//create view item with data
 			"testSample" : {title:"Sample Test command", view:commandView(), data:new CommandDef("Sample Test command", "runjs", "/sample/test.mjs", "<none>")},
 			"projectSample" : {title:"Sample Build", view:commandView(), data:new CommandDef("Sample Project Build", "runjs", "/sample/build-project.mjs", "<none>")}
 		}

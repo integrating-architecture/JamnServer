@@ -23,6 +23,7 @@ import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.ACCESS_CONTROL_ALLOW_
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.TEXT_HTML;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_200_OK;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_204_NO_CONTENT;
+import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_403_FORBIDDEN;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_408_TIMEOUT;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
 
@@ -226,6 +227,12 @@ public class JamnServer {
     public JamnServer setContentProviderDispatcher(ContentProviderDispatcher pProviderDispatcher) {
         kernel.getRequestProcessor().setContentProviderDispatcher(pProviderDispatcher);
         return this;
+    }
+
+    /**
+     */
+    public void setSecurityController(SecurityController pController) {
+        kernel.getRequestProcessor().setSecurityController(pController);
     }
 
     /**
@@ -490,6 +497,11 @@ public class JamnServer {
 
         /**
          */
+        default void setSecurityController(SecurityController pController) {
+        }
+
+        /**
+         */
         default RequestProcessor setProperty(String pKey, String pValue) {
             return this;
         }
@@ -510,6 +522,18 @@ public class JamnServer {
 
     /**
      * <pre>
+     * The basic server security interface.
+     * It is expected to throw a SecurityException if access is denied.
+     * </pre>
+     */
+    public static interface SecurityController {
+        /**
+         */
+        void checkAccess(final Map<String, String> pRequestAttributes) throws SecurityException;
+    }
+
+    /**
+     * <pre>
      * The Default RequestProcessor implementation using an empty ContentProvider.
      * This level is HTTP oriented and implements the basic HTTP capability.
      * </pre>
@@ -519,6 +543,10 @@ public class JamnServer {
 
         // the available ContentProvider
         protected Map<String, ContentProvider> contentProviderMap = new HashMap<>();
+
+        //
+        protected SecurityController securityContr = (Map<String, String> pRequestAttributes) -> LOG
+                .warning(() -> "WARNING - EMPTY DEFAULT SecurityController active");
 
         // an empty default provider dispatcher
         protected ContentProviderDispatcher contentDispatcher = (Map<String, String> pRequestAttributes) -> {
@@ -585,6 +613,12 @@ public class JamnServer {
 
         /**
          */
+        public void setSecurityController(SecurityController pController) {
+            securityContr = pController;
+        }
+
+        /**
+         */
         @Override
         public void addContentProvider(String pId, ContentProvider pProvider) {
             contentProviderMap.put(pId, pProvider);
@@ -627,6 +661,8 @@ public class JamnServer {
                 lRequest.readHeader(lInStream);
                 lRequest.readBody(lInStream);
 
+                securityContr.checkAccess(lRequest.getAttributes());
+
                 // check for WebSocket upgrade request
                 if (lRequest.isWebSocket()) {
                     // if so switch to WebSocket processing
@@ -645,6 +681,8 @@ public class JamnServer {
                 }
             } catch (InterruptedIOException e) {
                 lResponse.sendStatus(SC_408_TIMEOUT);
+            } catch (SecurityException se) {
+                lResponse.sendStatus(SC_403_FORBIDDEN);
             } catch (Exception e) {
                 lResponse.sendStatus(SC_500_INTERNAL_ERROR);
                 LOG.severe(() -> String.format("Request Handling internal/runtime ERROR: %s %s %s", e, LS,
@@ -710,7 +748,8 @@ public class JamnServer {
 
                 fieldMap = Collections.unmodifiableMap(WebHelper.parseHttpHeader(lHeader));
 
-                LOG.fine(() -> String.format("%s - Request header: %s", Thread.currentThread().getName(), lHeader));
+                LOG.fine(() -> String.format("%s%s - Request header: %s%s", LS, Thread.currentThread().getName(),
+                        lHeader.trim(), LS));
             }
 
             /**
@@ -802,6 +841,7 @@ public class JamnServer {
             public static final String SC_200_OK = "200";
             public static final String SC_204_NO_CONTENT = "204";
             public static final String SC_400_BAD_REQUEST = "400";
+            public static final String SC_403_FORBIDDEN = "403";
             public static final String SC_404_NOT_FOUND = "404";
             public static final String SC_405_METHOD_NOT_ALLOWED = "405";
             public static final String SC_408_TIMEOUT = "408";
@@ -815,6 +855,7 @@ public class JamnServer {
                 lMap.put("201", "Created");
                 lMap.put("204", "No Content");
                 lMap.put("400", "Bad Request");
+                lMap.put("403", "Forbidden");
                 lMap.put("404", "Not found");
                 lMap.put("405", "Method Not Allowed");
                 lMap.put("406", "Not Acceptable");
@@ -848,6 +889,7 @@ public class JamnServer {
             public static final String CONTENT_LENGTH = "Content-Length";
             public static final String CONTENT_TYPE = "Content-Type";
             public static final String CONNECTION = "Connection";
+            public static final String HOST = "Host";
             public static final String UPGRADE = "Upgrade";
             public static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
             public static final String ACCESS_CONTROL_ALLOW_METHODS = "Access-Control-Allow-Methods";
@@ -857,6 +899,10 @@ public class JamnServer {
             public static final String SEC_WEBSOCKET_VERSION = "Sec-WebSocket-Version";
             public static final String SEC_WEBSOCKET_EXTENSIONS = "Sec-WebSocket-Extensions";
             public static final String SEC_WEBSOCKET_ACCEPT = "Sec-WebSocket-Accept";
+
+            public static final String AUTHORIZATION = "Authorization";
+            public static final String BEARER = "Bearer";
+
         }
 
         /**
@@ -1052,6 +1098,29 @@ public class JamnServer {
          */
         public String getPath() {
             return fieldMap.getOrDefault(Field.HTTP_PATH, "");
+        }
+
+        /**
+         */
+        public String getHost() {
+            return fieldMap.getOrDefault(Field.HOST, "");
+        }
+
+        /**
+         */
+        public String getAuthorization() {
+            return fieldMap.getOrDefault(Field.AUTHORIZATION, "");
+        }
+
+        /**
+         */
+        public String getAuthorizationBearer() {
+            String lVal = getAuthorization();
+            if (lVal.startsWith(Field.BEARER)) {
+                String[] lToken = lVal.split(" ");
+                return lToken.length == 2 ? lToken[1].trim() : "";
+            }
+            return "";
         }
 
         /**
@@ -1290,7 +1359,7 @@ public class JamnServer {
                 "##",
                 "## " + JamnServerWebID + " Config Properties",
                 "##", "",
-                "#Server port", "port=8099", "", 
+                "#Server port", "port=8099", "",
                 "#Max worker threads", "worker=5", "",
                 "#Encoding", "encoding=" + StandardCharsets.UTF_8.name(), "",
                 "#Socket timeout in millis", "client-socket-timeout=10000", "",

@@ -1,6 +1,7 @@
 /* Authored by www.integrating-architecture.de */
 
-import { ServerOrigin, setVisibility, getWorkViewOf, getViewHtml } from '../jsmod/tools.mjs';
+import { ServerOrigin, setVisibility } from '../jsmod/tools.mjs';
+import { WorkbenchViewManager }  from '../jsmod/view-manager.mjs';
 import * as websocket from '../jsmod/websocket.mjs';
 import * as sidebar from '../jsmod/sidebar.mjs';
 import * as sidebarContent from '../jsmod/sidebar-content.mjs';
@@ -58,112 +59,7 @@ export const WorkbenchInterface = {
  */
 let rootElement = null;
 let workarea = document.getElementById("workarea");
-
-/**
- * <pre>
- * A simple manager to handle the on demand view html loading
- * and the workarea display logic.
- * 
- * A view element is instantiated as the child of a view cartridg div
- * that becomes added to the workbench-workarea.
- * </pre>
- * 
- */
-class WorkbenchViewManager {
-	
-	registeredViews={};
-	
-	getAsCartridgeId = (viewId)=>"view.cartridge."+viewId;
-	
-	registerView(view, viewData){
-		this.registeredViews[view.id] = {view: view, data:viewData, cart:null};
-	}
-
-	setViewCartVisible(viewCart, flag) {
-		if(flag){
-			viewCart.style = "visibility: visible; display: block;"
-		}else{
-			viewCart.style.display = "none"	
-		}
-	}
-
-	createViewCartridge(viewId, html){
-		let viewCart = document.createElement("div");
-		viewCart.id = this.getAsCartridgeId(viewId);
-		viewCart.style = "visibility: visible; display: block;"
-		viewCart.innerHTML = html;
-		viewCart.children[0].id = viewId;
-		this.registeredViews[viewId].cart = viewCart;
-		return viewCart;
-	}
-
-	closeAllCloseableViews(){
-		for(let key in this.registeredViews){
-			let viewItem = this.registeredViews[key];
-			if(viewItem.cart){
-				this.closeView(viewItem);
-			}
-		}
-	}
-
-	closeView(viewItem){
-		// view is expected to handle close itself 
-		// and return true if it was closeabel and did close
-		if(viewItem.view.close()){
-			this.setViewCartVisible(viewItem.cart, false);
-		}
-	}
-
-	openView(viewItem) {
-		this.closeAllCloseableViews();
-
-		viewItem.view.open();
-		this.setViewCartVisible(viewItem.cart, true);
-	}
-		
-	//default action requests 
-	onViewAction(evt, action) {
-		let workView = getWorkViewOf(evt.target);
-		let viewItem = this.registeredViews[workView.id];
-
-		if(!viewItem){
-			throw new Error(`UNKNOWN WorkView [${workView.id}]`);
-		}
-		
-		if("close"===action){
-			this.closeView(viewItem);
-		}else if("pin"===action){
-			viewItem.view.togglePinned();
-		}else if("collapse"===action){
-			viewItem.view.toggleCollapsed();
-		}else if("header.menu"===action){
-			viewItem.view.toggleHeaderMenu();
-			evt.stopImmediatePropagation();
-		}
-
-		//evt.stopImmediatePropagation();
-	}
-	
-	// ViewManager public view open request method for components
-	// in this case the sidebar
-	onComponentOpenViewRequest(comp, viewItemId) {
-		let viewItem = this.registeredViews[viewItemId]
-		 
-		if(viewItem){
-			if(viewItem.cart){
-				this.openView(viewItem);				
-			}else{
-				getViewHtml(viewItem.view.viewSource, (html)=>{
-					let viewCart = this.createViewCartridge(viewItem.view.id, html);
-					workarea.append(viewCart);
-					this.openView(viewItem);
-				});
-			}
-		}
-	}
-}
-
-let viewManager = new WorkbenchViewManager();
+let viewManager = new WorkbenchViewManager(workarea);
 
 /**
  * this is called after document load but before getting visible
@@ -203,7 +99,7 @@ function initUI() {
 			itemKey = topicKey+"_"+key;
 			itemDef = topicDef.items[key];
 			if(itemDef?.view){
-				itemDef.view.onInstallation(itemKey, itemDef?.data);
+				itemDef.view.onInstallation(itemKey, itemDef?.data, viewManager);
 				viewManager.registerView(itemDef.view, itemDef?.data);
 				topic.addItem(sidebar.newtItemHtml(itemDef.view.id, itemDef.title));
 			}

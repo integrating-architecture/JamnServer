@@ -39,6 +39,12 @@ export function connect(){
 			websocket = null;
 			console.log("WebSocket connection [closed]");
 		};
+		
+		websocket.onerror = function (event) {
+			websocket = null;
+			console.log("WebSocket connection error");
+			onMessage(event);
+		};
 	}else{
 		console.warn("Warning: WebSocket already connected");
 	}
@@ -94,9 +100,15 @@ export function addMessageListener(cb, subject="any") {
  */
 function onMessage(event) {
 	let subject = "any";
-	let msg = JSON.parse(event.data);
+	let msg = "";
 	let wsoMsg = new WsoCommonMessage("");
-	wsoMsg = Object.assign(wsoMsg, msg);
+	
+	if(event.type!=="error"){
+		msg = JSON.parse(event.data);		
+		wsoMsg = Object.assign(wsoMsg, msg);
+	}else{
+		wsoMsg.setStatusError("connection error");
+	}
 	
 	listener[subject].forEach((cb)=>cb(wsoMsg));
 };

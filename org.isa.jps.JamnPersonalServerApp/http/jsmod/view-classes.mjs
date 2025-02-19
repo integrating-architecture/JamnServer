@@ -14,6 +14,8 @@ export class BaseView  {
 	
 	id = "";
 	viewSource = new ViewSource("");
+	viewManager= null;
+	
 	//the view html dom element
 	viewElement = null;
 	viewTitle = null;
@@ -45,6 +47,9 @@ export class BaseView  {
 		if(!this.isInitialized){
 			this.initialize();
 		}
+		if(this.headerMenu){
+			this.headerMenu.close();
+		}
 		this.writeDataToView();
 		setVisibility(this.viewElement, true);
 		this.isOpen = true;		
@@ -52,6 +57,9 @@ export class BaseView  {
 		
 	close() {
 		this.isOpen = false;
+		if(this.headerMenu){
+			this.headerMenu.close();
+		}
 		return this.isCloseable();
 	}	
 
@@ -76,7 +84,20 @@ export class BaseView  {
 			
 			this.headerMenu.addItem("Close", (evt)=>{
 				this.closeIcon.click();
-			});
+			}, {separator : "bottom"});
+			
+			if(this.viewManager){
+				this.headerMenu.addItem("Move up", (evt)=>{
+					this.viewManager.moveView(this, "up");
+				});
+				this.headerMenu.addItem("Move down", (evt)=>{
+					this.viewManager.moveView(this, "down");
+				});
+				this.headerMenu.addItem("Move to ...", (evt)=>{
+					let toPos = prompt("Please enter your desired position number:", "1");
+					this.viewManager.moveView(this, toPos);
+				});
+			}
 		}
 	}
 
@@ -101,7 +122,8 @@ export class BaseView  {
 		return getChildOf(this.viewElement, id);
 	}	
 	
-	onInstallation(installKey, installData) {
+	onInstallation(installKey, installData, viewManager) {
+		this.viewManager = viewManager;
 	}
 
 	togglePinned() {
@@ -141,7 +163,9 @@ export class BaseView  {
 	}
 
 	toggleHeaderMenu() {
-		this.headerMenu.toggleVisibility();
+		if(!this.isCollapsed){
+			this.headerMenu.toggleVisibility();
+		}
 	}
 
 }
@@ -157,11 +181,13 @@ export class BaseCommandView  extends BaseView {
 	commandName = "";
 	
 	runButton = null;
-	runIndicator  = null;
 	runArgs  = null;
+	workIndicator  = null;
+
 	outputArea = null;
 			
-	onInstallation(installKey, installData) {
+	onInstallation(installKey, installData, viewManager) {
+		super.onInstallation(installKey, installData, viewManager);
 		this.id = installKey;
 		if(installData instanceof CommandDef){
 			this.commandDef = installData;
@@ -175,16 +201,15 @@ export class BaseCommandView  extends BaseView {
 		this.setTitle(this.commandDef.title);
 		
 		this.runButton = this.getElement("pb.run");
-		this.runIndicator = this.getElement("run.indicator");
+		this.workIndicator = this.getElement("work.indicator");
 		this.runArgs = this.getElement("cmd.args");
 		this.outputArea = this.getElement("cmd.output");
 		
 		if(this.headerMenu){			
 			this.headerMenu.addItem("Clear Output", (evt)=>{
 				this.clearOutput();
-			});
+			}, {separator : "top"});
 		}
-
 	}
 		
 	clearOutput() {
@@ -201,7 +226,7 @@ export class BaseCommandView  extends BaseView {
 	setRunning(flag) {
 		this.isRunning = flag;
 		
-		setVisibility(this.runIndicator, flag);
+		setVisibility(this.workIndicator, flag);
 		this.runButton.disabled = flag;
 		
 		if(flag){
@@ -219,14 +244,12 @@ export class BaseCommandView  extends BaseView {
 export class ViewHeaderMenu {
 	
 	containerElem = null;
-	iconElem = null;
 	menuElem = null;
 	isVisible = false;
 	
 	constructor(containerElem){
 		this.containerElem = containerElem; 
-		this.iconElem =  containerElem.children[0];
-		this.menuElem =  containerElem.children[1];
+		this.menuElem =  containerElem.children[0];
 		
 		window.addEventListener("click", (event) =>{
 			this.onAnyWindowClick(event)
@@ -237,16 +260,26 @@ export class ViewHeaderMenu {
 		return this.menuElem?.children.length>0;
 	}
 	
-	addItem(text, cb, id=""){
+	close(){
+		this.isVisible = false;
+		setDisplay(this.menuElem, this.isVisible);
+	}
+
+	addItem(text, cb, props={}){
 		let item = document.createElement("a");
-		item.id = id;
+		item.id = props?.id;
 		item.href="javascript:void(0)";
 		item.innerHTML = text;
+		
+		if(props?.separator){
+			let clazz = props.separator==="top" ? "menu-separator-top" : "menu-separator-bottom";
+			item.classList.add(clazz);
+		}
 		item.onclick = (evt)=>cb(evt);
 		
 		this.menuElem.appendChild(item);
 	}
-	
+		
 	toggleVisibility(){
 		if(this.hasItems()){
 			this.isVisible = !this.isVisible
@@ -255,9 +288,6 @@ export class ViewHeaderMenu {
 	}
 	
 	onAnyWindowClick(event){
-		if(this.isVisible){
-			this.toggleVisibility();
-		}
+		this.close();
 	}
-
 }

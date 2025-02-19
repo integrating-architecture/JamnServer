@@ -2,9 +2,12 @@
 <div class="work-view" style="visibility: hidden;">
 	<div class="work-view-header">
 
-		<span id="header.menu" class="wkv-header-item-left"><i id="menu.icon"
-			class="bi bi-three-dots-vertical wkv-header-menu-ctrl"
-			onclick="WbApp.onViewAction(event, 'header.menu')" title="Menu"></i>
+		<span class="wkv-header-item-left wkv-header-item-menu"><i id="menu.icon"
+				class="bi bi-three-dots-vertical wkv-header-menu-ctrl"
+				onclick="WbApp.onViewAction(event, 'header.menu')" title="Menu"></i>
+		</span>
+
+		<span id="header.menu" class="wkv-header-item-left wkv-header-menu-container">
 			<div class="wkv-header-menu">
 			</div>
 		</span>
@@ -19,6 +22,7 @@
 		<span class="wkv-header-item-right"><i id="close.icon" class="bi bi-x-lg wkv-header-action-ctrl"
 				onclick="WbApp.onViewAction(event, 'close')" title="Close View"></i></span>
 	</div>
+
 	<div id="work.view.workarea" class="work-view-body">
 		<!--this elements are set by the app-->
 		<plb>Name:</plb>

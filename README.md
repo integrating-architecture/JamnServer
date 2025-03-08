@@ -5,21 +5,24 @@ The purpose is textdata based application communication e.g. with JSON/XML/HTML 
 
 The Server implementation has NO dependencies to any APIs or Libraries. It uses only standard Java SE functionality and is <a href="/org.isa.ipc.JamnServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a>
 
-The basic design is a layered separation of socket, protocol and content, so you can easily adapt anything to your own needs.
-
-E.g. combined with a small Content-Provider implementation like <a href="/org.isa.ipc.JamnWebServiceProvider">JamnWebServiceProvider</a>, Jamn can serve as a basis for lightweight (two classes) and straightforward REST-like Web APIs as you e.g. know from JavaScript.
+The basic design is layered and modular - so a user can easily adapt anything to his own needs
+* Server kernel - socket and request handling for basic http protocol
+* Provider modules for:
+  - Web Content - html, js, image etc. content and files
+  - Web Services - functionality as REST like apis
+  - Web Socket
 
 **NOTE**: Although the current server supports http in a basic form, **it is NOT intended to be a real HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required. <a href="/org.isa.ipc.JamnServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java"> (basic usage example)</a>
 
 The goal is to easily build individual tools/applications on a small integrated server core - INSTEAD of writing them for external server products.
 <br></br>
 # Jamn Personal Server-App
-The <a href="/org.isa.jps.JamnPersonalServerApp">App</a> exemplary assembles all Jamn Components in one application scaffolding (< 200 KB) and extends the combination with a sample folder structure and a web UI base. It is a sample and a playground for possible use cases.
+The <a href="/org.isa.jps.JamnPersonalServerApp">Personal App</a> exemplary assembles the Jamn Components in one application scaffolding (< 200 KB) extending the combination with a folder structure, a JavaScript Backend integration and a WebUI base for Browser based Frontends. It is a sample and a playground for possible use cases.
 
-Individual user functions and services can be implemented on the App-Side in Java, Java-Script or as Shell-Scripts<br>
-and on the UI-Side in HTML/CSS and Java-Script, as required.
+Individual user functions and services can be implemented on the Backend-Side in Java, Java-Script or as Shell-Scripts<br>
+and on the Frontend-Side in HTML/CSS and Java-Script, as required.
 
-The App and the UI can be used local and/or remote - without having to meet any specifications or any other restrictions.<br>
+The App and the UI can be used local and/or remote - without changes and without having to meet any specifications or any other restrictions.<br>
 There is No deployment, No dependency management No external tooling required.  
 
 <br><img src="https://github.com/user-attachments/assets/b26b2e87-3ca4-48b6-a631-68c549750071" width="600" height="400"></br>   

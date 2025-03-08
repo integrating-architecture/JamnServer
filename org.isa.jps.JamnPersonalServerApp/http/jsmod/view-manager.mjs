@@ -1,0 +1,174 @@
+/* Authored by www.integrating-architecture.de */
+
+import { getWorkViewOf, getViewHtml } from '../jsmod/tools.mjs';
+import { ModalDialog, StandardDialog } from './view-classes.mjs';
+
+/**
+ * <pre>
+ * A simple manager to handle the on demand view html loading
+ * and the workarea display logic.
+ * 
+ * A view element is instantiated as the child of a "view cartridge div""
+ * that becomes added to the workbench-workarea.
+ * </pre>
+ * 
+ */
+export class WorkbenchViewManager {
+
+	workarea;
+	registeredViews;
+
+	//current implementation supports only ONE modal dialog at a time
+	//it is implicit a singleton
+	modalDialog;
+	standardDlg;
+	
+	getAsCartridgeId = (viewId) => "view.cartridge." + viewId;
+
+	constructor(workarea, modalDialogElement) {
+		this.workarea = workarea;
+		this.registeredViews = {};
+		this.modalDialog = new ModalDialog(modalDialogElement);
+		
+		this.standardDlg = new StandardDialog();
+	}
+
+	//
+	getModalDialog(view, cb) {
+		if(!view.viewSource.html){
+			getViewHtml(view.viewSource, (html) => {
+				this.modalDialog.setViewHtml(view.viewSource.html);
+				cb(this.modalDialog);
+			});
+		}else{
+			this.modalDialog.setViewHtml(view.viewSource.html);
+			cb(this.modalDialog);
+		}
+	}
+
+	registerView(view, viewData) {
+		this.registeredViews[view.id] = { view: view, data: viewData, cart: null };
+	}
+
+	setViewCartVisible(viewCart, flag) {
+		if (flag) {
+			viewCart.style["display"] = "block";
+			viewCart.style["visibility"] = "visible";
+		} else {
+			viewCart.style["display"] = "none";
+		}
+	}
+
+	createViewCartridge(viewId, html) {
+		let viewCart = document.createElement("div");
+		viewCart.id = this.getAsCartridgeId(viewId);
+		viewCart.style = "visibility: visible; display: block;"
+		viewCart.innerHTML = html;
+		viewCart.children[0].id = viewId;
+
+		this.registeredViews[viewId].cart = viewCart;
+		return viewCart;
+	}
+
+	closeAllCloseableViews() {
+		for (let key in this.registeredViews) {
+			let viewItem = this.registeredViews[key];
+			if (viewItem.cart) {
+				this.closeView(viewItem);
+			}
+		}
+	}
+
+	closeView(viewItem) {
+		// view is expected to handle close itself 
+		// and return true if it was closeabel and did close
+		if (viewItem.view.close()) {
+			this.setViewCartVisible(viewItem.cart, false);
+		}
+	}
+
+	openView(viewItem) {
+		this.closeAllCloseableViews();
+
+		viewItem.view.open();
+		this.setViewCartVisible(viewItem.cart, true);
+	}
+
+	//default action requests 
+	onViewAction(evt, action) {
+		let workView = getWorkViewOf(evt.target);
+		let viewItem = this.registeredViews[workView.id];
+
+		if (!viewItem) {
+			throw new Error(`UNKNOWN WorkView [${workView.id}]`);
+		}
+
+		if ("close" === action) {
+			this.closeView(viewItem);
+		} else if ("pin" === action) {
+			viewItem.view.togglePinned();
+		} else if ("collapse" === action) {
+			viewItem.view.toggleCollapsed();
+		} else if ("header.menu" === action) {
+			viewItem.view.toggleHeaderMenu();
+			evt.stopImmediatePropagation();
+		}
+	}
+
+	moveView(view, position) {
+		let elemCount = this.workarea.children.length;
+		let viewCart = this.registeredViews[view.id].cart;
+		let pos = -1;
+
+		if (isNaN(position)) {
+			let idx = 0;
+			if (position === "up") {
+				idx = Array.prototype.indexOf.call(this.workarea.children, viewCart) - 1;
+			} else if (position === "down") {
+				idx = Array.prototype.indexOf.call(this.workarea.children, viewCart) + 1;
+			} else {
+				return;
+			}
+			//always add 1
+			//cause position is expected to be a human counter 1...n 
+			//NOT array idx 0...n
+			position = (idx + 1).toString();
+		}
+
+		pos = parseInt(position);
+		pos = pos <= 0 ? 1 : pos;
+
+		if (elemCount > 1) {
+			if (pos >= elemCount) {
+				this.workarea.removeChild(viewCart);
+				this.workarea.appendChild(viewCart);
+			} else if (pos - 1 >= 0) {
+				this.workarea.removeChild(viewCart);
+				this.workarea.insertBefore(viewCart, this.workarea.children[pos - 1]);
+			}
+		}
+	}
+
+	// ViewManager public view open request method for components
+	// in this case the sidebar
+	onComponentOpenViewRequest(comp, viewItemId) {
+		let viewItem = this.registeredViews[viewItemId]
+
+		if (viewItem) {
+			if (viewItem.cart) {
+				this.openView(viewItem);
+			} else {
+				getViewHtml(viewItem.view.viewSource, (html) => {
+					let viewCart = this.createViewCartridge(viewItem.view.id, html);
+					this.workarea.append(viewCart);
+					this.openView(viewItem);
+				});
+			}
+		}
+	}
+
+	promptUserInput(text, value, cb){
+		this.standardDlg.openInput(text, value, cb);
+	}
+}
+

@@ -1,0 +1,24 @@
+<!--jamn.web.template-->
+
+<!--
+Example of server side html code injection 
+-->
+
+<!-- work view -->
+<div class="work-view" style="visibility: hidden;">
+
+	<!-- example of server side code injection -->
+	${work-view-header.html}
+
+	<!-- the individual view working/content area -->
+	<div id="work.view.workarea" class="work-view-body">
+		<!--this elements are set by the app-->
+		<plb>Name:</plb>
+		<pval id="server.name"></pval></br>
+		<plb>Version:</plb>
+		<pval id="server.version"></pval></br>
+		<plb>Description:</plb>
+		<pval id="server.description"></pval></br>
+	</div>
+</div>
+<!-- work view end -->

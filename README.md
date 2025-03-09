@@ -1,20 +1,23 @@
 # Jamn - Just Another Micro Node Server
 
-Jamn is an **experimental**, lightweight **Java MicroServer** designed for independence, simplicity and easy customization.
-The purpose is textdata based application communication e.g. with JSON/XML/HTML etc. based on a rudimentary HTTP compatibility.
+Jamn is an **experimental**, lightweight **Java MicroServer** for textdata driven application communication with e.g. JSON/XML/HTML etc. based on a rudimentary HTTP compatibility.
 
-The Server implementation has NO dependencies to any APIs or Libraries. It uses only standard Java SE functionality and is <a href="/org.isa.ipc.JamnServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a>
+The Motivation and Goal of Jamn is to have a simple and independent way for ...
+* creating and using rich Browser Web-GUIs for local and remote apps
+* having a universal Java Bridge for local and remote access
+* the ability to use JavaScript and ShellScript for functionality
+* network capability without infrastructure software and usability without tools
 
-The basic design is layered and modular - so a user can easily adapt anything to his own needs
+The implementation is designed for easy manageability and high degree of customizability. It has NO dependencies to any APIs or Libraries. It uses only standard Java SE functionality and is <a href="/org.isa.ipc.JamnServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a>
+
+The basic design is layered and modular - so users can easily adapt anything to their own needs
 * Server kernel - socket and request handling for basic http protocol
 * Provider modules for:
   - Web Content - html, js, image etc. content and files
   - Web Services - functionality as REST like apis
-  - Web Socket
+  - Web Socket - bidirectional Front-/Backend communication
 
 **NOTE**: Although the current server supports http in a basic form, **it is NOT intended to be a real HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required. <a href="/org.isa.ipc.JamnServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java"> (basic usage example)</a>
-
-The goal is to easily build individual tools/applications on a small integrated server core - INSTEAD of writing them for external server products.
 <br></br>
 # Jamn Personal Server-App
 The <a href="/org.isa.jps.JamnPersonalServerApp">Personal App</a> exemplary assembles the Jamn Components in one application scaffolding (< 200 KB) extending the combination with a folder structure, a JavaScript Backend integration and a WebUI base for Browser based Frontends. It is a sample and a playground for possible use cases.
@@ -23,7 +26,7 @@ Individual user functions and services can be implemented on the Backend-Side in
 and on the Frontend-Side in HTML/CSS and Java-Script, as required.
 
 The App and the UI can be used local and/or remote - without changes and without having to meet any specifications or any other restrictions.<br>
-There is No deployment, No dependency management No external tooling required.  
+There is No deployment - No dependency management - No external tooling required.  
 
 <br><img src="https://github.com/user-attachments/assets/b26b2e87-3ca4-48b6-a631-68c549750071" width="600" height="400"></br>   
 <br></br>

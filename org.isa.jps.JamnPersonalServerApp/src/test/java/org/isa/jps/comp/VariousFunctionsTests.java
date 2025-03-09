@@ -18,13 +18,13 @@ class VariousFunctionsTests {
         String lTestString = "\"-Dmaven.repo.local=\\org.isa.jps.JamnPersonalServerApp\\workspace\\.m2ws\"";
         String[] lToken = lTestString.split(" ");
 
-        lToken = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lToken, false);
+        lToken = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lToken);
         assertEquals(lTestString, String.join(" ", lToken));
 
         lTestString = "copy \"C:/Program Files (x86)/Mozilla Maintenance Service/\" C:/temp /all /y /\"some strange other\" whitespaces";
         lToken = lTestString.split(" ");
 
-        lToken = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lToken, false);
+        lToken = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lToken);
         assertEquals(lTestString, String.join(" ", lToken));
 
     }
@@ -37,7 +37,7 @@ class VariousFunctionsTests {
 
         Exception lExeption = assertThrows(
                 RuntimeException.class,
-                () -> JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lFailureToken, false),
+                () -> JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(lFailureToken),
                 "RuntimeException expected");
 
         assertTrue(lExeption.getMessage().contains("Missing start/end quote"));

@@ -1023,7 +1023,7 @@ public class JamnPersonalServerApp {
 
         /**
          */
-        public String[] rebuildQuotedWhitespaceStrings(String[] pToken, boolean pRemoveQuotes) {
+        public String[] rebuildQuotedWhitespaceStrings(String[] pToken) {
             List<String> newToken = new ArrayList<>();
             StringBuilder lBuffer = new StringBuilder();
             String tok = "";

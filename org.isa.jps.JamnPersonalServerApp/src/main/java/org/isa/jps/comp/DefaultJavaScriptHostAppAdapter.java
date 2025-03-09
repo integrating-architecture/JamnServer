@@ -142,7 +142,7 @@ public class DefaultJavaScriptHostAppAdapter implements JavaScriptHostAppAdapter
         @Override
         public List<String> shellCmd(String pCmdLine, String pWorkingDir, Consumer<String> pScriptOutputConsumer) {
 
-            String[] lCmdParts = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(pCmdLine.split(" "), false);
+            String[] lCmdParts = JamnPersonalServerApp.Tool.rebuildQuotedWhitespaceStrings(pCmdLine.split(" "));
 
             List<String> lResult = new ArrayList<>();
             Consumer<String> lResultConsumer = lResult::add;

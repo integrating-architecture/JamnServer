@@ -359,6 +359,6 @@ public class CommandLineInterface {
     /**
      */
     protected static String[] tokenizeCmdLine(String pCmdLine) {
-        return Tool.rebuildQuotedWhitespaceStrings(pCmdLine.split(" "), false);
+        return Tool.rebuildQuotedWhitespaceStrings(pCmdLine.split(" "));
     }
 }

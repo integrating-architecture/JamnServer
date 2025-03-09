@@ -8,7 +8,7 @@ The Motivation and Goal for Jamn is to provide a simple and independent way for 
 * the ability to use JavaScript and ShellScript to extend/implement functionality
 * network capability without infrastructure software and usability without tools
 
-The implementation is designed for easy manageability and high degree of customizability. It has NO dependencies to any APIs or Libraries. It uses only standard Java SE functionality and is <a href="/org.isa.ipc.JamnServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a>
+The implementation is designed for easy manageability and high degree of customizability. It uses only Standard Java-SE functionality and the server is <a href="/org.isa.ipc.JamnServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a> With the exception of Json, JavaScript there are no dependencies to any APIs or Libraries.
 
 The basic design is layered and modular - so users can easily adapt anything to their own needs
 * Server kernel - socket and request handling for basic http protocol

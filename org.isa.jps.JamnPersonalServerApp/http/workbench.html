@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Jamn Workbench</title>
+
+  <!-- external Icon-Font CDN link -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- app main StyleSheet -->
+  <link rel="stylesheet" href="css/workbench.css">
+
+  <script type="importmap">
+    {
+        "imports": {
+            "workbench": "/jsmod/workbench.mjs"
+        }
+    }
+  </script>
+
+  <!-- app js module initialization -->
+  <script type="module">
+    import * as wb from 'workbench';
+    wb.anchorAt("approot")
+      .registerAs("WbApp")
+      .build();
+  </script>
+
+</head>
+
+<body>
+
+  <!-- approot -->
+  <div id="approot" class="site-container">
+    <!-- app construction -->
+    <!-- header -->
+    <div id="header">
+      <div class="header-item" style="width: 30px;">
+        <img src="images/workbench-logo.png" title="Workbench Logo" alt="logo" width="16px" height="16px" />
+      </div>
+      <div id="headerTitle" class="header-item">Jamn Workbench -</div>
+      <div id="headerTitleText" class="header-item">[ ]</div>
+    </div>
+    <!-- header end -->
+
+    <!-- main container -->
+    <div id="mainContainer">
+
+      <!-- sidebar -->
+      <div id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-header-icon">
+            <a id="sidebar.header.menu.icon" class="bi bi-list" href="javascript:void(0)" title="Collapse Menu"></a>
+          </div>
+
+          <div id="sidebar.header.workicons" class="sidebar-header-workicons">
+            <div class="sidebar-header-icon">
+              <a id="sidebar.header.login.icon" class="bi bi-person" href="javascript:void(0)" title="Login"></a>
+            </div>
+          </div>
+        </div>
+
+        <!-- topic list -->
+        <ul class="sbar-topic-list" id="sidebarTopics">
+        </ul>
+        <!-- topic list end -->
+      </div>
+      <!-- sidebar end -->
+
+      <!-- workarea -->
+      <div id="workarea">
+      </div>
+      <!-- workarea end -->
+
+    </div>
+    <!-- main container end -->
+
+    <!-- status line -->
+    <div id="statusline">
+      <span class="statusline-item" style="width: 30px;">Info:</span>
+      <span id="statuslineInfo" class="statusline-item" style="width: 100%;"></span>
+      <span id="statuslineIcons" class="statusline-item" style="width: 50px; margin-right: 5px; text-align: center;">
+        <a class="bi bi-github" id="statusLineScmLink" href="" target="_blank" style="color:white;"></a>
+      </span>
+    </div>
+    <!-- status line end -->
+  </div>
+
+  <!-- modal dialog overlay container -->
+  <div id="modal.dialog" class="modal-dialog-container">
+    <div id="modal.dialog.content" class="modal-dialog-content">
+      <div id="modal.dialog.header" class="modal-dialog-header">
+
+        <div id="dialog.icon" class="mdlg-header-item mdlg-logo-icon">
+        </div>
+        <div id="dialog.title" class="mdlg-header-item mdlg-title"></div>
+        <i id="close.icon" class="bi bi-x-lg mdlg-header-item mdlg-close-icon" title="Close"></i>
+
+      </div>
+      <div id="modal.dialog.view.area" class="modal-dialog-view-area">
+      </div>
+      <div id="modal.dialog.command.area">
+      </div>
+    </div>
+  </div>
+  <!-- modal dialog overlay container end -->
+
+  <!-- standard dialog -->
+  <dialog id="standardDialog" class="standard-dialog-container">
+    <div id="standard.dialog.header.area" class="standard-dialog-header-area ">
+      <div id="standard.dialog.title" style="width: 100%;"></div>
+      <i id="standard.dialog.close.icon" class="bi bi-x-lg standard-dialog-close-icon" title="Cancel"></i>
+    </div>
+    <div id="standard.dialog.content.area" class="standard-dialog-content-area">
+    </div>
+    <div id="standard.dialog.command.area" class="standard-dialog-command-area">
+      <button id="pb.standard.dialog.ok" class="standard-dialog-button">Ok</button>
+      <button id="pb.standard.dialog.cancel" class="standard-dialog-button" autofocus>Cancel</button>
+    </div>
+  </dialog>
+  <!-- standard dialog end -->
+
+</body>
+
+</html>

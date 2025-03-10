@@ -1,0 +1,41 @@
+
+<!--
+	style is linked in 
+-->
+<link rel="stylesheet" href="css/login.css">
+
+
+<div class='login-view' >
+    <div class="login-view-row">
+        <label class="login-label" for="username" onclick="document.getElementById('username').value = ''">
+            <i class="bi bi-person"></i>
+        </label>
+        <input id="username" class='login-input' placeholder='Username' type='text'>
+    </div>
+    <div class="login-view-row">
+        <label class="login-label" for="password" onclick="document.getElementById('password').value = ''">
+            <i class="bi bi-key"></i>
+        </label>
+        <input id="password" class='login-input' placeholder='Password' type='password' onfocus="this.value=''">
+    </div>
+    <hr class="solid">
+    <div class="login-view-button-row">
+        <button id="pb.login" class='login-button' onclick="javascript:void(0)" style="width: 100%">
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span style="margin-left: 10px;">Login</span>
+        </button>
+    </div>
+	<div id="message" class="login-view-message-row">
+	</div>
+	<div id="login.overlay" class="modal-dialog-view-area-overlay">
+        <h2>Welcome</h2>
+        <p>you got successfully logged in</p>
+        <button id="pb.login.success" class='login-button' style="display: inline; font-size: 18px; width: 200px; margin-top: 60px;">
+            :-) have a nice day ...
+        </button>
+	</div>
+
+</div>
+
+
+

@@ -55,7 +55,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -115,12 +114,7 @@ public class JamnServer {
 
     static {
         try {
-            // if exists - initialize logging from internal properties file
-            InputStream lIn = JamnServer.class.getResourceAsStream("/logging.properties");
-            if (lIn != null) {
-                LogManager.getLogManager().readConfiguration(lIn);
-            }
-            lIn = JamnServer.class.getResourceAsStream("/blank-server.html");
+            InputStream lIn = JamnServer.class.getResourceAsStream("/blank-server.html");
             if (lIn != null) {
                 try (BufferedReader lReader = new BufferedReader(new InputStreamReader(lIn))) {
                     BlankServerPage = lReader.lines().collect(Collectors.joining("\n"));

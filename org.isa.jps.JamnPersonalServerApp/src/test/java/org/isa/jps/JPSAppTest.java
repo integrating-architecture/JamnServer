@@ -28,7 +28,8 @@ class JPSAppTest {
         ServerApp = JamnPersonalServerApp.getInstance();
 
         ServerApp.start(new String[] {
-                "javascript.enabled=false"
+                "javascript.enabled=false",
+                "cli.enabled=true"
         });
         assertTrue(ServerApp.isRunning(), "Test Server start FAILED");
 

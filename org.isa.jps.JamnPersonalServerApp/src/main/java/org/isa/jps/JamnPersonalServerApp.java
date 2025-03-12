@@ -175,12 +175,13 @@ public class JamnPersonalServerApp {
      */
     public JamnPersonalServerApp initialize(String[] pArgs)
             throws SecurityException, IOException, WebServiceDefinitionException, AppExtensionDefinitionException {
-        LOG.info(() -> String.format("%s%s home [%s] args [%s]", LS, INIT_LOGPRFX,
-                AppHome,
-                String.join(" ", pArgs)));
 
         initLogging();
         initConfig(pArgs);
+
+        LOG.info(() -> String.format("%s %s App-Home [%s] args [%s]%s", LS, INIT_LOGPRFX,
+                AppHome,
+                String.join(" ", pArgs), LS));
 
         if (config.hasAppProfile()) {
             doAppInitialization();
@@ -369,13 +370,13 @@ public class JamnPersonalServerApp {
 
         if (Files.exists(lConfigPath)) {
             LogManager.getLogManager().readConfiguration(Files.newInputStream(lConfigPath));
-            LOG.info(() -> String.format("%s user logging config read from [%s]", INIT_LOGPRFX, lConfigPath));
+            LOG.info(() -> String.format("%s User-Logging config read from [%s]", INIT_LOGPRFX, lConfigPath));
 
         } else {
             LogManager.getLogManager().readConfiguration(getClass().getResourceAsStream("/" + LOGGING_PROPERTIES_NAME));
-            LOG.info(() -> String.format("%s default logging config read [%s]", INIT_LOGPRFX, LOGGING_PROPERTIES_NAME));
+            LOG.info(() -> String.format("%s Default-Logging config read [%s]", INIT_LOGPRFX, LOGGING_PROPERTIES_NAME));
         }
-    }
+     }
 
     /**
      */
@@ -388,7 +389,7 @@ public class JamnPersonalServerApp {
         // load config
         if (Files.exists(lConfigPath)) {
             config = new Config(Files.newInputStream(lConfigPath));
-            LOG.info(() -> String.format("%s user app config file read [%s]", INIT_LOGPRFX, lConfigPath));
+            LOG.info(() -> String.format("%s User-App-Config file read [%s]", INIT_LOGPRFX, lConfigPath));
         } else {
             lDefaultConfig = String.join(LS, Config.DEFAULT_CONFIG, JamnServer.Config.DEFAULT_CONFIG);
             config = new Config(Tool.getAsInputStream(lDefaultConfig));
@@ -413,7 +414,7 @@ public class JamnPersonalServerApp {
 
         if (lSaveConfig && config.hasAppProfile()) {
             Files.writeString(lConfigPath, lDefaultConfig, standardEncoding, StandardOpenOption.CREATE);
-            LOG.info(() -> String.format("%s default app config loaded and saved to [%s]", INIT_LOGPRFX, lConfigPath));
+            LOG.info(() -> String.format("%s Default-App-Config loaded and saved to [%s]", INIT_LOGPRFX, lConfigPath));
         }
     }
 
@@ -436,8 +437,8 @@ public class JamnPersonalServerApp {
     /**
      */
     protected void initCli() {
-        jpsCli = new CommandLineInterface();
         if (config.isCliEnabled()) {
+            jpsCli = new CommandLineInterface();
             DefaultCLICommands.create();
         } else {
             LOG.info(() -> String.format("%s CLI is Disabled. To enable set config [%s] property [cli.enabled=true]",

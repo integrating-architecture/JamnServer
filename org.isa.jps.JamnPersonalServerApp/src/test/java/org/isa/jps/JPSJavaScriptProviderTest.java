@@ -37,7 +37,8 @@ class JPSJavaScriptProviderTest {
         // - org.isa.jps.JamnPersonalServerApp\scripts
         // NOT test/resources
         ServerApp.start(new String[] {
-                "javascript.enabled=true"
+                "javascript.enabled=true",
+                "cli.enabled=true"
         });
         assertTrue(ServerApp.isRunning(), "Test Server start FAILED");
 

@@ -1,13 +1,16 @@
 /* Authored by www.integrating-architecture.de */
 
-import { GeneralView } from '../jsmod/view-classes.mjs';
+import { GeneralView, IconElement } from '../jsmod/view-classes.mjs';
 import { getChildOf, setDisplay } from '../jsmod/tools.mjs';
 
 /**
  * A playground implementation
+ * just showing a login dialog
  */
 
-//export this view component as singleton instance
+//export a view component as singleton 
+//in this case the view object is just the holder for the lazy loaded view html 
+//used by the modal dialog
 const viewInstance = new GeneralView("systemLoginView", "/jsmod/login.html");
 export function getView() {
 	return viewInstance;
@@ -15,6 +18,7 @@ export function getView() {
 
 let tries = 0;
 let accessToken = null;
+let sidebarLoginIcon = IconElement.newIcon("login", document.getElementById("sidebar.header.login.icon"));
 
 /**
  */
@@ -24,7 +28,7 @@ export function isLoggedIn() {
 
 /**
  */
-export function processSystemLogin(dlg) {
+export function processSystemLogin(dialog) {
 
 	if (isLoggedIn()) {
 		WbApp.confirm({
@@ -33,16 +37,19 @@ export function processSystemLogin(dlg) {
 		}, (value) => value ? doLogOff() : null);
 	} else {
 		tries = 0;
-		dlg.setTitle("Jamn System LogIn")
-			.setAction("pb.login", () => dialogAction(dlg))
-			.setAction("pb.login.success", () => dlg.close())
+		dialog.setTitle("Jamn System LogIn")
+			.setAction("pb.login", () => dialogAction(dialog))
+			.setAction("pb.login.success", () => dialog.close())
+			.setElement("user.icon", (elem)=>{IconElement.newIcon("user", elem);})
+			.setElement("password.icon", (elem)=>{IconElement.newIcon("password", elem);})
+			.setElement("login.action.icon", (elem)=>{IconElement.newIcon("loginAction", elem);})
 			.open();
 	}
 }
 
 /**
  */
-function dialogAction(dlg) {
+function dialogAction(dialog) {
 
 	let logInData = {
 		username: "username",
@@ -50,50 +57,44 @@ function dialogAction(dlg) {
 	};
 
 	for (let key in logInData) {
-		logInData[key] = getChildOf(dlg.viewArea, logInData[key])?.value;
+		logInData[key] = getChildOf(dialog.viewArea, logInData[key])?.value;
 	}
 
 	if (doLogin(logInData.username, logInData.password)) {
-		dlg.close();
+		dialog.close();
 	} else {
-		let msgElem = getChildOf(dlg.viewArea, "message");
+		let msgElem = getChildOf(dialog.viewArea, "message");
 		if (tries < 2) {
-			msgElem.innerHTML = `Sorry, unfortunately this login [${tries}] failed for test reasons.<br>But please try again ...`;
+			msgElem.innerHTML = `We are sorry, unfortunately this login [${tries}] failed for demo reason.<br><b>Please click again ...`;
 		} 
 		setDisplay(msgElem, true);
 		if (tries > 1) {
 			//display success message as dialog overlay
-			setDisplay(getChildOf(dlg.viewArea, "login.overlay"), "inline-block");
+			setDisplay(getChildOf(dialog.viewArea, "login.overlay"), "inline-block");
 			toggleStatus();
 		}
 	}
 }
 
 function toggleStatus() {
-	let triggerElem = null;
-	if (!isLoggedIn()) {
-		triggerElem = document.getElementById("sidebar.header.login.icon");
-		triggerElem.classList.remove("bi-person");
-		triggerElem.classList.add("bi-person-check");
-		triggerElem.style.color = "green";
-		triggerElem.title = "Log Off";
 
-		triggerElem = document.getElementById("sidebar.system.login");
-		triggerElem.innerHTML = "Log Off";
-
-		accessToken = "jwt bearer";
-	} else {
-		triggerElem = document.getElementById("sidebar.header.login.icon");
-		triggerElem.classList.remove("bi-person-check");
-		triggerElem.classList.add("bi-person");
-		triggerElem.style.color = "inherit";
-		triggerElem.title = "Login";
-
-		triggerElem = document.getElementById("sidebar.system.login");
-		triggerElem.innerHTML = "Login";
-
-		accessToken = null;
-	}
+	sidebarLoginIcon.toggle().and((icon) => {
+		if (!isLoggedIn()) {
+			icon.style.color = "green";
+			icon.title = "Log Off";
+	
+			document.getElementById("sidebar.system.login").innerHTML = "Log Off";
+	
+			accessToken = "jwt bearer";
+		} else {
+			icon.style.color = "inherit";
+			icon.title = "Login";
+	
+			document.getElementById("sidebar.system.login").innerHTML = "Login";
+	
+			accessToken = null;
+		}	
+	});
 }
 
 /**

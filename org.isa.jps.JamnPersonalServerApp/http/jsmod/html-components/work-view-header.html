@@ -1,9 +1,14 @@
-<!-- server side injection code -->
+<!-- 
+	server side html injection code template
+	for a standard work view header
+	in addition the concrete bootstrap icon css classes 
+	are set as an example via javascript by the WorkView class
+-->
 <div class="work-view-header">
 
-	<!-- the left 3 dot menu icon -->
+	<!-- the left 3dot menu icon -->
 	<span class="wkv-header-item-left wkv-header-item-menu"><i id="menu.icon"
-			class="bi bi-three-dots-vertical wkv-header-menu-ctrl" onclick="WbApp.onViewAction(event, 'header.menu')"
+			class="wkv-header-menu-ctrl" onclick="WbApp.onViewAction(event, 'header.menu')"
 			title="Menu"></i>
 	</span>
 
@@ -13,17 +18,19 @@
 		</div>
 	</span>
 
-	<!-- the title -->
-	<span id="view.title" class="wkv-header-item">Unknown</span>
-
 	<!-- the working indicator gif -->
-	<img id="work.indicator" class="wkv-header-work-indicator" src="images/work-indicator-header-small.gif">
+	<span class="wkv-header-item-left">
+		<img id="work.indicator" class="wkv-header-work-indicator" src="images/work-indicator-header-small.gif">
+	</span>
+	
+	<!-- the title -->
+	<span id="view.title" class="wkv-header-item-title">Unknown</span>
 
 	<!-- the standard header icons -->
-	<span class="wkv-header-item-right"><i id="pin.icon" class="bi bi-pin wkv-header-action-ctrl"
+	<span class="wkv-header-item-right"><i id="pin.icon" class="wkv-header-action-ctrl"
 			onclick="WbApp.onViewAction(event, 'pin')" title="Pin to keep view"></i></span>
-	<span class="wkv-header-item-right"><i id="collapse.icon" class="bi bi-chevron-bar-contract wkv-header-action-ctrl"
+	<span class="wkv-header-item-right"><i id="collapse.icon" class="wkv-header-action-ctrl"
 			onclick="WbApp.onViewAction(event, 'collapse')" title="Collapse view"></i></span>
-	<span class="wkv-header-item-right"><i id="close.icon" class="bi bi-x-lg wkv-header-action-ctrl"
+	<span class="wkv-header-item-right"><i id="close.icon" class="wkv-header-action-ctrl"
 			onclick="WbApp.onViewAction(event, 'close')" title="Close View"></i></span>
 </div>

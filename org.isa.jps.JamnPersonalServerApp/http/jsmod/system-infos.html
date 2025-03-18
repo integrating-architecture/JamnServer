@@ -1,13 +1,13 @@
 <!--jamn.web.template-->
 
 <!--
-Example of server side html code injection 
+This is an Example of server side html code injection 
 -->
 
 <!-- work view -->
 <div class="work-view" style="visibility: hidden;">
 
-	<!-- example of server side code injection -->
+	<!-- SERVER-SIDE INJECTION Point/Expression -->
 	${work-view-header.html}
 
 	<!-- the individual view working/content area -->
@@ -19,6 +19,30 @@ Example of server side html code injection
 		<pval id="server.version"></pval></br>
 		<plb>Description:</plb>
 		<pval id="server.description"></pval></br>
+
+		<div style="margin-top: 20px;">
+			<plb>Configuration:</plb>
+
+			<div class="wkv-fix-tblhead-container" style="width: 700px; margin-bottom: 20px; margin-left: 20px;">
+				<table id="server.config" class="wkv" style="table-layout:fixed;">
+					<thead>
+						<tr>
+							<th class="wkv" style="width: 250px;">
+								<span style="display: flex; align-items: center;">
+									<span>Key:</span>
+									<input type="text" id="config.filter.tf" placeholder="Filter ..."
+										class="wkv-tblheader-search-tf" style="min-width: 60%;">
+									<span style="width: 100%;"></span>
+									<i class="wkv-tblheader-ctrl" title="Sort"></i>
+								</span>
+							</th>
+							<th class="wkv">Value:</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+		</div>
 	</div>
 </div>
 <!-- work view end -->

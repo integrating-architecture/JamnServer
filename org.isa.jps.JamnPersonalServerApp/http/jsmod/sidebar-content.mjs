@@ -15,7 +15,7 @@ import { getView as commandView } from '../jsmod/command.mjs';
  * </pre>
  */
 export const topicList = {
-	system : {icon:"bi bi-laptop", title:"&ensp;System",
+	system : {icon:"system", title:"&ensp;System",
 		items : {
 			//create a view item 
 			"infos" : {title:"Infos", view:systemInfosView()},
@@ -26,7 +26,7 @@ export const topicList = {
 		}
 	},
 	
-	commands : {icon:"bi bi-command", title:"&ensp;Commands",
+	commands : {icon:"command", title:"&ensp;Commands",
 		items : {
 			//create view item with data
 			"testSample" : {title:"Sample: shell test", view:commandView(), data:new CommandDef("Sample: [test sh command]", "runjs", "/sample/sh-test.mjs", "<none>")},
@@ -34,7 +34,7 @@ export const topicList = {
 		}
 	},
 	
-	tools : {icon:"bi bi-tools", title:"&ensp;Tools",
+	tools : {icon:"tools", title:"&ensp;Tools",
 		items : {
 			
 		}

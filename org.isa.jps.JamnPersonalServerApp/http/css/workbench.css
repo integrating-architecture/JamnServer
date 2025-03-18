@@ -40,7 +40,16 @@
     --standard-button-hover-border: #8A9A5B;
     --standard-button-border: #6c6c6c;
 
+    --tbl-header-bg: var(--work-view-header-bg);
+    --tbl-border: var(--border-gray);
+    --tbl-row-hover-bg: #3f3f3f;
+    --tbl-row-hover-border: #8A9A5B;
+
+    --scrollbar-thumb-fg: var(--header-bg);
+    --scrollbar-track-bg: var(--border-gray);
+ 
 }
+
 
 html,
 body {
@@ -50,6 +59,8 @@ body {
     font-family: sans-serif;
     color: var(--text-gray);
     font-size: 14px;
+    /*first scrollbar thumb, second scrollbar track*/
+    scrollbar-color: var(--scrollbar-thumb-fg) var(--scrollbar-track-bg);
 }
 
 /** 
@@ -133,14 +144,14 @@ body {
 }
 
 .standard-dialog-textfield {
-	box-sizing: border-box;
-	width: 100%;
-	margin-bottom: 20px;
+    box-sizing: border-box;
+    width: 100%;
+    margin-bottom: 20px;
     font-size: 1em;
 }
 
 p.std-dlg-input {
-	margin-bottom: 5px;
+    margin-bottom: 5px;
 }
 
 /** 
@@ -190,7 +201,7 @@ p.std-dlg-input {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 9;
+    z-index: 1;
     background: var(--modal-dlg-content-bg);
     display: none;
     font-size: 18px;
@@ -359,7 +370,8 @@ div#workarea {
 }
 
 div#workarea .work-view {
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     border: 1px solid var(--border-gray);
     margin-bottom: 20px;
 }
@@ -387,11 +399,17 @@ div#workarea .work-view {
     text-align: center;
 }
 
+.wkv-header-item-title {
+    width: 100%;
+    text-align: center;
+}
+
 .wkv-header-item-left {
     width: 40px;
     min-width: 40px;
     text-align: left;
     color: var(--work-view-header-ctrl);
+    display: flex;
 }
 
 .wkv-header-item-right {
@@ -541,6 +559,82 @@ div#statusline .statusline-item {
     border-bottom: 1px solid var(--border-gray);
 }
 
+/**
+ * WorkView Table
+ * the border effort is due to fix header and collapse problem
+ */
+table.wkv {
+    color: var(--text-gray);
+    /*use separate cause of fix header border problem*/
+    border-collapse: separate;
+    border-spacing: 0;
+    /*avoids? 2px border inaccuracy on the right*/
+    width: 100.1%;
+}
+
+div.wkv-fix-tblhead-container {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 200px;
+    border: 1px solid var(--tbl-border);
+}
+
+.wkv-fix-tblhead-container th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+th.wkv {
+    background: var(--tbl-header-bg);
+    border-right: 1px solid var(--tbl-border);
+    border-bottom: 1px solid var(--tbl-border);
+    text-align: left;
+    padding: 4px;
+    font-size: 1.0em;
+    font-weight: 300;
+}
+
+td.wkv {
+    border-right: 1px solid var(--tbl-border);
+    border-bottom: 1px solid var(--tbl-border);
+    overflow: hidden;
+    text-align: left;
+    word-wrap: break-word;
+    padding: 4px;
+}
+
+tr.wkv:hover td {
+    background-color: var(--tbl-row-hover-bg);
+    color: var(--text-light-gray);
+    border-bottom-color: var(--tbl-row-hover-border);
+}
+
+.wkv-tblheader-ctrl{
+    margin-right: 4px;
+}
+
+.wkv-tblheader-ctrl:hover {
+    color: var(--text-light-gray);
+    cursor: pointer;
+}
+
+.wkv-tblheader-search-tf {
+    margin-left: 10px;
+    margin-right: 0px;
+    background: var(--tbl-header-bg);
+    border: 1px solid var(--tbl-border);
+    color: var(--text-gray);
+    outline: none;
+    background-image: url('/images/search-16.png');
+    background-repeat: no-repeat;
+    background-position: left center;
+    padding-left: 20px;
+}
+
+.wkv-tblheader-tf:focus {
+    border-color: var(--tbl-row-hover-border);
+}
 
 /**
  * Helper and others 

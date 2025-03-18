@@ -1,12 +1,15 @@
 /* Authored by www.integrating-architecture.de */
 
 import * as loginModule from '../jsmod/login.mjs';
+import {IconElement} from '../jsmod/view-classes.mjs';
 
 
 let topicListDef = [];
 let topicListId = "sidebarTopics";
 let itemAction = (id) => { console.warn("Sidebar NO action for: " + id); };
 let collapsed = false;
+let menuIcon = null;
+let loginIcon = null;
 
 /**
  * Public
@@ -34,7 +37,8 @@ export function createTopic(id, topicHtml) {
 
 /**
  */
-export function newTopicHtml(iconClazz, text) {
+export function newTopicHtml(iconName, text) {
+	let iconClazz = IconElement.iconDef(iconName)[0];
 	return `<li class="sbar-topic"><span class="${iconClazz}">${text}</span>`;
 };
 
@@ -61,9 +65,9 @@ export function setItemAction(action) {
  */
 export function initFunctionalItems(viewmanager) {
 
-	//sidebar collaps icon
-	let item = document.getElementById("sidebar.header.menu.icon");
-	item.addEventListener("click", (evt) => {
+	//sidebar collaps/menu icon
+	menuIcon = IconElement.newIcon("menu", document.getElementById("sidebar.header.menu.icon"));
+	menuIcon.elem.addEventListener("click", (evt) => {
 		evt.stopImmediatePropagation();
 		toogleCollaps();
 	});
@@ -76,12 +80,12 @@ export function initFunctionalItems(viewmanager) {
 			loginModule.processSystemLogin(dlg);
 		});
 	}
-	//sidebar system login item
-	item = document.getElementById("sidebar.system.login");
-	item.addEventListener("click", logInAction);
-
 	//sidebar header login icon
-	item = document.getElementById("sidebar.header.login.icon");
+	loginIcon = IconElement.newIcon("login", document.getElementById("sidebar.header.login.icon"));
+	loginIcon.elem.addEventListener("click", logInAction);
+
+	//sidebar system login item
+	let item = document.getElementById("sidebar.system.login");
 	item.addEventListener("click", logInAction);
 }
 
@@ -95,15 +99,14 @@ function toogleCollaps() {
 	let topics = document.getElementById("sidebarTopics");
 	let workicons = document.getElementById("sidebar.header.workicons");
 	let sidebar = document.getElementById("sidebar");
-	let icon = document.getElementById("sidebar.header.menu.icon");
 
 	if (!collapsed) {
-		icon.title = "Expand Menu"
+		menuIcon.elem.title = "Expand Menu"
 		topics.style["display"] = "none";
 		workicons.style["display"] = "none";
 		sidebar.style["width"] = "50px";
 	} else {
-		icon.title = "Collapse Menu"
+		menuIcon.elem.title = "Collapse Menu"
 		topics.style["display"] = "block";
 		workicons.style["display"] = "flex";
 		sidebar.style["width"] = "225px";

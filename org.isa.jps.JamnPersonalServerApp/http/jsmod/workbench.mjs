@@ -2,7 +2,7 @@
 
 import { ServerOrigin, setVisibility } from '../jsmod/tools.mjs';
 import { WorkbenchViewManager }  from '../jsmod/view-manager.mjs';
-import { StandardDialog }  from '../jsmod/view-classes.mjs';
+import { StandardDialog, IconElement }  from '../jsmod/view-classes.mjs';
 import * as websocket from '../jsmod/websocket.mjs';
 import * as sidebar from '../jsmod/sidebar.mjs';
 import * as sidebarContent from '../jsmod/sidebar-content.mjs';
@@ -124,8 +124,8 @@ function initUI() {
 
 	//set statusline github icon href
 	systemInfos.getInfos((data)=>{
-		let elem = document.getElementById("statusLineScmLink");
-		elem.setAttribute("href", data.links["app.scm"]);
+		let scmIcon = IconElement.newIcon("github", document.getElementById("statusLineScmLink"));
+		scmIcon.elem.setAttribute("href", data.links["app.scm"]);
 	});
 }
 

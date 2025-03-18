@@ -28,7 +28,7 @@ and on the Frontend-Side in HTML/CSS and Java-Script, as required.
 The App and the UI can be used local and/or remote - without changes and without having to meet any specifications or any other restrictions.<br>
 There is No deployment - No dependency management - No external tooling required.  
 
-<br><img src="https://github.com/user-attachments/assets/b26b2e87-3ca4-48b6-a631-68c549750071" width="600" height="400"></br>   
+<br><img src="https://github.com/user-attachments/assets/23fec579-9a67-4e12-b864-9ba9f0f96026" width="600" height="400"></br>   
 <br></br>
 ## Disclamer  
 Affects all source and binary code from
@@ -47,4 +47,3 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-

@@ -3,9 +3,9 @@
 Jamn is an **experimental**, lightweight **Java MicroServer** (less than 200 KB) for textdata driven application communication with e.g. JSON/XML/HTML etc. based on a rudimentary HTTP compatibility.
 
 The Motivation and Goal of Jamn is to provide a simple and independent way for ...
-* instant creation and use of Rich Web GUIs for Local+Remote Apps in the browser 
+* building local and remote "All in One" Rich Web GUI Apps 
 * having a universal, network-capable Java-Bridge 
-* complete control over Backend and Frontend in One application without infrastructure components and tools
+* complete control over Backend and Frontend in "One App" without infrastructure components and tools
 
 The implementation is designed for easy manageability and high degree of customizability. It uses only Standard Java-SE functionality and the server is <a href="/org.isa.ipc.JamnServer/src/main/java/org/isa/ipc/JamnServer.java">implemented in ONE tiny class file.</a> With the exception of the optional Json and JavaScript-Engine there are NO dependencies to any APIs or Libraries.
 

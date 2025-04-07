@@ -31,7 +31,7 @@ and on the Frontend-Side in HTML/CSS and Java-Script, as required.
 The App and the UI can be used local and/or remote - without changes and without having to meet any specifications or any other restrictions.<br>
 There is No deployment - No dependency management - No external tooling required.  
 
-Workbench App <a href="https://iqbserve.de:9090/" target="_blank">Demo</a>
+Workbench App [Demo](https://iqbserve.de:9090/){:target="_blank"}
 <br>
 <img src="https://github.com/user-attachments/assets/23fec579-9a67-4e12-b864-9ba9f0f96026" width="600" height="400"></br>   
 <br></br>

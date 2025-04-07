@@ -17,7 +17,10 @@ The basic design is layered and modular - so users can easily adapt anything to 
   - Web Socket - bidirectional Front-/Backend communication
   - JavaScript - extending/implementing functionality
 
-**NOTE**: Although the current server supports http in a basic form, **it is NOT intended to be a fully featured HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required. <a href="/org.isa.ipc.JamnServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java"> (basic usage example)</a>
+**NOTES**:
+1. Although the current server supports http in a basic form, **it is NOT intended to be a fully featured HTTP/Web Server and it is NOT suitable for such production purposes**. But it is quick and easy to use e.g. for tooling, testing or concept experiments  - cause no infrastructure and no external components are required. <a href="/org.isa.ipc.JamnServer/src/test/java/org/isa/ipc/JamnServerBasicTest.java"> (basic usage example)</a>
+<br><br>
+2. The term "node" in the name just means "node" - NOT Node.js. **Jamn does NOT use Node.js.**
 <br></br>
 # Jamn Personal Server-App
 The <a href="/org.isa.jps.JamnPersonalServerApp">Personal App</a> exemplary assembles the Jamn Components in one application scaffolding (< 200 KB) extending the combination with a folder structure, a JavaScript Backend integration and a WebUI base for Browser based Frontends. It is a sample and a playground for possible use cases.

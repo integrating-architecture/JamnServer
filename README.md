@@ -33,11 +33,12 @@ There is No deployment - No dependency management - No external tooling required
 
 Workbench App <a href="https://iqbserve.de:9090/" target="_blank">Demo</a>
 <br>
-<img src="https://github.com/user-attachments/assets/23fec579-9a67-4e12-b864-9ba9f0f96026" width="600" height="400"></br>   
+<img src="https://github.com/user-attachments/assets/197926b4-2101-42e1-b738-49e4aaab7653" width="600" height="400"></br>   
+
 <br></br>
 ## Disclamer  
 Affects all source and binary code from
-    https://github.com/integrating-architecture/JamnServer.git
+
 	
 Use and redistribution in source and binary forms,
 with or without modification, are permitted WITHOUT restriction of any kind.  

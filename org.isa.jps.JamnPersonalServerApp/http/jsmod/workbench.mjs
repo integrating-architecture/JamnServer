@@ -56,6 +56,10 @@ export const WorkbenchInterface = {
 	
 	addWsoMessageListener : (cb) => {
 		websocket.addMessageListener(cb);
+	},
+
+	statusLineInfo : (info) => {
+		statusLineInfo.innerHTML = info;
 	}
 };
 
@@ -69,6 +73,7 @@ let viewManager = new WorkbenchViewManager(workarea, modalDialog);
 
 let standardDlg = new StandardDialog();
 
+let statusLineInfo = null;
 
 /**
  * this is called after document load but before getting visible
@@ -122,10 +127,13 @@ function initUI() {
 	
 	sidebar.initFunctionalItems(viewManager);
 
+	//init status line
+	statusLineInfo = document.getElementById("wsl.info");
 	//set statusline github icon href
 	systemInfos.getInfos((data)=>{
-		let scmIcon = IconElement.newIcon("github", document.getElementById("statusLineScmLink"));
+		let scmIcon = IconElement.newIcon("github", document.getElementById("wsl.scm.link"));
 		scmIcon.elem.setAttribute("href", data.links["app.scm"]);
 	});
+
 }
 

@@ -105,35 +105,38 @@ export class IconElement {
 		cb(this.elem);
 	}
 
-	static newIcon(name, elem, type="bi") {
+	static newIcon(name, elem, type = "bi") {
 		return new IconElement(elem, type, IconElement.#Icons[type][name]).init(IconElement.#Icons[type].defaultInit);
 	}
 
-	static iconDef(name, type="bi"){
+	static iconDef(name, type = "bi") {
 		return IconElement.#Icons[type][name];
 	}
 
 	static #Icons = {
-		bi : {
-			defaultInit : (iconObj) => {
+		bi: {
+			defaultInit: (iconObj) => {
 				//Bootstrap font icons
 				iconObj.elem.classList.add(iconObj.type ? iconObj.type : "bi");
 				iconObj.elem.classList.add(iconObj.shapes[0]);
 			},
-			close : ["bi-x-lg", ""],
-			pin : ["bi-pin", "bi-pin-angle"],
-			collapse : ["bi-chevron-bar-contract", "bi-chevron-bar-expand"],
-			dotmenu : ["bi-three-dots-vertical", ""],
-			menu : ["bi-list", ""],
-			login :  ["bi-person", "bi-person-check"],
-			github :  ["bi-github", ""],
-			system :  ["bi-laptop", ""],
-			command :  ["bi-command", ""],
-			tools :  ["bi-tools", ""],
-			user :  ["bi-person", ""],
-			password :  ["bi-key", ""],
-			loginAction : ["bi-box-arrow-in-right", ""],
-			tableSort :  ["bi-arrow-down", "bi-arrow-up"]
+			close: ["bi-x-lg", ""],
+			pin: ["bi-pin", "bi-pin-angle"],
+			collapse: ["bi-chevron-bar-contract", "bi-chevron-bar-expand"],
+			dotmenu: ["bi-three-dots-vertical", ""],
+			menu: ["bi-list", ""],
+			login: ["bi-person", "bi-person-check"],
+			github: ["bi-github", ""],
+			system: ["bi-laptop", ""],
+			command: ["bi-command", ""],
+			tools: ["bi-tools", ""],
+			user: ["bi-person", ""],
+			password: ["bi-key", ""],
+			loginAction: ["bi-box-arrow-in-right", ""],
+			tableSort: ["bi-arrow-down", "bi-arrow-up"],
+			save: ["bi-floppy", ""],
+			redo: ["bi-arrow-counterclockwise", ""],
+			addnew: ["bi-plus-square", ""]
 		}
 	}
 }
@@ -294,11 +297,14 @@ export class WorkView {
 		}
 	}
 
+	statusLineInfo(info){
+		WbApp.statusLineInfo(info);
+	}
 }
 
 
 /**
- * A Base class for command views
+ * A base class for command views
  * that get parameterized with a commandDef object on installation
  */
 export class BaseCommandView extends WorkView {
@@ -306,10 +312,11 @@ export class BaseCommandView extends WorkView {
 	commandDef = new CommandDef();
 	commandName = "";
 
-	runButton = null;
-	runArgs = null;
 	workIndicator = null;
 
+	//expected to be CtrlComp objects
+	runButton = null;
+	runArgs = null;
 	outputArea = null;
 
 	onInstallation(installKey, installData, viewManager) {
@@ -325,11 +332,7 @@ export class BaseCommandView extends WorkView {
 		super.initialize();
 
 		this.setTitle(this.commandDef.title);
-
-		this.runButton = this.getElement("pb.run");
 		this.workIndicator = this.getElement("work.indicator");
-		this.runArgs = this.getElement("cmd.args");
-		this.outputArea = this.getElement("cmd.output");
 
 		if (this.headerMenu) {
 			this.headerMenu.addItem("Clear Output", (evt) => {
@@ -339,29 +342,21 @@ export class BaseCommandView extends WorkView {
 	}
 
 	clearOutput() {
-		let lastValue = this.outputArea.value;
-		this.outputArea.value = "";
+		let lastValue = this.outputArea.ctrl().value;
+		this.outputArea.ctrl().value = "";
 		return lastValue;
 	}
 
 	addOutputLine(line) {
-		this.outputArea.value += line + NL;
-		this.outputArea.scrollTop = this.outputArea.scrollHeight;
+		this.outputArea.ctrl().value += line + NL;
+		this.outputArea.ctrl().scrollTop = this.outputArea.ctrl().scrollHeight;
 	}
 
 	setRunning(flag) {
 		this.isRunning = flag;
 
 		setVisibility(this.workIndicator, flag);
-		this.runButton.disabled = flag;
-
-		if (flag) {
-			this.runButton.classList.remove("cmd-button");
-			this.runButton.classList.add("cmd-button-disabled");
-		} else {
-			this.runButton.classList.remove("cmd-button-disabled");
-			this.runButton.classList.add("cmd-button");
-		}
+		this.runButton.ctrl().disabled = flag;
 	}
 }
 
@@ -434,7 +429,7 @@ export class ModalDialog {
 		this.title = getChildOf(this.header, "dialog.title");
 		this.viewArea = getChildOf(containerElem, "modal.dialog.view.area");
 		this.commandArea = getChildOf(containerElem, "modal.dialog.command.area");
-	
+
 		this.closeIcon = IconElement.newIcon("close", getChildOf(containerElem, "modal.dialog.close.icon"));
 		this.closeIcon.elem.addEventListener("click", () => {
 			this.close();
@@ -491,7 +486,7 @@ export class StandardDialog {
 	tfInput;
 
 	constructor() {
-		this.dialogElem = document.getElementById('standardDialog');
+		this.dialogElem = document.getElementById("standardDialog");
 		this.contentArea = getChildOf(this.dialogElem, "standard.dialog.content.area");
 		this.commandArea = getChildOf(this.dialogElem, "standard.dialog.command.area");
 		this.title = getChildOf(this.dialogElem, "standard.dialog.title");
@@ -579,7 +574,7 @@ export class WorkViewTable {
 	tableElem;
 	tableBody;
 	tableData = null;
-	ascOrder = true;
+	ascOrder = false;
 	sortIcon;
 
 	constructor(tableElem) {
@@ -607,9 +602,8 @@ export class WorkViewTable {
 				col.className = "wkv";
 				col.innerHTML = colVal;
 				col.value = colKey;
-				col.onclick = (evt) => {
-					this.tableData.cellClick(rowKey, colKey, evt);
-				}
+				col.onclick = (evt) => {this.tableData.cellClick(rowKey, colKey, evt);};
+				col.ondblclick = (evt) => {this.tableData.cellDblClick(rowKey, colKey, evt);};
 				row.appendChild(col);
 			});
 
@@ -650,6 +644,13 @@ export class WorkViewTable {
 			row.style.display = cellVal.toLowerCase().indexOf(filter) < 0 ? "none" : "";
 		});
 	}
+
+	newCellTextField(clazz="wkv-tblcell-edit-tf"){
+		let ctrl = document.createElement('input');
+		ctrl.type = "text";
+		ctrl.classList.add(clazz);
+		return ctrl;
+	}
 }
 
 /**
@@ -660,15 +661,249 @@ export class WorkViewTable {
 export class TableData {
 	rows;
 	cellClick;
+	cellDblClick;
 
 	constructor() {
 		this.rows = new Map();
 		this.cellClick = (rowKey, colKey, evt) => { };
+		this.cellDblClick = (rowKey, colKey, evt) => { };
 	}
 
 	addRow(key, columns) {
 		this.rows.set(key, columns);
 	}
+}
 
+/**
+ * An experimental factory/builder to create standard UI components e.g. like
+ *  [label] - [textfield] etc.
+ * arranged in a fieldset container.
+ */
+export class CompBuilder {
+
+	//provide default style classes
+	textCompClasses = ["wkv-label-ctrl", "wkv-value-ctrl"];
+	textAreaCompClasses = ["wkv-label-ctrl", "wkv-textarea-ctrl"];
+	buttonCompClasses = ["wkv-label-ctrl", "wkv-button-ctrl"];
+
+	labelStyle = null;
+
+	static style(elem, styleProps){
+		for (const name in styleProps) {
+			elem.style[name] = styleProps[name];
+		}
+	}
+
+	#idCheck(id) {
+		if (!id || id === 'undefined' || id === "") {
+			//if no id - create a random one
+			return Math.random().toString(32).slice(5);
+		}
+		return id;
+	}
+
+	#setClassOf(ctrl, compProps, defaultClass) {
+		if (compProps?.clazz) {
+			if (Array.isArray(compProps.clazz)) {
+				compProps.clazz.forEach(clazz => ctrl.classList.add(clazz));
+			} else {
+				ctrl.classList.add(compProps.clazz);
+			}
+		} else {
+			ctrl.classList.add(defaultClass);
+		}
+	}
+
+	//creation options for individual overwriting
+	newCompSet(opt = { tag: "fieldset", clazz: "wkv-compset", title: null, styleProps: {}, clazzes: [] }) {
+		let compSet = document.createElement(opt.tag ? opt.tag : "fieldset");
+		compSet.classList.add(opt.clazz ? opt.clazz : "wkv-compset");
+
+		if (opt.title) {
+			let legend = document.createElement("legend");
+			legend.innerHTML = opt.title;
+			compSet.append(legend);
+		}
+
+		if (opt.styleProps) {
+			for (const name in opt.styleProps) {
+				compSet.style[name] = opt.styleProps[name];
+			}
+		}
+
+		if (opt.clazzes) {
+			opt.clazzes.forEach(clazz => compSet.classList.add(clazz));
+		}
+
+		return compSet;
+	}
+
+	#newLabel(props, clazz) {
+		let ctrl = document.createElement("label");
+		ctrl.classList.add(clazz);
+		ctrl.innerHTML = props.label;
+		ctrl.htmlFor = props.id;
+
+		if(this.labelStyle!==null){
+			for (const name in this.labelStyle) {
+				ctrl.style[name] = this.labelStyle[name];
+			}	
+		}
+		return ctrl;
+	}
+
+	/**
+	 * provide standard, pre configured components as CtrlComp objects
+	 * compProps overwrite generalProps 
+	 */
+	newTextComp(compProps = { label: "unknown", id: "", readOnly: false }, generalProps = {}) {
+		let props = { ...generalProps, ...compProps };
+		let ctrls = [];
+		props.id = this.#idCheck(props.id);
+		ctrls[0] = this.#newLabel(props, this.textCompClasses[0]);
+
+		ctrls[1] = document.createElement("input");
+		ctrls[1].type = "text";
+		ctrls[1].id = props.id;
+
+		this.#setClassOf(ctrls[1], props, this.textCompClasses[1]);
+
+		if (props.readOnly){
+			ctrls[1].classList.add("input-readonly");
+			ctrls[1].disabled = true;
+		}
+
+		return new CtrlComp(ctrls, "text");
+	}
+
+	newTextAreaComp(compProps = { label: "unknown", id: "", readOnly: false }, generalProps = {}) {
+		let props = { ...generalProps, ...compProps };
+		let ctrls = [];
+		props.id = this.#idCheck(props.id);
+		ctrls[0] = this.#newLabel(props, this.textAreaCompClasses[0]);
+
+		ctrls[1] = document.createElement("textarea");
+		ctrls[1].id = props.id;
+		ctrls[1].rows = props.rows;
+
+		this.#setClassOf(ctrls[1], props, this.textAreaCompClasses[1]);
+
+		if (props.readOnly) {
+			ctrls[1].classList.add("textarea-readonly");
+			ctrls[1].disabled = true;
+		}
+
+		return new CtrlComp(ctrls, "textarea");
+	}
+
+	newButtonComp(compProps = { label: "unknown", id: "", enabled: true }, generalProps = {}) {
+		let props = { ...generalProps, ...compProps };
+		let ctrls = [];
+		props.id = this.#idCheck(props.id);
+		ctrls[0] = this.#newLabel(props, this.buttonCompClasses[0]);
+
+		ctrls[1] = document.createElement("input");
+		ctrls[1].type = "button";
+		ctrls[1].id = props.id;
+
+		this.#setClassOf(ctrls[1], props, this.buttonCompClasses[1]);
+
+		return new CtrlComp(ctrls, "button");
+	}
+
+ 	newIconbarComp(compProps = { icons: [] }, generalProps = {}) {
+		let props = { ...generalProps, ...compProps };
+		let ctrls = [];
+		props.id = this.#idCheck(props.id);
+
+		compProps.icons.forEach(item => {
+			let elem = document.createElement("i");	
+			elem.setAttribute("title", item?.title);
+			IconElement.newIcon(item.name, elem);	
+			ctrls.push(elem); 
+		});
+
+		return new CtrlComp(ctrls, "icon");
+	}
+ }
+
+/**
+ * A component object provides the pre configured dom elements
+ * and methods for "configuration/installation". 
+ */
+export class CtrlComp {
+	type = "";
+	comp = null;
+	ctrls = [];
+
+	constructor(ctrls, type = "text") {
+		this.type = type;
+		this.ctrls = ctrls;
+	}
+
+	style(idx, styleProps) {
+		let target = null;
+		let values = styleProps;
+		//if idx is a style object use it for the enclosing component
+		if (isNaN(idx) && typeof idx === 'object') {
+			target = this.comp;
+			values = idx;
+		} else {
+			target = this.ctrls[idx];
+		}
+		for (const name in values) {
+			target.style[name] = values[name];
+		}
+		return this;
+	}
+
+	attrb(idx, attributeProps) {
+		let target = null;
+		let values = attributeProps;
+		if (isNaN(idx) && typeof idx === 'object') {
+			target = this.comp;
+			values = idx;
+		} else {
+			target = this.ctrls[idx];
+		}
+		for (const name in values) {
+			target[name] = values[name];
+		}
+		return this;
+	}
+
+	config(cb) {
+		cb(this);
+		return this;
+	}
+
+	/**
+	 * @returns the "main control" e.g. input, button etc.
+	 */
+	ctrl() {
+		return this.ctrls[1];
+	}
+
+	build(clazz="wkv-ctrlcomp") {
+		if (this.comp === null) {
+			this.comp = document.createElement("span");
+			clazz = Array.isArray(clazz) ? clazz : [clazz];
+			clazz.forEach(cls => this.comp.classList.add(cls));
+			this.ctrls.forEach(ctrl => this.comp.append(ctrl));
+		}
+		return this;
+	}
+
+	appendTo(parent) {
+		this.build();
+		parent.append(this.comp);
+		return this;
+	}
+
+	prependTo(parent) {
+		this.build();
+		parent.prepend(this.comp);
+		return this;
+	}
 }
 

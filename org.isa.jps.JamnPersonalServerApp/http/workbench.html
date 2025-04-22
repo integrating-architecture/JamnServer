@@ -26,21 +26,22 @@
       .registerAs("WbApp")
       .build();
   </script>
+</head>
 
 <body>
 
   <!-- approot -->
   <div id="approot" class="site-container">
-    <!-- app construction -->
-    <!-- header -->
-    <div id="header">
-      <div class="header-item" style="width: 30px;">
-        <img src="images/workbench-logo.png" title="Workbench Logo" alt="logo" width="16px" height="16px" />
-      </div>
-      <div id="headerTitle" class="header-item">Jamn Workbench -</div>
-      <div id="headerTitleText" class="header-item">[ ]</div>
+
+    <!-- titlebar -->
+    <div id="titlebar">
+      <a href="https://iqbserve.de/" target="_blank">
+      <img class="wtb-item" src="images/workbench-logo.png" title="IQB Services" alt="logo" width="22px"
+        height="22px" /></a>
+      <span id="wtb.title" class="wtb-item">Jamn Workbench -</span>
+      <span id="wtb.title.text" class="wtb-item">[ ]</span>
     </div>
-    <!-- header end -->
+    <!-- titlebar end -->
 
     <!-- main container -->
     <div id="mainContainer">
@@ -48,14 +49,10 @@
       <!-- sidebar -->
       <div id="sidebar">
         <div class="sidebar-header">
-          <div class="sidebar-header-icon">
-            <a id="sidebar.header.menu.icon" href="javascript:void(0)" title="Collapse Menu"></a>
-          </div>
+          <i id="sidebar.menu.icon" class="sidebar-header-icon"></i>
 
           <div id="sidebar.header.workicons" class="sidebar-header-workicons">
-            <div class="sidebar-header-icon">
-              <a id="sidebar.header.login.icon" href="javascript:void(0)" title="Login"></a>
-            </div>
+            <i id="sidebar.login.icon" class="sidebar-header-icon"></i>
           </div>
         </div>
 
@@ -68,21 +65,22 @@
 
       <!-- workarea -->
       <div id="workarea">
+   
       </div>
       <!-- workarea end -->
-
+    
     </div>
     <!-- main container end -->
 
-    <!-- status line -->
+    <!-- statusline -->
     <div id="statusline">
-      <span class="statusline-item" style="width: 30px;">Info:</span>
-      <span id="statuslineInfo" class="statusline-item" style="width: 100%;"></span>
-      <span id="statuslineIcons" class="statusline-item" style="width: 50px; margin-right: 5px; text-align: center;">
-        <a id="statusLineScmLink" href="" target="_blank" style="color:white;"></a>
+      <span class="wsl-item" style="width: 30px;">Info:</span>
+      <span id="wsl.info" class="wsl-item" style="width: 100%;"></span>
+      <span id="wsl.icons" class="wsl-item" style="width: 50px; margin-right: 5px; text-align: center;">
+        <a id="wsl.scm.link" title="Git repo" href="" target="_blank" style="color: var(--text-light-gray);"></a>
       </span>
     </div>
-    <!-- status line end -->
+    <!-- statusline end -->
   </div>
 
   <!-- modal dialog overlay container -->
@@ -118,6 +116,19 @@
     </div>
   </dialog>
   <!-- standard dialog end -->
+  
+  <!-- intro text box -->
+  <div class="overlay-container intro-container" onclick="this.style.display = 'none';">
+    <div class="intro-content">
+      <h1 style="color: var(--standard-dlg-header-bg)">Welcome to<br>Jamn Workbench</h1>
+      <span style="font-size: 18px;">
+        <p>an example of using standard plain<br>Html, JavaScript and Java SE<br>together</p>
+        <p>to build lightweight, browser enabled <a style="color: var(--isa-title-blue);" title="Jamn All-In-One MicroService" target="_blank" href="https://github.com/integrating-architecture/JamnServer?tab=readme-ov-file#jamn---just-another-micro-node-server">All-in-One Apps <i class="bi bi-github"></i></a>
+        </p>
+    </span>
+    </div>
+  </div>
+  <!-- intro text box end -->
 
 </body>
 

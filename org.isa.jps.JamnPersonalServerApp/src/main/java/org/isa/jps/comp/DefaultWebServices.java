@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 import org.isa.ipc.JamnWebServiceProvider.WebService;
 import org.isa.jps.JamnPersonalServerApp;
@@ -22,6 +23,9 @@ import org.isa.jps.JamnPersonalServerApp;
  * </pre>
  */
 public class DefaultWebServices {
+
+    protected static final Logger LOG = Logger.getLogger(DefaultWebServices.class.getName());
+
 
     protected OperatingSystemInterface osIFace;
 
@@ -102,28 +106,48 @@ public class DefaultWebServices {
     public SystemInfoResponse getSystemInfo(SystemInfoRequest pRequest) {
         Properties lBuildProps = JamnPersonalServerApp.getInstance().getConfig().getBuildProperties();
         return new SystemInfoResponse()
+                .setStatus("ok")
                 .setName(lBuildProps.getProperty("appname"))
                 .setVersion(lBuildProps.getProperty("version"))
                 .setDescription(lBuildProps.getProperty("description"))
+                .setBuildDate(lBuildProps.getProperty("build.date"))
                 .addLink("app.scm", lBuildProps.getProperty("url"))
                 .setConfig(JamnPersonalServerApp.getInstance().getConfig().getProperties());
     }
 
     /**
      */
+    @WebService(methods = { "POST" }, path = SystemInfoRequest.UpdatePath, contentType = SystemInfoRequest.ContentType)
+    public SystemInfoResponse updateSystemInfo(SystemInfoRequest pRequest) {
+        //only demo purpose
+        LOG.info(()-> String.format("Config changes: [%s]", pRequest.getConfigChanges()));
+        return new SystemInfoResponse().setStatus("ok");
+    }
+
+    /**
+     */
     public static class SystemInfoRequest {
         public static final String Path = "/api/system-infos";
+        public static final String UpdatePath = "/api/update-system-infos";
         public static final String ContentType = APPLICATION_JSON;
 
+        protected Map<String, String> configChanges = new HashMap<>();
+
         protected SystemInfoRequest() {
+        }
+
+        public Map<String, String> getConfigChanges() {
+            return configChanges;
         }
     }
 
     /**
      */
     public static class SystemInfoResponse {
+        protected String status = "";
         protected String name = "";
         protected String version = "";
+        protected String buildDate = "";
         protected String description = "";
 
         protected Map<String, String> links = new HashMap<>();
@@ -140,6 +164,15 @@ public class DefaultWebServices {
 
         public SystemInfoResponse addLink(String pKey, String pValue) {
             links.put(pKey, pValue);
+            return this;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public SystemInfoResponse setStatus(String status) {
+            this.status = status;
             return this;
         }
 
@@ -169,6 +202,16 @@ public class DefaultWebServices {
             this.description = description;
             return this;
         }
+
+        public String getBuildDate() {
+            return buildDate;
+        }
+
+        public SystemInfoResponse setBuildDate(String buildDate) {
+            this.buildDate = buildDate;
+            return this;
+        }
+
     }
     /**********************************************************************************
      **********************************************************************************/

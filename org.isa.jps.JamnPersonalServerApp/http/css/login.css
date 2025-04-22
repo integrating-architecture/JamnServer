@@ -1,12 +1,11 @@
-
 /**
  * the css for the login.html component
  */
-:root{
+:root {
     --login-site-bg: #c3c3c3;
     --login-input-fg: #1f1f1f;
     --login-input-bg: #f8f8f8;
-    --login-input-outline: #31ce01;
+    --login-input-focus: #0054a8;
     --login-label-fg: #1f1f1f;
     --login-label-bg: #f8f8f8d8;
 
@@ -16,7 +15,6 @@
     --login-button-fg: var(--cmd-button-text);
     --login-button-light-fg: var(--text-light-gray);
     --login-button-bg: #1f883d;
-
 }
 
 .login-view {
@@ -52,9 +50,9 @@
 
     &:focus {
         outline: none;
-        border-left: 2px solid var(--login-input-outline);
+        border-left: 2px solid var(--login-input-focus);
     }
-}   
+}
 
 .login-view-button-row {
     display: flex;
@@ -74,10 +72,10 @@
     background-color: var(--login-button-bg);
     font-size: 1.2em;
     padding: 0;
- }
+}
 
 .login-button:hover {
-    color:  var(--login-button-light-fg);
+    color: var(--login-button-light-fg);
     border-color: #8A9A5B;
 }
 
@@ -93,9 +91,8 @@
     display: none;
     margin-top: 20px;
     width: 100%;
-	height: 40px;
-	text-align: left;
+    height: 40px;
+    text-align: left;
     padding: 10px;
     border-left: solid 4px red;
 }
-

@@ -66,7 +66,7 @@ export function setItemAction(action) {
 export function initFunctionalItems(viewmanager) {
 
 	//sidebar collaps/menu icon
-	menuIcon = IconElement.newIcon("menu", document.getElementById("sidebar.header.menu.icon"));
+	menuIcon = IconElement.newIcon("menu", document.getElementById("sidebar.menu.icon"));
 	menuIcon.elem.addEventListener("click", (evt) => {
 		evt.stopImmediatePropagation();
 		toogleCollaps();
@@ -81,7 +81,7 @@ export function initFunctionalItems(viewmanager) {
 		});
 	}
 	//sidebar header login icon
-	loginIcon = IconElement.newIcon("login", document.getElementById("sidebar.header.login.icon"));
+	loginIcon = IconElement.newIcon("login", document.getElementById("sidebar.login.icon"));
 	loginIcon.elem.addEventListener("click", logInAction);
 
 	//sidebar system login item
@@ -101,12 +101,14 @@ function toogleCollaps() {
 	let sidebar = document.getElementById("sidebar");
 
 	if (!collapsed) {
-		menuIcon.elem.title = "Expand Menu"
+		menuIcon.elem.classList.toggle("rot90");
+		menuIcon.elem.title = "Expand Menu";
 		topics.style["display"] = "none";
 		workicons.style["display"] = "none";
 		sidebar.style["width"] = "50px";
 	} else {
-		menuIcon.elem.title = "Collapse Menu"
+		menuIcon.elem.classList.toggle("rot90");
+		menuIcon.elem.title = "Collapse Menu";
 		topics.style["display"] = "block";
 		workicons.style["display"] = "flex";
 		sidebar.style["width"] = "225px";

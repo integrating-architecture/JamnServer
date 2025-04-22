@@ -18,7 +18,7 @@ export function getView() {
 
 let tries = 0;
 let accessToken = null;
-let sidebarLoginIcon = IconElement.newIcon("login", document.getElementById("sidebar.header.login.icon"));
+let sidebarLoginIcon = IconElement.newIcon("login", document.getElementById("sidebar.login.icon"));
 
 /**
  */
@@ -87,7 +87,7 @@ function toggleStatus() {
 	
 			accessToken = "jwt bearer";
 		} else {
-			icon.style.color = "inherit";
+			icon.style.color = "";
 			icon.title = "Login";
 	
 			document.getElementById("sidebar.system.login").innerHTML = "Login";

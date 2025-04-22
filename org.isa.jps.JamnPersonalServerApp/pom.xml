@@ -10,13 +10,16 @@
 	<version>0.0.1-SNAPSHOT</version>
 
 	<name>Jamn Personal Server App</name>
-	<description>A small scaffold for individual custom apps, tools and testings. It combines the Java SE based Jamn Server with its provider, a general JavaScript Engine and a Web UI base in one easy customizable startup.</description>
+	<description><![CDATA[A small scaffold for building individual All-in-One apps and tools. It combines the Java SE based Jamn Micro Server with its provider, a backend JavaScript Engine and a frontend Web GUI base in one easy to use startup.]]>
+	</description>
 	<url>https://github.com/integrating-architecture/JamnServer</url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
+		<maven.build.timestamp.format>dd-MM-yyyy HH:mm:ss</maven.build.timestamp.format>
+	    <build.timestamp>${maven.build.timestamp}</build.timestamp>
 		<do.distribution>false</do.distribution>
 	</properties>
 

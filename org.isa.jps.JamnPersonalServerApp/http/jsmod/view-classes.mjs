@@ -1,6 +1,6 @@
 /* Authored by www.integrating-architecture.de */
 
-import { NL, getChildOf, setVisibility, setDisplay } from '../jsmod/tools.mjs';
+import { NL, getChildOf, setVisibility, setDisplay, typeUtil} from '../jsmod/tools.mjs';
 import { ViewSource, CommandDef } from '../jsmod/data-classes.mjs';
 
 /**
@@ -297,7 +297,7 @@ export class WorkView {
 		}
 	}
 
-	statusLineInfo(info){
+	statusLineInfo(info) {
 		WbApp.statusLineInfo(info);
 	}
 }
@@ -602,8 +602,8 @@ export class WorkViewTable {
 				col.className = "wkv";
 				col.innerHTML = colVal;
 				col.value = colKey;
-				col.onclick = (evt) => {this.tableData.cellClick(rowKey, colKey, evt);};
-				col.ondblclick = (evt) => {this.tableData.cellDblClick(rowKey, colKey, evt);};
+				col.onclick = (evt) => { this.tableData.cellClick(rowKey, colKey, evt); };
+				col.ondblclick = (evt) => { this.tableData.cellDblClick(rowKey, colKey, evt); };
 				row.appendChild(col);
 			});
 
@@ -645,10 +645,32 @@ export class WorkViewTable {
 		});
 	}
 
-	newCellTextField(clazz="wkv-tblcell-edit-tf"){
+	newCellInputField(props = { clazz: "wkv-tblcell-edit-tf", booleanValue: null, datalist: [] }) {
+		let comp = document.createElement('span');
 		let ctrl = document.createElement('input');
+
+		ctrl.comp = comp;
 		ctrl.type = "text";
-		ctrl.classList.add(clazz);
+		ctrl.classList.add(props.clazz ? props.clazz : "wkv-tblcell-edit-tf");
+		comp.append(ctrl);
+
+		if (props?.booleanValue != null) {
+			ctrl.type = "checkbox";
+			ctrl.checked = props.booleanValue;
+			ctrl.style.width = "20px";
+			ctrl.onclick = (evt) => { ctrl.value = typeUtil.stringFromBoolean(ctrl.checked) };
+		} else if (props.datalist?.length > 0) {
+			let item = null;
+			let dataElem = document.createElement("datalist");
+			dataElem.id = Math.random().toString(32).slice(5);
+			props.datalist.forEach(entry => {
+				item = document.createElement("option");
+				item.value = entry;
+				dataElem.append(item);
+			});
+			ctrl.setAttribute("list", dataElem.id);
+			comp.append(dataElem);
+		}
 		return ctrl;
 	}
 }
@@ -677,7 +699,11 @@ export class TableData {
 /**
  * An experimental factory/builder to create standard UI components e.g. like
  *  [label] - [textfield] etc.
- * arranged in a fieldset container.
+ * arranged e.g. in a fieldset container.
+ * 
+ * The builder just provides the basic html elements
+ * and returns a "proxy" object (CtrlComp) that provides styling, attribution etc. methods
+ * to enable a cascading builder style programming format.
  */
 export class CompBuilder {
 
@@ -688,7 +714,7 @@ export class CompBuilder {
 
 	labelStyle = null;
 
-	static style(elem, styleProps){
+	static style(elem, styleProps) {
 		for (const name in styleProps) {
 			elem.style[name] = styleProps[name];
 		}
@@ -712,6 +738,20 @@ export class CompBuilder {
 		} else {
 			ctrl.classList.add(defaultClass);
 		}
+	}
+
+	#newLabel(props, clazz) {
+		let ctrl = document.createElement("label");
+		ctrl.classList.add(clazz);
+		ctrl.innerHTML = props.label;
+		ctrl.htmlFor = props.id;
+
+		if (this.labelStyle !== null) {
+			for (const name in this.labelStyle) {
+				ctrl.style[name] = this.labelStyle[name];
+			}
+		}
+		return ctrl;
 	}
 
 	//creation options for individual overwriting
@@ -738,25 +778,11 @@ export class CompBuilder {
 		return compSet;
 	}
 
-	#newLabel(props, clazz) {
-		let ctrl = document.createElement("label");
-		ctrl.classList.add(clazz);
-		ctrl.innerHTML = props.label;
-		ctrl.htmlFor = props.id;
-
-		if(this.labelStyle!==null){
-			for (const name in this.labelStyle) {
-				ctrl.style[name] = this.labelStyle[name];
-			}	
-		}
-		return ctrl;
-	}
-
 	/**
 	 * provide standard, pre configured components as CtrlComp objects
 	 * compProps overwrite generalProps 
 	 */
-	newTextComp(compProps = { label: "unknown", id: "", readOnly: false }, generalProps = {}) {
+	newTextComp(compProps = { label: "", id: "", readOnly: false }, generalProps = {}) {
 		let props = { ...generalProps, ...compProps };
 		let ctrls = [];
 		props.id = this.#idCheck(props.id);
@@ -768,7 +794,7 @@ export class CompBuilder {
 
 		this.#setClassOf(ctrls[1], props, this.textCompClasses[1]);
 
-		if (props.readOnly){
+		if (props.readOnly) {
 			ctrls[1].classList.add("input-readonly");
 			ctrls[1].disabled = true;
 		}
@@ -776,7 +802,43 @@ export class CompBuilder {
 		return new CtrlComp(ctrls, "text");
 	}
 
-	newTextAreaComp(compProps = { label: "unknown", id: "", readOnly: false }, generalProps = {}) {
+	/**
+	 */
+	newTextDatalistComp(compProps = { label: "", id: "", datalist: [], readOnly: false }, generalProps = {}) {
+		let props = { ...generalProps, ...compProps };
+		let ctrls = [];
+		props.id = this.#idCheck(props.id);
+		ctrls[0] = this.#newLabel(props, this.textCompClasses[0]);
+
+		ctrls[1] = document.createElement("input");
+		ctrls[1].type = "text";
+		ctrls[1].id = props.id;
+
+		this.#setClassOf(ctrls[1], props, this.textCompClasses[1]);
+
+		if (props.readOnly) {
+			ctrls[1].classList.add("input-readonly");
+			ctrls[1].disabled = true;
+		}
+
+		let dataElem = document.createElement("datalist");
+		dataElem.id = "data." + props.id;
+		if (props.datalist) {
+			let item = null;
+			props.datalist.forEach(entry => {
+				item = document.createElement("option");
+				item.value = entry;
+				dataElem.append(item);
+			});
+		}
+		ctrls[1].setAttribute("list", dataElem.id);
+
+		let comp = new CtrlComp(ctrls, "text");
+		comp.datalist = dataElem;
+		return comp;
+	}
+
+	newTextAreaComp(compProps = { label: "", id: "", readOnly: false }, generalProps = {}) {
 		let props = { ...generalProps, ...compProps };
 		let ctrls = [];
 		props.id = this.#idCheck(props.id);
@@ -796,7 +858,7 @@ export class CompBuilder {
 		return new CtrlComp(ctrls, "textarea");
 	}
 
-	newButtonComp(compProps = { label: "unknown", id: "", enabled: true }, generalProps = {}) {
+	newButtonComp(compProps = { label: "", id: "", enabled: true }, generalProps = {}) {
 		let props = { ...generalProps, ...compProps };
 		let ctrls = [];
 		props.id = this.#idCheck(props.id);
@@ -811,30 +873,31 @@ export class CompBuilder {
 		return new CtrlComp(ctrls, "button");
 	}
 
- 	newIconbarComp(compProps = { icons: [] }, generalProps = {}) {
+	newIconbarComp(compProps = { icons: [] }, generalProps = {}) {
 		let props = { ...generalProps, ...compProps };
 		let ctrls = [];
 		props.id = this.#idCheck(props.id);
 
 		compProps.icons.forEach(item => {
-			let elem = document.createElement("i");	
+			let elem = document.createElement("i");
 			elem.setAttribute("title", item?.title);
-			IconElement.newIcon(item.name, elem);	
-			ctrls.push(elem); 
+			IconElement.newIcon(item.name, elem);
+			ctrls.push(elem);
 		});
 
 		return new CtrlComp(ctrls, "icon");
 	}
- }
+}
 
 /**
- * A component object provides the pre configured dom elements
- * and methods for "configuration/installation". 
+ * The component object provides the preconfigured dom elements
+ * and methods for "configuration/appending" of the ui controls. 
  */
 export class CtrlComp {
 	type = "";
 	comp = null;
 	ctrls = [];
+	datalist = null;
 
 	constructor(ctrls, type = "text") {
 		this.type = type;
@@ -844,11 +907,12 @@ export class CtrlComp {
 	style(idx, styleProps) {
 		let target = null;
 		let values = styleProps;
-		//if idx is a style object use it for the enclosing component
+		//if idx is a style object use it for the enclosing component itself
 		if (isNaN(idx) && typeof idx === 'object') {
 			target = this.comp;
 			values = idx;
 		} else {
+			//else use it for an inner control
 			target = this.ctrls[idx];
 		}
 		for (const name in values) {
@@ -884,13 +948,22 @@ export class CtrlComp {
 		return this.ctrls[1];
 	}
 
-	build(clazz="wkv-ctrlcomp") {
+	build(clazz = "wkv-ctrlcomp") {
 		if (this.comp === null) {
 			this.comp = document.createElement("span");
 			clazz = Array.isArray(clazz) ? clazz : [clazz];
 			clazz.forEach(cls => this.comp.classList.add(cls));
 			this.ctrls.forEach(ctrl => this.comp.append(ctrl));
+			if (this.datalist) {
+				this.comp.append(this.datalist);
+			}
 		}
+		return this;
+	}
+
+	addComp(otherComp) {
+		this.build();
+		otherComp.ctrls.forEach(ctrl => { this.comp.append(ctrl); this.ctrls.push(ctrl); });
 		return this;
 	}
 

@@ -19,6 +19,12 @@ import { BaseCommandView, CompBuilder } from '../jsmod/view-classes.mjs';
  *  - org.isa.jps.comp.DefaultWebSocketMessageProcessor
  * The server side scripts are located in subdir
  *  - scripts
+ * 
+ * Creating dynamic content and components
+ * Jamn supports 3 principal approaches and their free combinations:
+ * - static file content
+ * - server side dynamically generated and/or enriched content from any source  
+ * - client side dynamically loaded, manipulated, created content and fragments
  */
 class CommandView extends BaseCommandView {
 
@@ -116,7 +122,7 @@ export function getView() {
 
 /**
  * example of html source code integrated as string in this js view component module
- * the code could also be implemented in a separate file or inside another js module etc.
+ * the code can also be implemented in a separate file or inside another js module etc.
  */
 let viewHtml = `
 <!-- js component based work view code -->

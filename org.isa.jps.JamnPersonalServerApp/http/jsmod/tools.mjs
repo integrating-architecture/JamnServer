@@ -11,10 +11,10 @@ export const NL = "\n";
 export function ServerOrigin(...path) {
 	let url = window.location.origin;
 	let urlPath = path.join("/");
-	if(urlPath.startsWith("/")){
-		url = url+urlPath;
-	}else{
-		url = url+"/"+urlPath;
+	if (urlPath.startsWith("/")) {
+		url = url + urlPath;
+	} else {
+		url = url + "/" + urlPath;
 	}
 	return url;
 }
@@ -22,11 +22,11 @@ export function ServerOrigin(...path) {
 /**
  */
 export function getChildOf(parent, childId) {
-	if(typeof parent === 'string'){
+	if (typeof parent === 'string') {
 		parent = document.getElementById(parent);
 	}
-	
-	let innerElem=null;
+
+	let innerElem = null;
 	for (let elem of parent.childNodes) {
 		if (elem?.id == childId) {
 			return elem;
@@ -35,8 +35,8 @@ export function getChildOf(parent, childId) {
 			if (innerElem?.id == childId) {
 				return innerElem;
 			}
-		}	  
-	}	
+		}
+	}
 	return null;
 }
 
@@ -53,9 +53,9 @@ export function setVisibility(elem, flag) {
 }
 
 export function setDisplay(elem, flag) {
-	if(typeof flag == "boolean"){
+	if (typeof flag == "boolean") {
 		elem.style["display"] = flag ? "block" : "none";
-	}else if (typeof flag == "string"){
+	} else if (typeof flag == "string") {
 		elem.style["display"] = flag;
 	}
 	return elem;
@@ -97,7 +97,7 @@ export async function fetchPlainText(path) {
 
 /**
  */
-export async function callWebService(path, requestData="{}") {
+export async function callWebService(path, requestData = "{}") {
 	const url = ServerOrigin(path);
 	let data = "";
 
@@ -114,6 +114,39 @@ export async function callWebService(path, requestData="{}") {
 	return data;
 }
 
-export function newSimpleId(prfx=""){
-	return prfx+Math.random().toString(16).slice(2);
+/**
+ */
+export function newSimpleId(prfx = "") {
+	return prfx + Math.random().toString(16).slice(2);
+}
+
+/**
+ */
+export const typeUtil = {
+	isString: (val) => {
+		return (typeof val === 'string' || val instanceof String);
+	},
+
+	isBoolean: (val) => {
+		return (val === true || val === false);
+	},
+
+	isBooleanString: (val) => {
+		return (val === "true" || val === "false");
+	},
+
+	booleanFromString: (val) => {
+		if (typeUtil.isBooleanString(val)) {
+			return (val === "true");
+		}
+		return null;
+	},
+
+	stringFromBoolean: (val) => {
+		if (typeUtil.isBoolean(val)) {
+			return val ? "true" : "false";
+		}
+		return null;
+	}
+
 }

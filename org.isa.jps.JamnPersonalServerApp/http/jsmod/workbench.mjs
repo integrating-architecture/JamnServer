@@ -60,6 +60,10 @@ export const WorkbenchInterface = {
 
 	statusLineInfo : (info) => {
 		statusLineInfo.innerHTML = info;
+	},
+
+	titleInfo : (info) => {
+		titleInfo.innerHTML = `[ ${info} ]`;
 	}
 };
 
@@ -74,6 +78,7 @@ let viewManager = new WorkbenchViewManager(workarea, modalDialog);
 let standardDlg = new StandardDialog();
 
 let statusLineInfo = null;
+let titleInfo  = null;
 
 /**
  * this is called after document load but before getting visible
@@ -127,10 +132,14 @@ function initUI() {
 	
 	sidebar.initFunctionalItems(viewManager);
 
-	//init status line
+	//init status line + title
 	statusLineInfo = document.getElementById("wsl.info");
+	titleInfo = document.getElementById("wtb.title.text");
+
 	//set statusline github icon href
 	systemInfos.getInfos((data)=>{
+		WorkbenchInterface.titleInfo(`Tiny Demo - V.${data.version}`);
+
 		let scmIcon = IconElement.newIcon("github", document.getElementById("wsl.scm.link"));
 		scmIcon.elem.setAttribute("href", data.links["app.scm"]);
 	});

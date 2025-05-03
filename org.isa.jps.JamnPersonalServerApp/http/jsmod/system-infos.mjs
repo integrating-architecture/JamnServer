@@ -1,6 +1,6 @@
 /* Authored by www.integrating-architecture.de */
 
-import { callWebService } from '../jsmod/tools.mjs';
+import { callWebService, typeUtil } from '../jsmod/tools.mjs';
 import { WorkView, WorkViewTable, TableData, CompBuilder } from '../jsmod/view-classes.mjs';
 
 let builder = new CompBuilder();
@@ -144,13 +144,18 @@ class SystemInfoView extends WorkView {
 						//for simplicity use the html table cell value
 						let orgCellValue = cellElem.innerHTML;
 						cellElem.innerHTML = '';
-
-						let cellInput = this.configTable.newCellTextField();
+						
+						let inputFieldProps = {};
+						inputFieldProps.booleanValue = typeUtil.booleanFromString(orgCellValue);
+						let cellInput = this.configTable.newCellInputField(inputFieldProps);
 						cellInput.value = orgCellValue;
 
 						cellInput.onblur = (evt) => {
 							let newValue = cellInput.value;
-							cellElem.removeChild(cellInput);
+							cellElem.removeChild(cellInput.comp);
+							if(typeUtil.isBooleanString(newValue) && !typeUtil.isBooleanString(orgCellValue)){
+								newValue = orgCellValue;
+							}
 							cellElem.innerHTML = newValue !== orgCellValue ? newValue : orgCellValue;
 							ckeckConfigChange(colKey, dataValue, cellElem);
 						};
@@ -165,7 +170,7 @@ class SystemInfoView extends WorkView {
 							}
 						};
 
-						cellElem.appendChild(cellInput);
+						cellElem.appendChild(cellInput.comp);
 						cellInput.focus();
 					}
 				};
@@ -181,7 +186,7 @@ class SystemInfoView extends WorkView {
 				this.configTable.getHeader(0).getElementsByTagName("input")[0].onkeyup = (evt) => {
 					this.configTable.filterRows(0, evt.target.value);
 				};
-				
+
 				this.needsDataReload = false;
 			});
 		}

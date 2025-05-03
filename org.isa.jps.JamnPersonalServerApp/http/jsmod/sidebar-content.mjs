@@ -3,6 +3,7 @@
 import { CommandDef } from '../jsmod/data-classes.mjs';
 import { getView as systemInfosView } from '../jsmod/system-infos.mjs';
 import { getView as commandView } from '../jsmod/command.mjs';
+import { getView as dbConnectionsView } from './db-connections.mjs';
 
 /**
  * <pre>
@@ -36,7 +37,7 @@ export const topicList = {
 	
 	tools : {icon:"tools", title:"&ensp;Tools",
 		items : {
-			
+			"dbconnections" : {title:"DB Connections", view:dbConnectionsView()}
 		}
 	}
 }

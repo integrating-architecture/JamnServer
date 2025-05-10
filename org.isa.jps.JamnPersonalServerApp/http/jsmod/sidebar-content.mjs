@@ -30,8 +30,8 @@ export const topicList = {
 	commands : {icon:"command", title:"&ensp;Commands",
 		items : {
 			//create view item with data
-			"testSample" : {title:"Sample: shell test", view:commandView(), data:new CommandDef("Sample: [test sh command]", "runjs", "/sample/sh-test.mjs", "<none>")},
-			"projectSample" : {title:"Sample: build test", view:commandView(), data:new CommandDef("Sample: [test build script]", "runjs", "/sample/build-project-test.mjs", "<none>")}
+			"testSample" : {title:"Sample: shell test", view:commandView(), data:new CommandDef("Sample: [test sh command]", "runjs", "/sample/sh-test.mjs", {args:true})},
+			"projectSample" : {title:"Sample: build test", view:commandView(), data:new CommandDef("Sample: [test build script]", "runjs", "/sample/build-project-test.mjs")}
 		}
 	},
 	

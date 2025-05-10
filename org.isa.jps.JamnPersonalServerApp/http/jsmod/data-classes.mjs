@@ -9,6 +9,7 @@ export class WsoCommonMessage {
 	reference = "";
 	textdata = "";
 	command = "";
+	args = [];
 	script = "";
 	status = "";
 	error = "";
@@ -40,13 +41,13 @@ export class CommandDef {
 	title = "";
 	command = "";
 	script = "";
-	args = "<none>";
-	
-	constructor(title="", command="", script="", args="") {
+	options = {args:false}
+
+	constructor(title, command, script, opt={args:false}) {
 		this.title = title;
 		this.command = command;
 		this.script = script;
-		this.args = args;
+		this.options = opt;
 	}
 };
 

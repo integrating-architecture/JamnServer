@@ -32,7 +32,6 @@ export function processSystemLogin(dialog) {
 
 	if (isLoggedIn()) {
 		WbApp.confirm({
-			title: "Confirmation required",
 			message: "<b>Log Off</b><br>Do you want to Log Off from the Server System?"
 		}, (value) => value ? doLogOff() : null);
 	} else {

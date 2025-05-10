@@ -122,6 +122,19 @@ export function newSimpleId(prfx = "") {
 
 /**
  */
+export function splitToArgs(argString, cb){
+	if(argString.length > 0){
+		let list = argString.split(" ");
+		list.forEach(item => {
+			if(item.trim().length > 0){
+				cb(item.trim());
+			}
+		});
+	}
+}
+
+/**
+ */
 export const typeUtil = {
 	isString: (val) => {
 		return (typeof val === 'string' || val instanceof String);

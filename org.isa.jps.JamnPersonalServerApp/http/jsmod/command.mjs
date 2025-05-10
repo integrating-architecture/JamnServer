@@ -1,6 +1,6 @@
 /* Authored by www.integrating-architecture.de */
 
-import { NL, newSimpleId } from '../jsmod/tools.mjs';
+import { NL, newSimpleId, splitToArgs } from '../jsmod/tools.mjs';
 import { WsoCommonMessage } from '../jsmod/data-classes.mjs';
 import { BaseCommandView, CompBuilder } from '../jsmod/view-classes.mjs';
 
@@ -32,7 +32,7 @@ class CommandView extends BaseCommandView {
 	//between client und server
 	wsoRefId;
 
-	constructor (id){
+	constructor(id) {
 		super(id, "");
 		//use this js component html view source
 		this.viewSource.html = viewHtml;
@@ -48,6 +48,7 @@ class CommandView extends BaseCommandView {
 		let compSet = builder.newCompSet();
 		this.viewWorkarea.prepend(compSet);
 
+		//main run button to execute the command
 		this.runButton = builder.newButtonComp({ label: "Command:" })
 			.appendTo(compSet)
 			.config((comp) => {
@@ -59,15 +60,60 @@ class CommandView extends BaseCommandView {
 				};
 			});
 
+		//command arguments text field
 		this.runArgs = builder.newTextComp({ label: "Args:" })
 			.appendTo(compSet)
 			.style(1, { width: "300px" })
 			.attrb(1, {
-				title: "Command arguments",
-				placeholder: this.commandDef.args,
+				title: (this.commandDef.options.args ? "Command arguments: -h for help": "<no args>"),
+				placeholder: (this.commandDef.options.args ? " -h + Enter for help": "<no args>"),
+				disabled: !this.commandDef.options.args
+			})
+			.config((comp) => {
+				comp.ctrl().onkeydown = (evt) => {
+					if (this.commandDef.options.args) {
+						if (evt.keyCode == 13 && evt.currentTarget.value.trim() === "-h") {
+							this.runCommand();
+						}
+					}
+				}
 			});
 
+		//command execution output area
 		this.outputArea = builder.newTextAreaComp({ label: "Output:", clazz: ["wkv-output-textarea-ctrl"] })
+			.config(comp => {
+				//wrap the label in a span to add icon buttons below
+				let lb = comp.ctrls[0];
+				let lbcomp = document.createElement("span");
+				lbcomp.style["display"] = "flex";
+				lbcomp.style["flex-direction"] = "column";
+				lbcomp.append(lb);
+				comp.ctrls[0] = lbcomp;
+
+				//create and config the icon buttons
+				builder.newIconbarComp({
+					icons: [
+						{ name: "save", title: "Save current output to File" },
+						{ name: "clipboardAdd", title: "Copy output to Clipboard" },
+						{ name: "trash", title: "Clear output" }
+					]
+				})
+				.appendTo(lbcomp)
+				.style({ "margin-top": "10px", "flex-direction": "column", "justify-content": "center", "gap": "15px"})
+				.config(comp => {
+					comp.ctrls.forEach(ctrl => ctrl.classList.add("wkv-header-action-ctrl"));
+
+					comp.ctrls[0].onclick = () => {
+						this.saveOutput();
+					}
+					comp.ctrls[1].onclick = () => {
+						this.copyOutputToClipboard();
+					}
+					comp.ctrls[2].onclick = () => {
+						this.clearOutput();
+					}
+				});
+			})
 			.appendTo(compSet)
 			.style(1, { width: "100%", height: "400px" })
 			.attrb(1, { disabled: true })
@@ -102,6 +148,10 @@ class CommandView extends BaseCommandView {
 		wsoMsg.command = this.commandDef.command;
 		wsoMsg.script = this.commandDef.script;
 
+		splitToArgs(this.runArgs.ctrl().value, arg => {
+			wsoMsg.args.push(arg);
+		});
+
 		this.clearOutput();
 		WbApp.sendWsoMessage(wsoMsg, () => {
 			this.setRunning(true);
@@ -112,13 +162,13 @@ class CommandView extends BaseCommandView {
 //export this view component as instances
 //because command views are individual wso message receiver
 export function getView() {
-	
+
 	//use the html code from this js module
 	return new CommandView("commandView");
 
 	//alternatively load html code from a file
 	//return new CommandView("commandView", "/jsmod/command.html");
-} 
+}
 
 /**
  * example of html source code integrated as string in this js view component module

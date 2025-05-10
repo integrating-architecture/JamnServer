@@ -46,3 +46,23 @@ export function path(...path) {
 export function workspacePath(...path) {
 	return HostApp.workspacePath(path);
 };
+
+/**
+ * an object to iterate over an argument list and call corresponding functions 
+ */
+export class ArgumentProcessor {
+	directReturn = false;
+
+	process(argList, cbs){
+		if(argList){
+			for (let i = 0; i < argList.length; i++) {
+				let arg = argList[i];
+				if(cbs[arg]){
+					cbs[arg](this);
+					if(this.directReturn){return this;}
+				}
+			}
+		}
+		return this;
+	}
+}

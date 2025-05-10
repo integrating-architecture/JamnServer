@@ -70,7 +70,7 @@ export function sendMessage(wsoMsg, sentCb = null) {
 			return true;
 		} else {
 			console.warn("WebSocket NOT connected");
-			WbApp.confirm({ title: "", message: "The Server Connection was closed.<br>Would you like to try a reconnect?" }, (value) => value ? connect() : null);
+			WbApp.confirm({ message: "The Server Connection was closed.<br>Would you like to try a reconnect?" }, (value) => value ? connect() : null);
 		}
 	} else {
 		throw new Error("WsoCommonMessage type expected");

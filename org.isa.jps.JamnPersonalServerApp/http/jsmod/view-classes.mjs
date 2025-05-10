@@ -1,6 +1,6 @@
 /* Authored by www.integrating-architecture.de */
 
-import { NL, getChildOf, setVisibility, setDisplay, typeUtil} from '../jsmod/tools.mjs';
+import { NL, getChildOf, setVisibility, setDisplay, typeUtil } from '../jsmod/tools.mjs';
 import { ViewSource, CommandDef } from '../jsmod/data-classes.mjs';
 
 /**
@@ -136,7 +136,9 @@ export class IconElement {
 			tableSort: ["bi-arrow-down", "bi-arrow-up"],
 			save: ["bi-floppy", ""],
 			redo: ["bi-arrow-counterclockwise", ""],
-			addnew: ["bi-plus-square", ""]
+			addnew: ["bi-plus-square", ""],
+			trash: ["bi-trash", ""],
+			clipboardAdd: ["bi-clipboard-plus", ""]
 		}
 	}
 }
@@ -342,9 +344,37 @@ export class BaseCommandView extends WorkView {
 	}
 
 	clearOutput() {
-		let lastValue = this.outputArea.ctrl().value;
-		this.outputArea.ctrl().value = "";
-		return lastValue;
+		if (!this.isRunning) {
+			let lastValue = this.outputArea.ctrl().value;
+			this.outputArea.ctrl().value = "";
+			return lastValue;
+		}
+		return "";
+	}
+
+	copyOutputToClipboard() {
+		let outputData = this.outputArea.ctrl().value.trim();
+		if (!this.isRunning && outputData.length > 0) {
+			navigator.clipboard.writeText(outputData);
+		}
+	}
+
+	saveOutput() {
+		let outputData = this.outputArea.ctrl().value.trim();
+		if (!this.isRunning && outputData.length > 0) {
+			let fileName = "output_" + (this.commandDef.command + "_" + this.commandDef.script).replaceAll("/", "_") + ".txt";
+			window.showSaveFilePicker({
+				suggestedName: fileName,
+				types: [{
+					description: "Text file",
+					accept: { "text/plain": [".txt"] },
+				}],
+			}).then(async handler => {
+				let file = await handler.createWritable();
+				await file.write(outputData);
+				await file.close();
+			}).catch(err => console.error(err));
+		}
 	}
 
 	addOutputLine(line) {
@@ -537,12 +567,13 @@ export class StandardDialog {
 	setupForConfirm(text) {
 		this.pbOk.innerHTML = "Yes";
 		this.pbCancel.innerHTML = "No";
+		let title = "Confirmation required";
 
 		if (typeof text === 'string' || text instanceof String) {
-			this.title.innerHTML = "";
+			this.title.innerHTML = title;
 			this.contentArea.innerHTML = `<p>${text}</p>`;
 		} else {
-			this.title.innerHTML = text.title ? text.title : "";
+			this.title.innerHTML = text.title ? text.title : title;
 			this.contentArea.innerHTML = `<p>${text?.message}</p>`;
 		}
 	}
@@ -550,15 +581,16 @@ export class StandardDialog {
 	setupForInput(text, value) {
 		this.pbOk.innerHTML = "Ok";
 		this.pbCancel.innerHTML = "Cancel";
+		let title = "Input";
 
 		if (!value) { value = "" };
 
 		if (typeof text === 'string' || text instanceof String) {
-			this.title.innerHTML = "";
+			this.title.innerHTML = title;
 			this.contentArea.innerHTML = `<p class="std-dlg-input">${text}</p> 
 			<input type="text" id="tf.standard.dialog.input" class="standard-dialog-textfield" value=${value}>`;
 		} else {
-			this.title.innerHTML = text.title ? text.title : "";
+			this.title.innerHTML = text.title ? text.title : title;
 			this.contentArea.innerHTML = `<p class="std-dlg-input">${text?.message}</p>
 			<input type="text" id="tf.standard.dialog.input" class="standard-dialog-textfield" value=${value}>`;
 		}

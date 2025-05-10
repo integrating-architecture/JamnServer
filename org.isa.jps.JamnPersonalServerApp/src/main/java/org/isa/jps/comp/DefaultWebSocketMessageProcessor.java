@@ -3,7 +3,9 @@ package org.isa.jps.comp;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -65,7 +67,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     @Override
     public byte[] onMessage(String pConnectionId, byte[] pMessage) {
         String lJsonResponse = "";
-        String lJsonMsg = new String(pMessage);
+        String lJsonMsg = new String(pMessage, encoding);
         LOG.info(() -> String.format("WebSocket Message received: [%s] - [%s]", lJsonMsg, pConnectionId));
 
         WsoCommonMessage lResponseMsg = onMessage(pConnectionId, json.toObject(lJsonMsg, WsoCommonMessage.class));
@@ -114,7 +116,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
             String lJsonMsg = json.toString(lOutputMsg);
             wsoProvider.sendMessageTo(pConnectionId, lJsonMsg.getBytes(encoding));
         });
-        js().eval(lCallCtx, pRequestMsg.getScript());
+        js().eval(lCallCtx, pRequestMsg.getScript(), pRequestMsg.getArgsArray());
     }
 
     /**
@@ -136,6 +138,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
         protected String reference = "";
         protected String textdata = "";
         protected String command = "";
+        protected List<String> args = new ArrayList<>();
         protected String script = "";
         protected String status = "";
         protected String error = "";
@@ -163,6 +166,14 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
 
         public String getCommand() {
             return command;
+        }
+
+        public List<String> getArgs() {
+            return args;
+        }
+
+        public String[] getArgsArray() {
+            return args.toArray(new String[args.size()]);
         }
 
         public String getScript() {

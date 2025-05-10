@@ -80,7 +80,6 @@ class SystemInfoView extends WorkView {
 				comp.ctrls[1].onclick = () => {
 					//open confirmation dialog
 					WbApp.confirm({
-						title: "Confirmation required",
 						message: "<b>Undo all changes</b><br>Do you want to discard all changes?"
 					}, (value) => value ? clearConfigChanges(true) : null);
 				};

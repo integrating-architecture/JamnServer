@@ -1,9 +1,10 @@
 /* Authored by www.integrating-architecture.de */
 
 import { callWebService, typeUtil } from '../jsmod/tools.mjs';
-import { WorkView, WorkViewTable, TableData, CompBuilder } from '../jsmod/view-classes.mjs';
+import { WorkView, WorkViewTable, TableData, ViewBuilder } from '../jsmod/view-classes.mjs';
 
-let builder = new CompBuilder();
+let builder = new ViewBuilder();
+builder.defaultStyles.label = { "min-width": "80px", "text-align": "right" };
 let boxWidth = "720px";
 
 /**
@@ -11,11 +12,10 @@ let boxWidth = "720px";
  */
 class SystemInfoView extends WorkView {
 
-	name;
-	version;
-	description;
+	appBoxElems = {};
+
+	configBoxElems = {};
 	configTable;
-	configBar;
 
 	needsDataReload = true;
 
@@ -32,52 +32,51 @@ class SystemInfoView extends WorkView {
 	/**
 	 */
 	#initAppBox() {
-		builder.labelStyle = { "min-width": "80px", "text-align": "right" };
 
-		let compSet = builder.newCompSet({ title: "Application", clazzes: ["wkv-compset-border"], styleProps: { width: boxWidth } });
+		builder.setElementCollection(this.appBoxElems);
+
+		let compSet = builder.newFieldset({ title: "Application", clazzes: ["wkv-compset-border"], styleProps: { width: boxWidth } });
 		this.viewWorkarea.prepend(compSet);
 
-		//build controls
-		let generalProps = { readOnly: true };
-		this.name = builder.newTextComp({ label: "Name:" }, generalProps)
+		builder.newViewComp()
+			.addLabelTextField({ text: "Name:" }, { varid: "tfName", readOnly: true })
 			.appendTo(compSet);
-
-		this.version = builder.newTextComp({ label: "Version:" }, generalProps)
+		builder.newViewComp()
+			.addLabelTextField({ text: "Version:" }, { varid: "tfVersion", readOnly: true })
 			.appendTo(compSet);
-
-		this.description = builder.newTextAreaComp({ label: "Description:", rows: 3 }, generalProps)
-			.appendTo(compSet)
-			.style({ "align-items": "baseline" });
+		builder.newViewComp()
+			.addLabelTextArea({ text: "Description:" }, { varid: "tfDescription", rows: 3, readOnly: true })
+			.style({ "align-items": "baseline" })
+			.appendTo(compSet);
 	}
 
 	/**
 	 */
 	#initConfigBox() {
-		//get a html coded config set element
-		let compSet = this.getElement("server.config.set");
-		CompBuilder.style(compSet, { "padding-top": "10px", width: boxWidth });
 
-		//create command icons
-		this.configBar = builder.newIconbarComp({
-			icons: [
-				{ name: "save", title: "Save current changes" },
-				{ name: "redo", title: "Undo changes" }
-			]
-		}).prependTo(compSet)
-			.style({ "margin-bottom": "10px", "font-size": "18px", "flex-direction": "row-reverse", "gap": "15px" })
-			.config(comp => {
-				comp.ctrls.forEach(ctrl => ctrl.classList.add("wkv-header-action-ctrl"));
-				//save icon
-				comp.ctrls[0].onclick = () => {
+		builder.setElementCollection(this.configBoxElems);
+
+		//get the html coded configSet element
+		let compSet = this.getElement("server.config.set");
+		ViewBuilder.setStyleOf(compSet, { "padding-top": "10px", width: boxWidth });
+
+		builder.newViewComp()
+			.prependTo(compSet)
+			.style({ "flex-direction": "row-reverse", "margin-bottom": "10px", "gap": "15px" })
+			//create action icon
+			.addActionIcon({ varid: "icoSave", iconName: "save", title: "Save current changes" }, (target) => {
+				target.icon.onclick = () => {
 					updateInfos(getUpdateRequest(), (response) => {
 						if (response?.status === "ok") {
 							clearConfigChanges()
 							console.log("App-Info update done");
 						}
 					});
-				};
-				//undo icon
-				comp.ctrls[1].onclick = () => {
+				}
+			})
+			//create action icon
+			.addActionIcon({ varid: "icoRedo", iconName: "redo", title: "Undo changes" }, (target) => {
+				target.icon.onclick = () => {
 					//open confirmation dialog
 					WbApp.confirm({
 						message: "<b>Undo all changes</b><br>Do you want to discard all changes?"
@@ -85,7 +84,7 @@ class SystemInfoView extends WorkView {
 				};
 			});
 
-		this.setActionsEnabled([0, 1], false);
+		this.setActionsEnabled(false);
 
 		//create a table
 		this.configTable = new WorkViewTable(this.getElement("server.config"));
@@ -93,12 +92,11 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
-	setActionsEnabled(idx, flag) {
-		if (flag) {
-			idx.forEach((i) => this.configBar.style(i, { "pointer-events": "all", color: "" }));
-		} else {
-			idx.forEach((i) => this.configBar.style(i, { "pointer-events": "none", color: "var(--border-gray)" }));
-		}
+	setActionsEnabled(flag) {
+		let ctrls = [this.configBoxElems["icoSave"], this.configBoxElems["icoRedo"]];
+		let styleProps = flag ? { "pointer-events": "all", color: "" } : { "pointer-events": "none", color: "var(--border-gray)" };
+
+		ctrls.forEach((ctrl) => ViewBuilder.setStyleOf(ctrl, styleProps));
 	}
 
 	/**
@@ -109,10 +107,9 @@ class SystemInfoView extends WorkView {
 			getInfos((data) => {
 				clearConfigChanges();
 
-				//head data
-				this.name.ctrl().value = data.name;
-				this.version.ctrl().value = `${data.version} - Build [${data.buildDate} UTC]`;
-				this.description.ctrl().value = data.description;
+				this.appBoxElems["tfName"].value = data.name;
+				this.appBoxElems["tfVersion"].value = `${data.version} - Build [${data.buildDate} UTC]`;
+				this.appBoxElems["tfDescription"].value = data.description;
 
 				//create+build a table data object
 				let tableData = new TableData();
@@ -143,7 +140,7 @@ class SystemInfoView extends WorkView {
 						//for simplicity use the html table cell value
 						let orgCellValue = cellElem.innerHTML;
 						cellElem.innerHTML = '';
-						
+
 						let inputFieldProps = {};
 						inputFieldProps.booleanValue = typeUtil.booleanFromString(orgCellValue);
 						let cellInput = this.configTable.newCellInputField(inputFieldProps);
@@ -152,7 +149,7 @@ class SystemInfoView extends WorkView {
 						cellInput.onblur = (evt) => {
 							let newValue = cellInput.value;
 							cellElem.removeChild(cellInput.comp);
-							if(typeUtil.isBooleanString(newValue) && !typeUtil.isBooleanString(orgCellValue)){
+							if (typeUtil.isBooleanString(newValue) && !typeUtil.isBooleanString(orgCellValue)) {
 								newValue = orgCellValue;
 							}
 							cellElem.innerHTML = newValue !== orgCellValue ? newValue : orgCellValue;
@@ -193,7 +190,7 @@ class SystemInfoView extends WorkView {
 }
 
 //export this view component as singleton instance
-const viewInstance = new SystemInfoView("systemInfoView", "/jsmod/system-infos.html");
+const viewInstance = new SystemInfoView("systemInfoView", "/jsmod/html-components/system-infos.html");
 export function getView() {
 	return viewInstance;
 }
@@ -231,7 +228,7 @@ function clearConfigChanges(undo = false) {
 		if (undo) { cell.elem.innerHTML = cell.orgData; };
 	});
 	configChanges.clear();
-	getView().setActionsEnabled([0, 1], false);
+	getView().setActionsEnabled(false);
 }
 
 /**
@@ -246,7 +243,7 @@ function ckeckConfigChange(key, orgVal, cellElem) {
 		configChanges.delete(key);
 		cellElem.style["border-left"] = "";
 	}
-	getView().setActionsEnabled([0, 1], configChanges.size !== 0);
+	getView().setActionsEnabled(configChanges.size !== 0);
 }
 
 /**

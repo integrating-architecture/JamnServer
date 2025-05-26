@@ -1,14 +1,81 @@
 /* Authored by www.integrating-architecture.de */
 
-import { NL, getChildOf, setVisibility, setDisplay, typeUtil } from '../jsmod/tools.mjs';
-import { ViewSource, CommandDef } from '../jsmod/data-classes.mjs';
+import { getChildOf, setVisibility, setDisplay, typeUtil } from '../jsmod/tools.mjs';
+import { ViewSource } from '../jsmod/data-classes.mjs';
 
 /**
- * View base classes.
- * 
- * View classes encapsulate a basic structure and a basic open close procedure 
- * in the form of corresponding methods and flags.
- * 
+ * A class to centralize font icon usage.
+ */
+export class IconElement {
+	elem = null;
+	type = "";
+	shapes = ["", ""];
+
+	constructor(elem, type, shapes) {
+		this.elem = elem;
+		this.type = type;
+		this.shapes = shapes;
+	}
+
+	init(cb = (obj) => { }) {
+		cb(this);
+		return this;
+	}
+
+	toggle() {
+		this.elem.classList.toggle(this.shapes[0]);
+		this.elem.classList.toggle(this.shapes[1]);
+		return this;
+	}
+
+	and(cb) {
+		cb(this.elem);
+	}
+
+	static newIcon(name, elem, type = "bi") {
+		return new IconElement(elem, type, IconElement.#Icons[type][name]).init(IconElement.#Icons[type].defaultInit);
+	}
+
+	static iconDef(name, type = "bi") {
+		return IconElement.#Icons[type][name];
+	}
+
+	static #Icons = {
+		bi: {
+			defaultInit: (iconObj) => {
+				//Bootstrap font icons
+				iconObj.elem.classList.add(iconObj.type ? iconObj.type : "bi");
+				iconObj.elem.classList.add(iconObj.shapes[0]);
+			},
+			close: ["bi-x-lg", ""],
+			pin: ["bi-pin", "bi-pin-angle"],
+			collapse: ["bi-chevron-bar-contract", "bi-chevron-bar-expand"],
+			dotmenu: ["bi-three-dots-vertical", ""],
+			menu: ["bi-list", ""],
+			login: ["bi-person", "bi-person-check"],
+			github: ["bi-github", ""],
+			system: ["bi-laptop", ""],
+			command: ["bi-command", ""],
+			tools: ["bi-tools", ""],
+			user: ["bi-person", ""],
+			password: ["bi-key", ""],
+			loginAction: ["bi-box-arrow-in-right", ""],
+			tableSort: ["bi-arrow-down", "bi-arrow-up"],
+			save: ["bi-floppy", ""],
+			redo: ["bi-arrow-counterclockwise", ""],
+			addnew: ["bi-plus-square", ""],
+			trash: ["bi-trash", ""],
+			clipboardAdd: ["bi-clipboard-plus", ""],
+			eraser: ["bi-eraser", ""],
+			caretup: ["bi-caret-up", ""],
+			caretdown: ["bi-caret-down", ""],
+			run: ["bi-caret-right-square", ""]
+		}
+	}
+}
+
+/**
+ * A basic view class. 
  */
 export class GeneralView {
 
@@ -73,74 +140,6 @@ export class GeneralView {
 	getElement(id) {
 		return getChildOf(this.viewElement, id);
 	}
-
-}
-
-/**
- * A class to centralize font icon usage.
- */
-export class IconElement {
-	elem = null;
-	type = "";
-	shapes = ["", ""];
-
-	constructor(elem, type, shapes) {
-		this.elem = elem;
-		this.type = type;
-		this.shapes = shapes;
-	}
-
-	init(cb = (obj) => { }) {
-		cb(this);
-		return this;
-	}
-
-	toggle() {
-		this.elem.classList.toggle(this.shapes[0]);
-		this.elem.classList.toggle(this.shapes[1]);
-		return this;
-	}
-
-	and(cb) {
-		cb(this.elem);
-	}
-
-	static newIcon(name, elem, type = "bi") {
-		return new IconElement(elem, type, IconElement.#Icons[type][name]).init(IconElement.#Icons[type].defaultInit);
-	}
-
-	static iconDef(name, type = "bi") {
-		return IconElement.#Icons[type][name];
-	}
-
-	static #Icons = {
-		bi: {
-			defaultInit: (iconObj) => {
-				//Bootstrap font icons
-				iconObj.elem.classList.add(iconObj.type ? iconObj.type : "bi");
-				iconObj.elem.classList.add(iconObj.shapes[0]);
-			},
-			close: ["bi-x-lg", ""],
-			pin: ["bi-pin", "bi-pin-angle"],
-			collapse: ["bi-chevron-bar-contract", "bi-chevron-bar-expand"],
-			dotmenu: ["bi-three-dots-vertical", ""],
-			menu: ["bi-list", ""],
-			login: ["bi-person", "bi-person-check"],
-			github: ["bi-github", ""],
-			system: ["bi-laptop", ""],
-			command: ["bi-command", ""],
-			tools: ["bi-tools", ""],
-			user: ["bi-person", ""],
-			password: ["bi-key", ""],
-			loginAction: ["bi-box-arrow-in-right", ""],
-			tableSort: ["bi-arrow-down", "bi-arrow-up"],
-			save: ["bi-floppy", ""],
-			redo: ["bi-arrow-counterclockwise", ""],
-			addnew: ["bi-plus-square", ""],
-			trash: ["bi-trash", ""],
-			clipboardAdd: ["bi-clipboard-plus", ""]
-		}
-	}
 }
 
 /**
@@ -158,12 +157,12 @@ export class WorkView {
 	viewWorkarea = null;
 
 	//header elements
+	headerMenu = null;
+	workIndicator = null;
+	menuIcon = null;
 	closeIcon = null;
 	collapseIcon = null;
 	pinIcon = null;
-	menuIcon = null;
-
-	headerMenu = null;
 
 	isInitialized = false;
 	isRunning = false;
@@ -186,33 +185,31 @@ export class WorkView {
 		this.viewElement = document.getElementById(this.id);
 		this.viewTitle = this.getElement("view.title");
 		this.viewWorkarea = this.getElement("work.view.workarea");
+		this.workIndicator = this.getElement("work.indicator");
 
 		this.closeIcon = IconElement.newIcon("close", this.getElement("close.icon"));
 		this.pinIcon = IconElement.newIcon("pin", this.getElement("pin.icon"));
 		this.collapseIcon = IconElement.newIcon("collapse", this.getElement("collapse.icon"));
 		this.menuIcon = IconElement.newIcon("dotmenu", this.getElement("menu.icon"));
 
-		let elem = this.getElement("header.menu");
-		if (elem && this.closeIcon.elem) {
-			this.headerMenu = new WorkViewHeaderMenu(elem);
+		this.headerMenu = new WorkViewHeaderMenu(this.getElement("header.menu"));
 
-			this.headerMenu.addItem("Close", (evt) => {
-				this.closeIcon.elem.click();
-			}, { separator: "bottom" });
+		this.headerMenu.addItem("Close", (evt) => {
+			this.closeIcon.elem.click();
+		}, { separator: "bottom" });
 
-			if (this.viewManager) {
-				this.headerMenu.addItem("Move up", (evt) => {
-					this.viewManager.moveView(this, "up");
-				});
-				this.headerMenu.addItem("Move down", (evt) => {
-					this.viewManager.moveView(this, "down");
-				});
-				this.headerMenu.addItem("Move to ...", (evt) => {
-					this.viewManager.promptUserInput({ title: "", message: "Please enter your desired position number:" }, "1",
-						(value) => value ? this.viewManager.moveView(this, value) : null
-					);
-				});
-			}
+		if (this.viewManager) {
+			this.headerMenu.addItem("Move up", (evt) => {
+				this.viewManager.moveView(this, "up");
+			});
+			this.headerMenu.addItem("Move down", (evt) => {
+				this.viewManager.moveView(this, "down");
+			});
+			this.headerMenu.addItem("Move to ...", (evt) => {
+				this.viewManager.promptUserInput({ title: "", message: "Please enter your desired position number:" }, "1",
+					(value) => value ? this.viewManager.moveView(this, value) : null
+				);
+			});
 		}
 	}
 
@@ -220,17 +217,15 @@ export class WorkView {
 		if (!this.isInitialized) {
 			this.initialize();
 		}
-		if (this.headerMenu) {
-			this.headerMenu.close();
-		}
+		this.headerMenu.close();
 		this.writeDataToView();
 		setVisibility(this.viewElement, true);
 		this.isOpen = true;
 	}
 
 	close() {
-		this.isOpen = false;
-		if (this.headerMenu) {
+		if (this.isInitialized) {
+			this.isOpen = false;
 			this.headerMenu.close();
 		}
 		return this.isCloseable();
@@ -251,6 +246,7 @@ export class WorkView {
 
 	setRunning(flag) {
 		this.isRunning = flag;
+		setVisibility(this.workIndicator, flag);
 	}
 
 	setTitle(title) {
@@ -302,67 +298,17 @@ export class WorkView {
 	statusLineInfo(info) {
 		WbApp.statusLineInfo(info);
 	}
-}
 
-
-/**
- * A base class for command views
- * that get parameterized with a commandDef object on installation
- */
-export class BaseCommandView extends WorkView {
-
-	commandDef = new CommandDef();
-	commandName = "";
-
-	workIndicator = null;
-
-	//expected to be CtrlComp objects
-	runButton = null;
-	runArgs = null;
-	outputArea = null;
-
-	onInstallation(installKey, installData, viewManager) {
-		super.onInstallation(installKey, installData, viewManager);
-		this.id = installKey;
-		if (installData instanceof CommandDef) {
-			this.commandDef = installData;
-			this.commandName = this.commandDef.command + " " + this.commandDef.script;
+	copyToClipboard(text) {
+		if (!this.isRunning && (text && text.length > 0)) {
+			navigator.clipboard.writeText(text);
 		}
 	}
 
-	initialize() {
-		super.initialize();
+	saveToFile(fileName, text) {
+		let outputData = this.outputArea.value.trim();
 
-		this.setTitle(this.commandDef.title);
-		this.workIndicator = this.getElement("work.indicator");
-
-		if (this.headerMenu) {
-			this.headerMenu.addItem("Clear Output", (evt) => {
-				this.clearOutput();
-			}, { separator: "top" });
-		}
-	}
-
-	clearOutput() {
-		if (!this.isRunning) {
-			let lastValue = this.outputArea.ctrl().value;
-			this.outputArea.ctrl().value = "";
-			return lastValue;
-		}
-		return "";
-	}
-
-	copyOutputToClipboard() {
-		let outputData = this.outputArea.ctrl().value.trim();
-		if (!this.isRunning && outputData.length > 0) {
-			navigator.clipboard.writeText(outputData);
-		}
-	}
-
-	saveOutput() {
-		let outputData = this.outputArea.ctrl().value.trim();
-		if (!this.isRunning && outputData.length > 0) {
-			let fileName = "output_" + (this.commandDef.command + "_" + this.commandDef.script).replaceAll("/", "_") + ".txt";
+		if (!this.isRunning && text.length > 0) {
 			window.showSaveFilePicker({
 				suggestedName: fileName,
 				types: [{
@@ -375,18 +321,6 @@ export class BaseCommandView extends WorkView {
 				await file.close();
 			}).catch(err => console.error(err));
 		}
-	}
-
-	addOutputLine(line) {
-		this.outputArea.ctrl().value += line + NL;
-		this.outputArea.ctrl().scrollTop = this.outputArea.ctrl().scrollHeight;
-	}
-
-	setRunning(flag) {
-		this.isRunning = flag;
-
-		setVisibility(this.workIndicator, flag);
-		this.runButton.ctrl().disabled = flag;
 	}
 }
 
@@ -728,196 +662,256 @@ export class TableData {
 	}
 }
 
+export class SplitBarHandler {
+
+	splitter;
+	compBefore;
+	compAfter;
+	orientation = "v";
+
+	clickPoint;
+
+	barrierActionBefore = (handler, value) => { };
+	barrierActionAfter = (handler, value) => { };
+
+	constructor(splitter, compbefore, compafter) {
+		this.splitter = splitter;
+		this.compBefore = compbefore;
+		this.compAfter = compafter;
+
+		this.splitter.onmousedown = (evt) => {
+			this.#onDragStart(evt);
+		}
+	}
+
+	#onDragStart(evt) {
+		this.clickPoint = {
+			evt,
+			offsetLeft: this.splitter.offsetLeft,
+			offsetTop: this.splitter.offsetTop,
+			beforeWidth: this.compBefore.offsetWidth,
+			afterWidth: this.compAfter.offsetWidth
+		};
+
+		//avoid cursor flicker
+		let cursor = window.getComputedStyle(this.splitter)["cursor"];
+		this.compBefore.style.cursor = cursor;
+		this.compAfter.style.cursor = cursor;
+
+		document.onmousemove = (evt) => {
+			this.#doDrag(evt);
+		};
+		
+		document.onmouseup = () => {
+			document.onmousemove = document.onmouseup = null;
+			this.compBefore.style.cursor = "default";
+			this.compAfter.style.cursor = "default";
+		}
+	}
+
+	#doDrag(evt) {
+		let delta = {
+			x: evt.clientX - this.clickPoint.evt.clientX,
+			y: evt.clientY - this.clickPoint.evt.clientY
+		};
+
+		if(this.orientation==="v"){
+			this.#doVDrag(delta, evt);
+		}
+	}
+
+	#doVDrag(delta, evt) {
+		delta.x = Math.min(Math.max(delta.x, -this.clickPoint.beforeWidth),
+			this.clickPoint.afterWidth);
+
+		let val = this.clickPoint.offsetLeft + delta.x;
+		if (this.barrierActionBefore(this, val)) { return; }
+
+		this.splitter.style.left = val + "px";
+		this.compBefore.style.width = (this.clickPoint.beforeWidth + delta.x) + "px";
+		this.compAfter.style.width = (this.clickPoint.afterWidth - delta.x) + "px";
+	}
+
+	stop() {
+		document.dispatchEvent(new Event("mouseup", { bubbles: true, cancelable: true }));
+	}
+}
+
+/*********************************************************************************
+ * UI BUILDER CLASSES
+ *********************************************************************************/
+class DefaultCompCSSClasses {
+	compSet = "wkv-compset";
+	comp = "wkv-ctrlcomp";
+	label = "wkv-label-ctrl";
+	actionIcon = "wkv-header-action-ctrl";
+	button = "wkv-button-ctrl";
+	textField = "wkv-value-ctrl";
+	textArea = "wkv-textarea-ctrl";
+	inputReadOnly = "input-readonly";
+	textareaReadOnly = "textarea-readonly";
+	hr = "solid";
+
+	getFor(id) {
+		return this[id];
+	}
+}
+
+export class DataList {
+	ctrl;
+	element;
+
+	constructor(ctrl) {
+		this.ctrl = ctrl;
+		this.element = document.createElement("datalist");
+		this.element.id = "data." + ctrl.id;
+		this.ctrl.setAttribute("list", this.element.id);
+	}
+
+	#newOption(item) {
+		let option = document.createElement("option");
+		option.id = item.id ? item.id : item;
+		option.value = item.value ? item.value : option.id;
+		return option;
+	}
+
+	setOptions(data) {
+		let option = null;
+		data.forEach(item => {
+			option = this.#newOption(item);
+			this.element.append(option);
+		});
+	}
+
+	removeOption(id) {
+		ViewBuilder.removeChildFrom(this.element, id);
+	}
+
+	addOption(item) {
+		let id = item.id ? item.id : item;
+		let option = ViewBuilder.getChildFrom(this.element, id);
+		if (option === null) {
+			option = this.#newOption(item);
+			this.element.prepend(option);
+		}
+	}
+}
+
 /**
  * An experimental factory/builder to create standard UI components e.g. like
  *  [label] - [textfield] etc.
  * arranged e.g. in a fieldset container.
  * 
  * The builder just provides the basic html elements
- * and returns a "proxy" object (CtrlComp) that provides styling, attribution etc. methods
+ * and returns a "proxy" object (ViewComp) that provides styling, attribution etc. methods
  * to enable a cascading builder style programming format.
  */
-export class CompBuilder {
+export class ViewBuilder {
 
-	//provide default style classes
-	textCompClasses = ["wkv-label-ctrl", "wkv-value-ctrl"];
-	textAreaCompClasses = ["wkv-label-ctrl", "wkv-textarea-ctrl"];
-	buttonCompClasses = ["wkv-label-ctrl", "wkv-button-ctrl"];
+	defaultCSSClasses = new DefaultCompCSSClasses();
+	defaultStyles = {
+	}
+	elementCollection = {};
+	objectCollection = {};
 
-	labelStyle = null;
+	static #valueClearableInputTypes = ["text", "password"];
+	static clearControl(ctrl) {
 
-	static style(elem, styleProps) {
-		for (const name in styleProps) {
-			elem.style[name] = styleProps[name];
+		let tagName = ctrl.tagName.toLowerCase();
+		if (tagName === "input") {
+			if (ViewBuilder.#valueClearableInputTypes.includes(ctrl.type)) {
+				ctrl.value = "";
+			}
+		} else if (tagName === "textarea") {
+			ctrl.value = "";
 		}
+
 	}
 
-	#idCheck(id) {
+	static removeChildFrom(parent, id) {
+		let node = ViewBuilder.getChildFrom(parent, id);
+		if (node) { parent.removeChild(node); }
+	}
+
+	static getChildFrom(parent, id) {
+		for (let child of parent.childNodes) {
+			if (child.id === id) { return child; }
+		}
+		return null;
+	}
+
+	static reworkId(id) {
 		if (!id || id === 'undefined' || id === "") {
-			//if no id - create a random one
 			return Math.random().toString(32).slice(5);
 		}
 		return id;
 	}
 
-	#setClassOf(ctrl, compProps, defaultClass) {
-		if (compProps?.clazz) {
-			if (Array.isArray(compProps.clazz)) {
-				compProps.clazz.forEach(clazz => ctrl.classList.add(clazz));
-			} else {
-				ctrl.classList.add(compProps.clazz);
-			}
-		} else {
-			ctrl.classList.add(defaultClass);
+	static setClassesOf(ctrl, clazzes, defaultClazzes = null) {
+		if (Array.isArray(clazzes)) {
+			clazzes.forEach(clazz => ctrl.classList.add(clazz));
+		} else if (clazzes) {
+			ctrl.classList.add(clazzes);
+		} else if (defaultClazzes) {
+			ViewBuilder.setClassesOf(ctrl, defaultClazzes, null);
 		}
 	}
 
-	#newLabel(props, clazz) {
-		let ctrl = document.createElement("label");
-		ctrl.classList.add(clazz);
-		ctrl.innerHTML = props.label;
-		ctrl.htmlFor = props.id;
-
-		if (this.labelStyle !== null) {
-			for (const name in this.labelStyle) {
-				ctrl.style[name] = this.labelStyle[name];
+	static setStyleOf(ctrl, styleProps) {
+		if (styleProps) {
+			for (const name in styleProps) {
+				ctrl.style[name] = styleProps[name];
 			}
 		}
-		return ctrl;
 	}
 
-	//creation options for individual overwriting
-	newCompSet(opt = { tag: "fieldset", clazz: "wkv-compset", title: null, styleProps: {}, clazzes: [] }) {
-		let compSet = document.createElement(opt.tag ? opt.tag : "fieldset");
-		compSet.classList.add(opt.clazz ? opt.clazz : "wkv-compset");
+	static setAttributesOf(ctrl, attributeProps) {
+		for (const name in attributeProps) {
+			ctrl[name] = attributeProps[name];
+		}
+	}
 
-		if (opt.title) {
+	static mergeProps(propsA, propsB) {
+		let props = { ...propsB, ...propsA };
+		return props;
+	}
+
+	setElementCollection(obj) {
+		this.elementCollection = obj;
+	}
+
+	setObjectCollection(obj) {
+		this.objectCollection = obj;
+	}
+
+	getCtrl(varid) {
+		return this.elementCollection[varid];
+	}
+
+	getDefaultCSSClassFor(id) {
+		return this.defaultCSSClasses.getFor(id);
+	}
+
+	newFieldset(props = { title: "", clazzes: "wkv-compset", styleProps: {} }) {
+		let fieldset = document.createElement("fieldset");
+
+		ViewBuilder.setClassesOf(fieldset, this.getDefaultCSSClassFor("compSet"));
+		ViewBuilder.setClassesOf(fieldset, props.clazzes);
+		ViewBuilder.setStyleOf(fieldset, props.styleProps);
+
+		if (props.title && props.title.length > 0) {
 			let legend = document.createElement("legend");
-			legend.innerHTML = opt.title;
-			compSet.append(legend);
+			legend.innerHTML = props.title;
+			fieldset.append(legend);
 		}
-
-		if (opt.styleProps) {
-			for (const name in opt.styleProps) {
-				compSet.style[name] = opt.styleProps[name];
-			}
-		}
-
-		if (opt.clazzes) {
-			opt.clazzes.forEach(clazz => compSet.classList.add(clazz));
-		}
-
-		return compSet;
+		return fieldset;
 	}
 
-	/**
-	 * provide standard, pre configured components as CtrlComp objects
-	 * compProps overwrite generalProps 
-	 */
-	newTextComp(compProps = { label: "", id: "", readOnly: false }, generalProps = {}) {
-		let props = { ...generalProps, ...compProps };
-		let ctrls = [];
-		props.id = this.#idCheck(props.id);
-		ctrls[0] = this.#newLabel(props, this.textCompClasses[0]);
-
-		ctrls[1] = document.createElement("input");
-		ctrls[1].type = "text";
-		ctrls[1].id = props.id;
-
-		this.#setClassOf(ctrls[1], props, this.textCompClasses[1]);
-
-		if (props.readOnly) {
-			ctrls[1].classList.add("input-readonly");
-			ctrls[1].disabled = true;
+	newViewComp(props = null) {
+		if (props) {
+			return new ViewComp(this, props);
 		}
-
-		return new CtrlComp(ctrls, "text");
-	}
-
-	/**
-	 */
-	newTextDatalistComp(compProps = { label: "", id: "", datalist: [], readOnly: false }, generalProps = {}) {
-		let props = { ...generalProps, ...compProps };
-		let ctrls = [];
-		props.id = this.#idCheck(props.id);
-		ctrls[0] = this.#newLabel(props, this.textCompClasses[0]);
-
-		ctrls[1] = document.createElement("input");
-		ctrls[1].type = "text";
-		ctrls[1].id = props.id;
-
-		this.#setClassOf(ctrls[1], props, this.textCompClasses[1]);
-
-		if (props.readOnly) {
-			ctrls[1].classList.add("input-readonly");
-			ctrls[1].disabled = true;
-		}
-
-		let dataElem = document.createElement("datalist");
-		dataElem.id = "data." + props.id;
-		if (props.datalist) {
-			let item = null;
-			props.datalist.forEach(entry => {
-				item = document.createElement("option");
-				item.value = entry;
-				dataElem.append(item);
-			});
-		}
-		ctrls[1].setAttribute("list", dataElem.id);
-
-		let comp = new CtrlComp(ctrls, "text");
-		comp.datalist = dataElem;
-		return comp;
-	}
-
-	newTextAreaComp(compProps = { label: "", id: "", readOnly: false }, generalProps = {}) {
-		let props = { ...generalProps, ...compProps };
-		let ctrls = [];
-		props.id = this.#idCheck(props.id);
-		ctrls[0] = this.#newLabel(props, this.textAreaCompClasses[0]);
-
-		ctrls[1] = document.createElement("textarea");
-		ctrls[1].id = props.id;
-		ctrls[1].rows = props.rows;
-
-		this.#setClassOf(ctrls[1], props, this.textAreaCompClasses[1]);
-
-		if (props.readOnly) {
-			ctrls[1].classList.add("textarea-readonly");
-			ctrls[1].disabled = true;
-		}
-
-		return new CtrlComp(ctrls, "textarea");
-	}
-
-	newButtonComp(compProps = { label: "", id: "", enabled: true }, generalProps = {}) {
-		let props = { ...generalProps, ...compProps };
-		let ctrls = [];
-		props.id = this.#idCheck(props.id);
-		ctrls[0] = this.#newLabel(props, this.buttonCompClasses[0]);
-
-		ctrls[1] = document.createElement("input");
-		ctrls[1].type = "button";
-		ctrls[1].id = props.id;
-
-		this.#setClassOf(ctrls[1], props, this.buttonCompClasses[1]);
-
-		return new CtrlComp(ctrls, "button");
-	}
-
-	newIconbarComp(compProps = { icons: [] }, generalProps = {}) {
-		let props = { ...generalProps, ...compProps };
-		let ctrls = [];
-		props.id = this.#idCheck(props.id);
-
-		compProps.icons.forEach(item => {
-			let elem = document.createElement("i");
-			elem.setAttribute("title", item?.title);
-			IconElement.newIcon(item.name, elem);
-			ctrls.push(elem);
-		});
-
-		return new CtrlComp(ctrls, "icon");
+		return new ViewComp(this);
 	}
 }
 
@@ -925,90 +919,344 @@ export class CompBuilder {
  * The component object provides the preconfigured dom elements
  * and methods for "configuration/appending" of the ui controls. 
  */
-export class CtrlComp {
-	type = "";
+export class ViewComp {
+
+	builder;
 	comp = null;
-	ctrls = [];
-	datalist = null;
 
-	constructor(ctrls, type = "text") {
-		this.type = type;
-		this.ctrls = ctrls;
-	}
-
-	style(idx, styleProps) {
-		let target = null;
-		let values = styleProps;
-		//if idx is a style object use it for the enclosing component itself
-		if (isNaN(idx) && typeof idx === 'object') {
-			target = this.comp;
-			values = idx;
-		} else {
-			//else use it for an inner control
-			target = this.ctrls[idx];
-		}
-		for (const name in values) {
-			target.style[name] = values[name];
-		}
-		return this;
-	}
-
-	attrb(idx, attributeProps) {
-		let target = null;
-		let values = attributeProps;
-		if (isNaN(idx) && typeof idx === 'object') {
-			target = this.comp;
-			values = idx;
-		} else {
-			target = this.ctrls[idx];
-		}
-		for (const name in values) {
-			target[name] = values[name];
-		}
-		return this;
-	}
-
-	config(cb) {
-		cb(this);
-		return this;
-	}
-
-	/**
-	 * @returns the "main control" e.g. input, button etc.
-	 */
-	ctrl() {
-		return this.ctrls[1];
-	}
-
-	build(clazz = "wkv-ctrlcomp") {
-		if (this.comp === null) {
+	constructor(builder, props = { clazzes: "wkv-ctrlcomp", type: "row" }) {
+		this.builder = builder;
+		if(props){
 			this.comp = document.createElement("span");
-			clazz = Array.isArray(clazz) ? clazz : [clazz];
-			clazz.forEach(cls => this.comp.classList.add(cls));
-			this.ctrls.forEach(ctrl => this.comp.append(ctrl));
-			if (this.datalist) {
-				this.comp.append(this.datalist);
+			this.#setClassesOf(this.comp, props.clazzes, "comp");
+			this.#applyDefaultStyles(this.comp, "comp");
+		}
+	}
+
+	static newFor(element){
+		return new ViewComp(new ViewBuilder(), null).setComp(element);
+	}
+
+	setComp(comp){
+		this.comp = comp;
+		return this;
+	}
+
+	#reworkId(id) {
+		return ViewBuilder.reworkId(id);
+	}
+
+	#setClassesOf(ctrl, clazzes, defaultId) {
+		ViewBuilder.setClassesOf(ctrl, clazzes, this.builder.getDefaultCSSClassFor(defaultId));
+	}
+
+	#setStyleOf(ctrl, styleProps) {
+		ViewBuilder.setStyleOf(ctrl, styleProps);
+	}
+
+	#setAttributesOf(ctrl, attribProps) {
+		ViewBuilder.setAttributesOf(ctrl, attribProps);
+	}
+
+	#applyDefaultStyles(ctrl, typeId) {
+		if (this.builder.defaultStyles[typeId]) {
+			this.#setStyleOf(ctrl, this.builder.defaultStyles[typeId]);
+		}
+	}
+
+	#applyProperties(ctrl, props) {
+		if (props.styleProps) {
+			this.#setStyleOf(ctrl, props.styleProps);
+		}
+		if (props.attribProps) {
+			this.#setAttributesOf(ctrl, props.attribProps);
+		}
+		//comfort method
+		if (props.hasOwnProperty("disabled")) {
+			this.#setAttributesOf(ctrl, { "disabled": props.disabled });
+		}
+	}
+
+	#registerCtrl(varid, ctrl) {
+		if (varid && this.builder.elementCollection) {
+			this.builder.elementCollection[varid] = ctrl;
+		}
+		this.#registerObject(ctrl);
+	}
+
+	#registerObject(obj, id=null) {
+		if(this.builder.objectCollection){
+			if (id) {
+				this.builder.objectCollection[id] = obj;
+			} else if (obj.hasOwnProperty("data-bind")) {
+				if(!this.builder.objectCollection.bindings){
+					this.builder.objectCollection.bindings = {};
+				}
+				let key = obj["data-bind"];
+				this.builder.objectCollection.bindings[key] = obj;
 			}
 		}
+	}
+
+	#appendCtrl(props, ctrl) {
+		if (props.parentCtrl) {
+			props.parentCtrl.append(ctrl);
+		} else {
+			this.comp.append(ctrl);
+		}
+	}
+
+	#isReadOnly(props) {
+		return props.hasOwnProperty('readOnly');
+	}
+
+	#newDataList(ctrl, data) {
+		let datalist = new DataList(ctrl);
+		datalist.setOptions(data);
+		this.#registerObject(datalist, datalist.element.id);
+		return datalist;
+	}
+
+	ctrl(varid, cb) {
+		cb(this.getCtrl(varid), this);
 		return this;
 	}
 
-	addComp(otherComp) {
-		this.build();
-		otherComp.ctrls.forEach(ctrl => { this.comp.append(ctrl); this.ctrls.push(ctrl); });
+	getCtrl(varid) {
+		return this.builder.elementCollection[varid];
+	}
+
+	style(styleProps) {
+		if (styleProps) {
+			this.#setStyleOf(this.comp, styleProps);
+		}
+		return this;
+	}
+
+	attrib(attribProps) {
+		if (attribProps) {
+			this.#setAttributesOf(this.comp, attribProps);
+		}
+		return this;
+	}
+
+	innerHTML(html) {
+		this.comp.innerHTML = html;
 		return this;
 	}
 
 	appendTo(parent) {
-		this.build();
 		parent.append(this.comp);
 		return this;
 	}
 
 	prependTo(parent) {
-		this.build();
 		parent.prepend(this.comp);
 		return this;
 	}
+
+	config(configCb) {
+		configCb(this);
+		return this;
+	}
+
+	addSeparator(props = { clazzes: "" }, configCb = null) {
+		let typeId = "hr";
+		let ctrl = document.createElement("hr");
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+
+		this.#applyDefaultStyles(ctrl, typeId);
+		this.#applyProperties(ctrl, props)
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (configCb) {
+			configCb({ comp: this, container: ctrl });
+		}
+
+		return this;
+	}
+
+	addContainer(props = { clazzes: "", type: "span" }, configCb = null) {
+		let typeId = props.type ? props.type : "span";
+		let ctrl = document.createElement(typeId);
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+
+		this.#applyDefaultStyles(ctrl, typeId);
+		this.#applyProperties(ctrl, props)
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (configCb) {
+			configCb({ comp: this, container: ctrl });
+		}
+
+		return this;
+	}
+
+	addLabel(props = { text: "unknown", clazzes: "" }, configCb = null) {
+		let typeId = "label";
+		let ctrl = document.createElement("label");
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+		ctrl.innerHTML = props.text;
+
+		this.#applyDefaultStyles(ctrl, typeId);
+		this.#applyProperties(ctrl, props)
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (configCb) {
+			configCb({ comp: this, label: ctrl });
+		}
+
+		return this;
+	}
+
+	addTextField(props = { varid: "", id: "", clazzes: "" }, configCb = null) {
+		let typeId = "textField";
+		let ctrl = document.createElement("input");
+		ctrl.type = "text";
+		ctrl.id = this.#reworkId(props.id);
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+
+		this.#applyDefaultStyles(ctrl, typeId);
+		this.#applyProperties(ctrl, props)
+
+		if (this.#isReadOnly(props)) {
+			ctrl.classList.add(this.builder.getDefaultCSSClassFor("inputReadOnly"));
+			ctrl.disabled = true;
+		}
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (props.datalist) {
+			let datalist = this.#newDataList(ctrl, props.datalist);
+			this.comp.prepend(datalist.element);
+		}
+
+		if (configCb) {
+			configCb({ comp: this, textfield: ctrl });
+		}
+
+		return this;
+	}
+
+	addButton(props = { text: "", title: "", icon: null, varid: "", id: "", clazzes: "" }, configCb = null) {
+		let typeId = "button";
+		let ctrl = document.createElement("button");
+		ctrl.type = "button";
+		ctrl.id = this.#reworkId(props.id);
+		ctrl.title = props?.title;
+
+		if(props.icon){
+			let iconClasses = [IconElement.iconDef(props.icon)[0], "wkv-button-icon"];
+			this.#setClassesOf(ctrl, iconClasses);
+		}
+
+		ctrl.innerHTML = props.text;
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+
+		this.#applyDefaultStyles(ctrl, typeId);
+		this.#applyProperties(ctrl, props)
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (configCb) {
+			configCb({ comp: this, button: ctrl });
+		}
+
+		return this;
+	}
+
+	addActionIcon(props = { varid: "", iconName: "", title: "", clazzes: "" }, configCb = null) {
+		let typeId = "actionIcon";
+		let ctrl = document.createElement("i");
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+		ctrl.setAttribute("title", props?.title);
+		IconElement.newIcon(props.iconName, ctrl);
+
+		this.#applyProperties(ctrl, props)
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (configCb) {
+			configCb({ comp: this, icon: ctrl });
+		}
+
+		return this;
+	}
+
+	addTextArea(props = { varid: "", id: "", clazzes: "" }, configCb = null) {
+		let typeId = "textArea";
+		let ctrl = document.createElement("textarea");
+		ctrl.id = this.#reworkId(props.id);
+		ctrl.rows = props.rows;
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+
+		this.#applyDefaultStyles(ctrl, typeId);
+		this.#applyProperties(ctrl, props)
+
+		if (this.#isReadOnly(props)) {
+			ctrl.classList.add(this.builder.getDefaultCSSClassFor("textareaReadOnly"));
+			ctrl.disabled = true;
+		}
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (configCb) {
+			configCb({ comp: this, textarea: ctrl });
+		}
+
+		return this;
+	}
+
+	addLabelTextField(lbProps, tfProps, configCb = null) {
+		let elems = { comp: this, label: null, textfield: null };
+
+		this.addLabel(lbProps, (target) => { elems.label = target.label });
+		this.addTextField(tfProps, (target) => { elems.textfield = target.textfield });
+		elems.label.htmlFor = elems.textfield.id;
+
+		if (configCb) {
+			configCb(elems);
+		}
+
+		return this;
+	}
+
+	addLabelTextArea(lbProps, taProps, configCb = null) {
+		let elems = { comp: this, label: null, textarea: null };
+
+		this.addLabel(lbProps, (target) => { elems.label = target.label });
+		this.addTextArea(taProps, (target) => { elems.textarea = target.textarea });
+		elems.label.htmlFor = elems.textarea.id;
+
+		if (configCb) {
+			configCb(elems);
+		}
+
+		return this;
+	}
+
+	addLabelButton(lbProps, pbProps, configCb = null) {
+		let elems = { comp: this, label: null, button: null };
+
+		this.addLabel(lbProps, (target) => { elems.label = target.label });
+		this.addButton(pbProps, (target) => { elems.button = target.button });
+
+		if (configCb) {
+			configCb(elems);
+		}
+
+		return this;
+	}
+
 }
 

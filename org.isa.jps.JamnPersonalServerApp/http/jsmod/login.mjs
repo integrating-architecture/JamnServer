@@ -11,7 +11,7 @@ import { getChildOf, setDisplay } from '../jsmod/tools.mjs';
 //export a view component as singleton 
 //in this case the view object is just the holder for the lazy loaded view html 
 //used by the modal dialog
-const viewInstance = new GeneralView("systemLoginView", "/jsmod/login.html");
+const viewInstance = new GeneralView("systemLoginView", "/jsmod/html-components/login.html");
 export function getView() {
 	return viewInstance;
 }

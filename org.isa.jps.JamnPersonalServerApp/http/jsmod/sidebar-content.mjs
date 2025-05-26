@@ -31,7 +31,8 @@ export const topicList = {
 		items : {
 			//create view item with data
 			"testSample" : {title:"Sample: shell test", view:commandView(), data:new CommandDef("Sample: [test sh command]", "runjs", "/sample/sh-test.mjs", {args:true})},
-			"projectSample" : {title:"Sample: build test", view:commandView(), data:new CommandDef("Sample: [test build script]", "runjs", "/sample/build-project-test.mjs")}
+			"projectSample" : {title:"Sample: build test", view:commandView(), data:new CommandDef("Sample: [test build script]", "runjs", "/sample/build-project-test.mjs")},
+			"runjcSample" : {title:"Sample: Java cmd", view:commandView(), data:new CommandDef("Sample Java Command: [org.xyz.sample.JavaCommand]", "runjc", "org.xyz.sample.JavaCommand")}
 		}
 	},
 	

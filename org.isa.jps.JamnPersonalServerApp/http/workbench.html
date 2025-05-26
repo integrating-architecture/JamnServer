@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -26,6 +26,7 @@
       .registerAs("WbApp")
       .build();
   </script>
+
 </head>
 
 <body>
@@ -34,12 +35,13 @@
   <div id="approot" class="site-container">
 
     <!-- titlebar -->
-    <div id="titlebar">
-      <a href="https://iqbserve.de/" target="_blank">
-      <img class="wtb-item" src="images/workbench-logo.png" title="IQB Services" alt="logo" width="22px"
-        height="22px" /></a>
-      <span id="wtb.title" class="wtb-item">Jamn Workbench -</span>
-      <span id="wtb.title.text" class="wtb-item">[ ]</span>
+    <div id="titlebar" style="user-select: none;">
+      <a href="https://iqbserve.de/" target="_blank" style="min-width: fit-content;">
+        <img class="wtb-item" src="images/workbench-logo.png" title="IQB Services" alt="logo" width="22px"
+          height="22px" /></a>
+      <span id="wtb.title" class="wtb-item" style="min-width: fit-content;">Jamn Workbench -</span>
+      <span id="wtb.title.text" class="wtb-item" style="width: 100%; user-select: text;">[ ]</span>
+      <span id="wtb.ctrl.panel" class="wtb-item wtb-ctrl-panel"></span>
     </div>
     <!-- titlebar end -->
 
@@ -47,7 +49,7 @@
     <div id="mainContainer">
 
       <!-- sidebar -->
-      <div id="sidebar">
+      <div id="sidebar" style="border-right: none;">
         <div class="sidebar-header">
           <i id="sidebar.menu.icon" class="sidebar-header-icon"></i>
 
@@ -63,24 +65,32 @@
       </div>
       <!-- sidebar end -->
 
+      <div id="sidebar.splitter" class="vsplitter" style="border-left: 1px solid var(--border-gray);"></div>
+
       <!-- workarea -->
-      <div id="workarea">
-   
-      </div>
+      <div id="workarea"></div>
       <!-- workarea end -->
-    
+
     </div>
     <!-- main container end -->
 
     <!-- statusline -->
-    <div id="statusline">
+    <div id="statusline" style="user-select: none;">
       <span class="wsl-item" style="width: 30px;">Info:</span>
-      <span id="wsl.info" class="wsl-item" style="width: 100%;"></span>
+      <span id="wsl.info" class="wsl-item" style="width: 100%; user-select: text;"></span>
       <span id="wsl.icons" class="wsl-item" style="width: 50px; margin-right: 5px; text-align: center;">
         <a id="wsl.scm.link" title="Git repo" href="" target="_blank" style="color: var(--text-light-gray);"></a>
       </span>
     </div>
     <!-- statusline end -->
+
+    <!-- intro text box -->
+    <div id="intro.overlay" class="overlay-container intro-container">
+      <div id="intro.content" class="intro-content">
+      </div>
+    </div>
+    <!-- intro text box end -->
+
   </div>
 
   <!-- modal dialog overlay container -->
@@ -116,26 +126,6 @@
     </div>
   </dialog>
   <!-- standard dialog end -->
-  
-  <!-- intro text box -->
-  <div class="overlay-container intro-container" onclick="this.style.display = 'none';">
-    <div class="intro-content">
-      <span style="padding: 20px;">
-        <h1 style="color: var(--standard-dlg-header-bg)">Welcome to<br>Jamn Workbench</h1>
-        <span style="font-size: 18px;">
-          <p>an example of using the Jamn Java-SE Microservice<br>together with plain Html and JavaScript<br></p>
-          <p style="margin-bottom: 5px;">to build lightweight, browser enabled <a style="color: var(--isa-title-blue);" title="Jamn All-In-One MicroService" target="_blank" href="https://github.com/integrating-architecture/JamnServer?tab=readme-ov-file#jamn---just-another-micro-node-server">All-in-One Apps <i class="bi bi-github"></i></a></p>
-          <a style="font-size: 10px; color: var(--isa-title-blue);"  title="Andreas Weidinger - IQB Services" target="_blank" href="https://iqbserve.de">Andreas Weidinger - IQB Services</a>
-        </span>
-        
-      </span>
-    <!---->
-      <span>
-        <img src="images/intro.jpg" alt="Intro" style="width: 350px; height: 100%;">
-      </span>
-    </div>
-  </div>
-  <!-- intro text box end -->
 
 </body>
 

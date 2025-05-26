@@ -9,6 +9,7 @@
     --work-view-header-bg: #292828;
     --work-view-menu-bg: #292828;
     --work-view-header-ctrl: #c3c3c3;
+    --work-view-separator: #373737;
     --header-bg: #292828;
     --sidebar-bg: #292828;
     --sidebar-bg: #292828;
@@ -22,7 +23,7 @@
     --cmd-button-hover-border: #8A9A5B;
     --cmd-button-border: var(--border-gray);
     --ctrl-border-focus: #0054a8;
-    
+
     --modal-dlg-content-bg: #c3c3c3;
     --modal-dlg-content-fg: #1e1e1e;
     --modal-dlg-header-bg: #536a7d;
@@ -100,6 +101,15 @@ div#titlebar .wtb-item {
     margin-left: 10px;
 }
 
+div#titlebar .wtb-ctrl-panel {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    font-size: 18px;
+    margin-right: 20px;
+}
+
 /**
  * App container between titlebar and statusline
  */
@@ -138,6 +148,8 @@ div#sidebar {
     flex: none;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border-gray);
+    white-space: nowrap;
+    user-select: none;
 }
 
 div#sidebar .sbar-topic-list {
@@ -246,6 +258,7 @@ div#workarea .work-view {
     border-bottom: 1px solid var(--border-gray);
     padding-left: 10px;
     padding-right: 10px;
+    user-select: none;
 }
 
 .wkv-header-item {
@@ -256,6 +269,7 @@ div#workarea .work-view {
 .wkv-header-item-title {
     width: 100%;
     text-align: center;
+    white-space: nowrap;
 }
 
 .wkv-header-item-left {
@@ -419,6 +433,7 @@ th.wkv {
     padding: 4px;
     font-size: 1.0em;
     font-weight: 300;
+    user-select: none;
 }
 
 td.wkv {
@@ -500,6 +515,7 @@ tr.wkv:hover td {
     padding: 10px;
     background: var(--standard-dlg-header-bg);
     color: var(--standard-dlg-header-fg);
+    user-select: none;
 }
 
 .standard-dialog-content-area {
@@ -515,6 +531,7 @@ tr.wkv:hover td {
     justify-content: right;
     padding: 15px;
     background: var(--standard-dlg-command-bg);
+    user-select: none;
 }
 
 .standard-dialog-close-icon {
@@ -600,6 +617,7 @@ p.std-dlg-input {
     color: var(--modal-dlg-header-fg);
     min-height: 40px;
     width: 100%;
+    user-select: none;
 }
 
 .modal-dialog-view-area {
@@ -653,7 +671,10 @@ p.std-dlg-input {
  */
 
 hr.solid {
-    border: 1px solid var(--border-gray);
+    border-top: 1px solid var(--work-view-separator);
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
 }
 
 .rot90 {
@@ -723,12 +744,18 @@ hr.solid {
     pointer-events: none;
 }
 
+.wkv-button-icon::before {
+    margin-right: 10px;
+    font-size: 16px;
+}
+
 .wkv-textarea-ctrl {
+    outline: none;
     color: var(--text-gray);
     background-color: var(--site-bg);
     border-color: var(--border-gray);
     width: 100%;
-    
+
     font-family: sans-serif;
     font-size: 1.0em;
     font-weight: 300;
@@ -742,10 +769,24 @@ hr.solid {
     border-color: var(--border-gray);
     font-family: Lucida Console, monospace;
     font-size: 13px;
+    min-height: 140px;
+    min-width: 300px;
+}
+
+.wkv-ctrlcomp:hover .wkv-textarea-ctrl {
+    border: 1px solid var(--wkv-ctrl-border-focus);
+}
+
+.wkv-ctrlcomp:hover .textarea-readonly {
+    border: none;
+}
+
+.wkv-ctrlcomp:hover .wkv-output-textarea-ctrl {
+    border: 1px solid var(--wkv-ctrl-border-focus);
 }
 
 .input-readonly {
-    pointer-events:none;
+    pointer-events: none;
     border-style: none;
     outline: none;
     background: content-box;
@@ -787,7 +828,7 @@ hr.solid {
 /**
  * Intro text box 
  */
- .overlay-container {
+.overlay-container {
     position: fixed;
     width: 100%;
     height: 100%;
@@ -795,26 +836,43 @@ hr.solid {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color:rgba(0,0,0,0.4);
+    background-color: rgba(0, 0, 0, 0.4);
     z-index: 1;
     cursor: default;
     overflow: hidden;
-   }
+}
 
-  .intro-container {
+.intro-container {
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-  }
+}
 
-  .intro-content {
-    display: flex; 
+.intro-content {
+    display: flex;
     text-align: center;
     min-width: 780px;
     margin-top: -100px;
     margin-left: 225px;
     color: var(--text-gray);
     border: 1px solid var(--border-gray);
-  }
+    user-select: none;
+}
+
+
+/**
+ * Splitter
+ */
+.vsplitter {
+    width: 2px;
+    height: 100%;
+    cursor: col-resize;
+    user-select: none;
+}
+
+.vsplitter:hover {
+    background-color: var(--ctrl-border-focus);
+    border-color: var(--ctrl-border-focus) !important;
+}

@@ -1,6 +1,6 @@
 /* Authored by www.integrating-architecture.de */
 
-import { getWorkViewOf, getViewHtml } from '../jsmod/tools.mjs';
+import { getViewHtml } from '../jsmod/tools.mjs';
 import { ModalDialog, StandardDialog } from './view-classes.mjs';
 
 /**
@@ -33,7 +33,6 @@ export class WorkbenchViewManager {
 		this.standardDlg = new StandardDialog();
 	}
 
-	//
 	getModalDialog(view, cb) {
 		if(!view.viewSource.html){
 			getViewHtml(view.viewSource, (html) => {
@@ -54,7 +53,7 @@ export class WorkbenchViewManager {
 		if (flag) {
 			viewCart.style["display"] = "block";
 			viewCart.style["visibility"] = "visible";
-		} else {
+		} else if(this.workarea.children.length > 0){
 			viewCart.style["display"] = "none";
 		}
 	}
@@ -87,16 +86,27 @@ export class WorkbenchViewManager {
 		}
 	}
 
+	scrollToTop(){
+		this.workarea.scrollTop = 0;
+	}
+
 	openView(viewItem) {
 		this.closeAllCloseableViews();
 
 		viewItem.view.open();
+		this.moveView(viewItem.view, 1);
 		this.setViewCartVisible(viewItem.cart, true);
+		this.scrollToTop();
+	}
+
+	#getWorkViewOf(viewElem) {
+		while ((viewElem = viewElem.parentElement) && !viewElem.classList.contains("work-view"));
+		return viewElem;
 	}
 
 	//default action requests 
 	onViewAction(evt, action) {
-		let workView = getWorkViewOf(evt.target);
+		let workView = this.#getWorkViewOf(evt.target);
 		let viewItem = this.registeredViews[workView.id];
 
 		if (!viewItem) {
@@ -113,6 +123,32 @@ export class WorkbenchViewManager {
 			viewItem.view.toggleHeaderMenu();
 			evt.stopImmediatePropagation();
 		}
+	}
+
+	getVisibleChildren(){
+		let children = [];
+		for (let child of this.workarea.children) {
+			if(child.style.display == "block"){
+				children.push(child);
+			}
+		}
+		return children;
+	}		
+
+	stepViewsDown(){
+		let children = this.getVisibleChildren();
+		if(children.length > 1){
+			this.workarea.insertBefore(children[children.length-1], children[0]);
+			this.scrollToTop();
+		}
+	}
+
+	stepViewsUp(){
+		let children = this.getVisibleChildren();
+		if(children.length > 1){
+			this.workarea.insertBefore(children[0], null);
+			this.scrollToTop();
+		}	
 	}
 
 	moveView(view, position) {
@@ -160,7 +196,7 @@ export class WorkbenchViewManager {
 			} else {
 				getViewHtml(viewItem.view.viewSource, (html) => {
 					let viewCart = this.createViewCartridge(viewItem.view.id, html);
-					this.workarea.append(viewCart);
+					this.workarea.prepend(viewCart);
 					this.openView(viewItem);
 				});
 			}

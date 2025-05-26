@@ -89,13 +89,10 @@ export function initFunctionalItems(viewmanager) {
 	item.addEventListener("click", logInAction);
 }
 
-/**
- * Internals
- */
 
 /**
  */
-function toogleCollaps() {
+export function toogleCollaps() {
 	let topics = document.getElementById("sidebarTopics");
 	let workicons = document.getElementById("sidebar.header.workicons");
 	let sidebar = document.getElementById("sidebar");
@@ -117,6 +114,9 @@ function toogleCollaps() {
 	collapsed = !collapsed;
 }
 
+/**
+ * Internals
+ */
 
 /**
  */

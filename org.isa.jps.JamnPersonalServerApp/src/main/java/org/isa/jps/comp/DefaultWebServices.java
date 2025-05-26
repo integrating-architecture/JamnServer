@@ -112,6 +112,7 @@ public class DefaultWebServices {
                 .setDescription(lBuildProps.getProperty("description"))
                 .setBuildDate(lBuildProps.getProperty("build.date"))
                 .addLink("app.scm", lBuildProps.getProperty("url"))
+                .setBuildInfos(lBuildProps)
                 .setConfig(JamnPersonalServerApp.getInstance().getConfig().getProperties());
     }
 
@@ -152,9 +153,15 @@ public class DefaultWebServices {
 
         protected Map<String, String> links = new HashMap<>();
         protected Properties config = new Properties();
+        protected Properties buildInfos = new Properties();
 
         public SystemInfoResponse setConfig(Properties pProps) {
             this.config.putAll(pProps);
+            return this;
+        }
+
+        public SystemInfoResponse setBuildInfos(Properties pProps) {
+            this.buildInfos.putAll(pProps);
             return this;
         }
 

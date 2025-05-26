@@ -18,6 +18,7 @@ import org.isa.jps.JamnPersonalServerApp.CommonHelper;
 import org.isa.jps.JamnPersonalServerApp.Config;
 import org.isa.jps.JavaScriptProvider;
 import org.isa.jps.JavaScriptProvider.JSCallContext;
+import org.isa.jps.comp.JavaCommandProvider.JCCallContext;
 
 /**
  * <pre>
@@ -34,6 +35,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     protected static final CommonHelper Tool = new CommonHelper();
 
     protected static final String CMD_RUNJS = "runjs";
+    protected static final String CMD_RUNJC = "runjc";
     protected static final String STATUS_SUCCESS = "success";
     protected static final String STATUS_ERROR = "error";
 
@@ -42,6 +44,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     protected AtomicBoolean isAvailable;
 
     protected JavaScriptProvider jsProvider;
+    protected JavaCommandProvider jcProvider;
     protected JamnWebSocketProvider wsoProvider;
 
     protected Charset encoding = StandardCharsets.UTF_8;
@@ -90,6 +93,11 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
                 if (CMD_RUNJS.equalsIgnoreCase(pRequestMsg.getCommand())) {
                     runJSCommand(pConnectionId, pRequestMsg, lResponseMsg);
                     lResponseMsg.setStatus(STATUS_SUCCESS);
+                } else if (CMD_RUNJC.equalsIgnoreCase(pRequestMsg.getCommand())) {
+                    runJCCommand(pConnectionId, pRequestMsg, lResponseMsg);
+                    lResponseMsg.setStatus(STATUS_SUCCESS);
+                } else {
+                    throw new Exception(String.format("Unsupported command [%s]", pRequestMsg.getCommand()));
                 }
             } catch (Exception e) {
                 lResponseMsg.setStatus(STATUS_ERROR);
@@ -117,6 +125,32 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
             wsoProvider.sendMessageTo(pConnectionId, lJsonMsg.getBytes(encoding));
         });
         js().eval(lCallCtx, pRequestMsg.getScript(), pRequestMsg.getArgsArray());
+    }
+
+        /**
+     */
+    protected void runJCCommand(String pConnectionId, WsoCommonMessage pRequestMsg, WsoCommonMessage lResponseMsg) {
+
+        WsoCommonMessage lOutputMsg = new WsoCommonMessage(pRequestMsg.getReference());
+ 
+        JCCallContext lCallCtx = new JCCallContext((String output) -> {
+            lOutputMsg.setTextdata(output);
+            String lJsonMsg = json.toString(lOutputMsg);
+            wsoProvider.sendMessageTo(pConnectionId, lJsonMsg.getBytes(encoding));
+        });
+        jc().run(lCallCtx, pRequestMsg.getScript(), pRequestMsg.getArgsArray());
+    }
+
+    /**
+     */
+    protected JavaCommandProvider jc() {
+        if (jcProvider == null) {
+            jcProvider = JamnPersonalServerApp.getInstance().getJCmdProvider();
+            if (jcProvider == null) {
+                throw new UncheckedWsoProcessorException("ERROR Java Commands NOT available");
+            }
+        }
+        return jcProvider;
     }
 
     /**

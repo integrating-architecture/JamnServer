@@ -47,6 +47,7 @@ import org.isa.jps.comp.DefaultJavaScriptHostAppAdapter;
 import org.isa.jps.comp.DefaultServerAccessManager;
 import org.isa.jps.comp.DefaultWebServices;
 import org.isa.jps.comp.DefaultWebSocketMessageProcessor;
+import org.isa.jps.comp.JavaCommandProvider;
 import org.isa.jps.comp.OperatingSystemInterface;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -104,6 +105,7 @@ public class JamnPersonalServerApp {
     protected static final String APP_LIBS_DIR = "libs";
     protected static final String WEB_FILE_ROOT = "http";
     protected static final String SCRIPT_ROOT = "scripts";
+    protected static final String JCMD_ROOT = "jcmds";
     protected static final String EXTENSION_ROOT = "extensions";
     protected static final String WORKSPACE_ROOT = "workspace";
 
@@ -146,6 +148,8 @@ public class JamnPersonalServerApp {
 
     // JavaScript Provider
     protected JavaScriptProvider javaScript;
+    // Java commands Provider
+    protected JavaCommandProvider javaCommands;
 
     // internal components
     protected OperatingSystemInterface osIFace;
@@ -217,6 +221,7 @@ public class JamnPersonalServerApp {
 
         initChildManagement();
         initJavaScript();
+        initJavaCommands();
 
         initExtensions();
 
@@ -330,6 +335,12 @@ public class JamnPersonalServerApp {
     }
 
     /**
+     */
+    public JavaCommandProvider getJCmdProvider() {
+        return javaCommands;
+    }
+
+    /**
      * Public-Interface to register extension WebServices
      * 
      * @throws WebServiceDefinitionException
@@ -376,7 +387,7 @@ public class JamnPersonalServerApp {
             LogManager.getLogManager().readConfiguration(getClass().getResourceAsStream("/" + LOGGING_PROPERTIES_NAME));
             LOG.info(() -> String.format("%s Default-Logging config read [%s]", INIT_LOGPRFX, LOGGING_PROPERTIES_NAME));
         }
-     }
+    }
 
     /**
      */
@@ -467,6 +478,23 @@ public class JamnPersonalServerApp {
         } else {
             LOG.info(() -> String.format(
                     "%s JavaScript is Disabled. To enable ensure libraries and set config [%s] property [javascript.enabled=true]",
+                    INIT_LOGPRFX, PROPERTIES_NAME));
+        }
+    }
+
+    /**
+     */
+    protected void initJavaCommands() throws IOException {
+        if (config.isJCmdEnabled()) {
+            Path lJCmdPath = Tool.ensureSubDir(config.getJCmdRoot(), AppHome);
+            javaCommands = new JavaCommandProvider(lJCmdPath, config, getJsonTool());
+
+            javaCommands.initialize();
+
+            LOG.info(() -> String.format("%s Java Commands Provider initialized [%s]", INIT_LOGPRFX, lJCmdPath));
+        } else {
+            LOG.info(() -> String.format(
+                    "%s Java Commands is Disabled. To enable ensure libraries and set config [%s] property [jcmd.enabled=true]",
                     INIT_LOGPRFX, PROPERTIES_NAME));
         }
     }
@@ -708,6 +736,8 @@ public class JamnPersonalServerApp {
                 "#Extensions enabled", "extensions.enabled=false", "",
                 "#JavaScriptProvider script root folder", "script.root=" + SCRIPT_ROOT, "",
                 "#JavaScript auto-load script", "js.auto.load.script=js-auto-load.js", "",
+                "#JavaCommands enabled", "jcmd.enabled=true", "",
+                "#JavaCommandProvider root folder", "jcmd.root=" + JCMD_ROOT, "",
                 "#CLI enabled", "cli.enabled=true", "",
                 "#JavaScript enabled", "javascript.enabled=false", "",
                 "#JavaScript debug enabled", "javascript.debug.enabled=false", "",
@@ -795,6 +825,10 @@ public class JamnPersonalServerApp {
             return props.getProperty("js.auto.load.script", "js-auto-load.js");
         }
 
+        public String getJCmdRoot() {
+            return props.getProperty("jcmd.root", JCMD_ROOT);
+        }
+
         public int getPort() {
             return Integer.valueOf(props.getProperty("port", "8099"));
         }
@@ -841,6 +875,10 @@ public class JamnPersonalServerApp {
 
         public boolean isJavaScriptEnabled() {
             return Boolean.parseBoolean(props.getProperty("javascript.enabled", "false"));
+        }
+
+        public boolean isJCmdEnabled() {
+            return Boolean.parseBoolean(props.getProperty("jcmd.enabled", "false"));
         }
 
         public boolean isJavaScriptDebugEnabled() {
@@ -1014,11 +1052,10 @@ public class JamnPersonalServerApp {
         public void createFileURL(Path pFile, List<URL> pUrls, Object pInfo, List<String> pErrors)
                 throws MalformedURLException {
 
-            if (Files.exists(pFile) && !Files.isDirectory(pFile)) {
-                pUrls.add(new URL("file:" + pFile.toString()));
+            if (Files.exists(pFile)) {
+                pUrls.add(pFile.toUri().toURL());
             } else {
-                pErrors
-                        .add(String.format("File does NOT exist [%s] [%s]", pFile, pInfo));
+                pErrors.add(String.format("File does NOT exist [%s] [%s]", pFile, pInfo));
             }
         }
 

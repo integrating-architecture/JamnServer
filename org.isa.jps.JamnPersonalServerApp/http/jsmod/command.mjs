@@ -1,126 +1,191 @@
 /* Authored by www.integrating-architecture.de */
 
 import { NL, newSimpleId, splitToArgs } from '../jsmod/tools.mjs';
-import { WsoCommonMessage } from '../jsmod/data-classes.mjs';
-import { BaseCommandView, CompBuilder } from '../jsmod/view-classes.mjs';
+import { WsoCommonMessage, CommandDef } from '../jsmod/data-classes.mjs';
+import { WorkView, ViewBuilder, IconElement } from '../jsmod/view-classes.mjs';
 
 /**
  * A general View class for commands.
  * An example of 
- *  - how to use web socket communication to execute server side "commands"
- *  - and how to dynamically integrate the components html source code
+ *  - using web socket communication to execute server side "commands"
+ *  - using dynamically integrated html source code
  *    using standard js/dom functionality
+ *  - using a builder to create a ui
  * 
- * In this example, a command is a server-side JavaScript.
+ * Commands are either server side JavaScripts or java classes.
  * 
  * The client side command definitions are located in:
  *  - sidebar-content.mjs
  * The web socket counterpart on the server-side is:
  *  - org.isa.jps.comp.DefaultWebSocketMessageProcessor
  * The server side scripts are located in subdir
- *  - scripts
+ *  - "scripts" for JS / and "jcmds" for java
  * 
  * Creating dynamic content and components
- * Jamn supports 3 principal approaches and their free combinations:
+ * Jamn supports 3 approaches and their combinations:
  * - static file content
  * - server side dynamically generated and/or enriched content from any source  
- * - client side dynamically loaded, manipulated, created content and fragments
+ * - client side dynamically loaded, manipulated, created content and components
  */
-class CommandView extends BaseCommandView {
+class CommandView extends WorkView {
 
-	//the id used to identify websocket sender/receiver
-	//between client und server
 	wsoRefId;
+
+	commandDef = new CommandDef();
+	commandName = "";
+
+	//members for the main ui elements
+	pbRun = null;
+	taArgs = null;
+	taOutput = null;
+
+	//member objects to collect ui elements and ui objects from the builder
+	elems = {};
+	uiobj = {};
+
+	//just demo data
+	namedArgs = { help: "-h", test: "-t -file=/temp/test.json" };
 
 	constructor(id) {
 		super(id, "");
-		//use this js component html view source
+		//use this js component internal html view source code
 		this.viewSource.html = viewHtml;
 	}
 
+	onInstallation(installKey, installData, viewManager) {
+		super.onInstallation(installKey, installData, viewManager);
+		this.id = installKey;
+		if (installData instanceof CommandDef) {
+			this.commandDef = installData;
+			this.commandName = this.commandDef.command + " " + this.commandDef.script;
+		}
+	}
+	
 	initialize() {
 		super.initialize();
+		this.setTitle(this.commandDef.title);
 
-		//using a builder to create and config UI components
-		let builder = new CompBuilder();
-		builder.labelStyle = { "min-width": "80px", "text-align": "left" };
+		this.headerMenu.addItem("Delete Output", (evt) => {
+			this.deleteOutput();
+		}, { separator: "top" });
 
-		let compSet = builder.newCompSet();
+		this.createUI();
+		this.createWsoConnection();
+
+		this.isInitialized = true;
+	}
+
+	createUI() {
+		let builder = new ViewBuilder();
+		//set the objects to hold all control dom elements with a varid
+		builder.setElementCollection(this.elems);
+		// and other things like e.g. datalists or "data-bind" infos
+		builder.setObjectCollection(this.uiobj);
+
+		//define some style defaults
+		builder.defaultStyles.comp = { "margin-bottom": "0" };
+		builder.defaultStyles.label = { "width": "70px" };
+		let hgap = "20px";
+
+		//create the control container
+		let compSet = builder.newFieldset({ styleProps: { "margin-top": "10px", "gap": "10px" } });
 		this.viewWorkarea.prepend(compSet);
 
-		//main run button to execute the command
-		this.runButton = builder.newButtonComp({ label: "Command:" })
-			.appendTo(compSet)
-			.config((comp) => {
-				let pb = comp.ctrl();
-				pb.title = "Run command";
-				pb.value = this.commandName;
-				pb.onclick = (evt) => {
+		//create the controls
+		this.pbRun = builder.newViewComp()
+			.addLabelButton({ text: "Command:" }, { varid: "pbRun", icon: "run", text: this.commandName, title: "Run command" }, (target) => {
+				target.button.onclick = (evt) => {
 					this.runCommand();
 				};
-			});
-
-		//command arguments text field
-		this.runArgs = builder.newTextComp({ label: "Args:" })
-			.appendTo(compSet)
-			.style(1, { width: "300px" })
-			.attrb(1, {
-				title: (this.commandDef.options.args ? "Command arguments: -h for help": "<no args>"),
-				placeholder: (this.commandDef.options.args ? " -h + Enter for help": "<no args>"),
-				disabled: !this.commandDef.options.args
 			})
-			.config((comp) => {
-				comp.ctrl().onkeydown = (evt) => {
+			.appendTo(compSet)
+			.getCtrl("pbRun");
+
+		//arguments choice + demo data
+		let namedArgsList = Object.getOwnPropertyNames(this.namedArgs);
+		this.taArgs = builder.newViewComp()
+			.style({ "align-items": "flex-start" })
+			.addLabelTextArea({ text: "Args:" }, {
+				varid: "taArgs",
+				styleProps: { "width": "400px", "min-width": "400px", "height": "45px", "min-height": "45px", "text-align": "left" },
+				attribProps: {
+					title: (this.commandDef.options.args ? "Command arguments: -h for help" : "<no args>"),
+					placeholder: (this.commandDef.options.args ? " -h + Enter for help" : "<no args>"),
+					disabled: !this.commandDef.options.args
+				}
+			}, (target) => {
+				target.textarea.onkeydown = (evt) => {
 					if (this.commandDef.options.args) {
 						if (evt.keyCode == 13 && evt.currentTarget.value.trim() === "-h") {
 							this.runCommand();
 						}
 					}
 				}
-			});
+			})
+			.addContainer({ styleProps: { display: "flex", "flex-direction": "column", "margin-left": hgap } }, (target) => {
+				let container = target.container;
 
-		//command execution output area
-		this.outputArea = builder.newTextAreaComp({ label: "Output:", clazz: ["wkv-output-textarea-ctrl"] })
-			.config(comp => {
-				//wrap the label in a span to add icon buttons below
-				let lb = comp.ctrls[0];
-				let lbcomp = document.createElement("span");
-				lbcomp.style["display"] = "flex";
-				lbcomp.style["flex-direction"] = "column";
-				lbcomp.append(lb);
-				comp.ctrls[0] = lbcomp;
-
-				//create and config the icon buttons
-				builder.newIconbarComp({
-					icons: [
-						{ name: "save", title: "Save current output to File" },
-						{ name: "clipboardAdd", title: "Copy output to Clipboard" },
-						{ name: "trash", title: "Clear output" }
-					]
-				})
-				.appendTo(lbcomp)
-				.style({ "margin-top": "10px", "flex-direction": "column", "justify-content": "center", "gap": "15px"})
-				.config(comp => {
-					comp.ctrls.forEach(ctrl => ctrl.classList.add("wkv-header-action-ctrl"));
-
-					comp.ctrls[0].onclick = () => {
-						this.saveOutput();
-					}
-					comp.ctrls[1].onclick = () => {
-						this.copyOutputToClipboard();
-					}
-					comp.ctrls[2].onclick = () => {
-						this.clearOutput();
-					}
+				target.comp.addTextField({
+					parentCtrl: container, varid: "tfNamedArgs", datalist: namedArgsList,
+					styleProps: { "width": "200px" }, attribProps: { placeholder: "named args", "data-bind": "namedArgs" }
 				});
+
+				target.comp.addContainer({ parentCtrl: container, styleProps: { display: "flex", "flex-direction": "row", gap: "20px", "align-self": "flex-end", "margin-top": "5px" } }, (target) => {
+					let iconBar = target.container;
+
+					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoDeleteNamedArgs", iconName: "trash", title: "Delete current named arg" });
+					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoSaveNamedArgs", iconName: "save", title: "Save current named args" });
+					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoClearArgChoice", iconName: "eraser", title: "Clear args and choice", styleProps: { "margin-left": "20px", "margin-right": "5px" } })
+				})
 			})
 			.appendTo(compSet)
-			.style(1, { width: "100%", height: "400px" })
-			.attrb(1, { disabled: true })
-			.style({ "align-items": "flex-start", "margin-top": "10px" });
+			.getCtrl("taArgs");
 
+		builder.newViewComp().addSeparator({ styleProps: { width: "100%" } }).appendTo(compSet);
 
-		//init websocket connection
+		this.taOutput = builder.newViewComp()
+			.style({ "align-items": "flex-start" })
+			.addContainer({ styleProps: { display: "flex", "flex-direction": "column", "align-items": "center", "gap": "15px" } }, (target) => {
+				let labelBar = target.container;
+
+				target.comp.addLabelTextArea(
+					{ text: "Output:", parentCtrl: labelBar },
+					{ varid: "taOutput", disabled: true, clazzes: ["wkv-output-textarea-ctrl"], styleProps: { width: "626px", "min-width": "626px" } })
+					.addActionIcon({ parentCtrl: labelBar, varid: "icoOutputSave", iconName: "save", title: "Save current output to a file" }, (target) => {
+						target.icon.onclick = () => {
+							this.saveOutput();
+						}
+					})
+					.addActionIcon({ parentCtrl: labelBar, varid: "icoOutputToClipboard", iconName: "clipboardAdd", title: "Copy current output to clipboard" }, (target) => {
+						target.icon.onclick = () => {
+							this.copyOutputToClipboard();
+						}
+					})
+					.addActionIcon({ parentCtrl: labelBar, varid: "icoOutputDelete", iconName: "trash", title: "Delete current output" }, (target) => {
+						target.icon.onclick = () => {
+							this.deleteOutput();
+						}
+					});
+			})
+			.appendTo(compSet)
+			.getCtrl("taOutput");
+
+		this.elems.tfNamedArgs.addEventListener('input', (evt) => {
+			let key = evt.currentTarget.value;
+			this.setArgsSelection(key);
+		});
+		this.elems.icoClearArgChoice.onclick = () => {
+			this.clearArgChoice();
+		};
+		this.elems.icoDeleteNamedArgs.onclick = () => {
+			this.deleteArgChoice();
+		};
+		this.elems.icoSaveNamedArgs.onclick = () => {
+			this.saveArgChoice();
+		};
+	}
+
+	createWsoConnection() {
 		this.wsoRefId = newSimpleId(this.id + ":");
 		WbApp.addWsoMessageListener((wsoMsg) => {
 
@@ -139,8 +204,11 @@ class CommandView extends BaseCommandView {
 				this.setRunning(false);
 			}
 		});
+	}
 
-		this.isInitialized = true;
+	setRunning(flag) {
+		super.setRunning(flag);	
+		this.pbRun.disabled = flag;
 	}
 
 	runCommand() {
@@ -148,15 +216,80 @@ class CommandView extends BaseCommandView {
 		wsoMsg.command = this.commandDef.command;
 		wsoMsg.script = this.commandDef.script;
 
-		splitToArgs(this.runArgs.ctrl().value, arg => {
+		splitToArgs(this.taArgs.value.trim(), arg => {
 			wsoMsg.args.push(arg);
 		});
 
-		this.clearOutput();
+		this.deleteOutput();
 		WbApp.sendWsoMessage(wsoMsg, () => {
 			this.setRunning(true);
 		});
 	}
+
+	addOutputLine(line) {
+		this.taOutput.value += line + NL;
+		this.taOutput.scrollTop = this.taOutput.scrollHeight;
+	}
+
+	setArgsSelection(key) {
+		if (this.namedArgs[key]) {
+			this.taArgs.value = this.namedArgs[key];
+		}
+	}
+
+	clearArgChoice() {
+		this.elems.taArgs.value = "";
+		this.elems.tfNamedArgs.value = "";
+	}
+
+	getDataListObjFor(name) {
+		return this.uiobj[this.elems[name].list.id];
+	}
+
+	saveArgChoice() {
+		let key = this.elems.tfNamedArgs.value.trim();
+		if (key != "") {
+			this.namedArgs[key] = this.elems.taArgs.value.trim();
+			let datalist = this.getDataListObjFor("tfNamedArgs");
+			datalist.addOption(key);
+		}
+	}
+
+	deleteArgChoice() {
+		let key = this.elems.tfNamedArgs.value.trim();
+
+		if (this.namedArgs[key]) {
+			WbApp.confirm({
+				message: `<b>Delete entry</b><br>Do you want to delete <b>[${key}]</b> from arg choice?`
+			}, (val) => {
+				if (val) {
+					delete this.namedArgs[key];
+					let dataListObj = this.getDataListObjFor("tfNamedArgs");
+					dataListObj.removeOption(key);
+					this.clearArgChoice();
+				}
+			});
+		}
+	}
+
+	saveOutput() {
+		let fileName = "output_" + (this.commandDef.command + "_" + this.commandDef.script).replaceAll("/", "_") + ".txt";
+		this.saveToFile(fileName, this.taOutput.value.trim());
+	}
+
+	copyOutputToClipboard() {
+		this.copyToClipboard(this.taOutput.value.trim());
+	}
+
+	deleteOutput() {
+		if (!this.isRunning) {
+			let lastValue = this.taOutput.value;
+			this.taOutput.value = "";
+			return lastValue;
+		}
+		return "";
+	}
+
 }
 
 //export this view component as instances
@@ -167,7 +300,7 @@ export function getView() {
 	return new CommandView("commandView");
 
 	//alternatively load html code from a file
-	//return new CommandView("commandView", "/jsmod/command.html");
+	//return new CommandView("commandView", "/jsmod/html-components/work-view.html");
 }
 
 /**

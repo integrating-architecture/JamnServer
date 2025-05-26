@@ -40,11 +40,6 @@ export function getChildOf(parent, childId) {
 	return null;
 }
 
-export function getWorkViewOf(viewElem) {
-	while ((viewElem = viewElem.parentElement) && !viewElem.classList.contains("work-view"));
-	return viewElem;
-}
-
 /**
  */
 export function setVisibility(elem, flag) {
@@ -60,7 +55,6 @@ export function setDisplay(elem, flag) {
 	}
 	return elem;
 }
-
 
 /**
  * Get a view html file 
@@ -136,8 +130,17 @@ export function splitToArgs(argString, cb){
 /**
  */
 export const typeUtil = {
+
 	isString: (val) => {
 		return (typeof val === 'string' || val instanceof String);
+	},
+
+	isObject(val) {
+		return (val !== null && typeof val === 'object');
+	},
+
+	isNumber(val) {
+		return (val !== null && typeof val === 'number');
 	},
 
 	isBoolean: (val) => {

@@ -1,198 +1,188 @@
 /* Authored by www.integrating-architecture.de */
 
-import { WorkView, CompBuilder } from './view-classes.mjs';
-
-let builder = new CompBuilder();
+import { WorkView, ViewBuilder } from './view-classes.mjs';
 
 /**
  * An experimental WorkView created in javascript using a builder object.
  */
 class DbConnectionsView extends WorkView {
 
-	//demo functions to simulate behavior
-	setTestResult = null;
-	clearData = null;
+	elems = {};
+	uiobj = {};
+
+	protocols;
+	connections;
+	currentConnection;
+	tfConnectionName;
 
 	initialize() {
 		super.initialize();
 		this.setTitle("Database Connections");
 
+		this.extendViewMenu();
+		this.createDemoData();
 		this.createUI();
 
 		this.isInitialized = true;
 	}
 
-	writeDataToView(){
-		this.clearData();
-		this.setTestResult();
+	extendViewMenu() {
+		if (this.headerMenu) {
+			this.headerMenu.addItem("Clear View", (evt) => {
+				this.clearData();
+			}, { separator: "top" });
+		}
 	}
 
 	createUI() {
-		builder.labelStyle = { "white-space": "nowrap" };
+		let builder = new ViewBuilder();
+		builder.setElementCollection(this.elems);
+		builder.setObjectCollection(this.uiobj);
 
-		let compSet = builder.newCompSet({ styleProps: { "margin-top": "10px" } });
+		//define some style defaults
+		builder.defaultStyles.comp = { "margin-bottom": "0" };
+		builder.defaultStyles.label = { "width": "70px" };
+		builder.defaultStyles.button = { "width": "156px", height: "26px" };
+		builder.defaultStyles.textField = { "width": "150px" };
+		let hgap = "20px";
+
+		//create the container
+		let compSet = builder.newFieldset({ styleProps: { "margin-top": "10px", "gap": "10px" } });
 		this.viewWorkarea.prepend(compSet);
 
-		let lbWidth = "70px";
-		let tfWidth = "150px";
-		let fillerStyle = { "margin": "0px", "width": "20px", "text-align": "center" };
+		//build the controls
+		builder.newViewComp()
+			.addLabelTextField(
+				{ text: "DB Url:" },
+				{ varid: "tfUrlProtocol", datalist: this.protocols, attribProps: { placeholder: "protocol", "data-bind": "protocol" } })
+			.addLabelTextField(
+				{ text: "@", styleProps: { width: hgap, "margin": "0", "text-align": "center" } },
+				{ varid: "tfUrlServer", styleProps: { width: "400px" }, attribProps: { placeholder: "server:port/dbid", "data-bind": "url" } })
+			.appendTo(compSet);
 
-		//building control/components
-		//in form of fieldset rows
+		builder.newViewComp()
+			.addLabelTextField(
+				{ text: "User:" },
+				{ varid: "tfUser", attribProps: { placeholder: "name", "data-bind": "user" } })
+			.addTextField(
+				{ varid: "tfOwner", attribProps: { placeholder: "optional owner", "data-bind": "owner" }, styleProps: { "margin-left": hgap } })
+			.appendTo(compSet);
 
-		/**
-		 * url component
-		 */
-		let dbUrl = builder.newTextDatalistComp({ label: "DB Url:", datalist: ["jdbc:oracle:thin", "jdbc.mysql"] })
-			.appendTo(compSet)
-			.style(0, { width: lbWidth })
-			.style(1, { width: tfWidth })
-			.attrb(1, { placeholder: "protocol" })
-			.style({ "margin-bottom": "15px" })
-			.addComp(
-				builder.newTextComp({ label: "@" })
-					.style(0, fillerStyle)
-					.style(1, { width: "400px" })
-					.attrb(1, { placeholder: "server:port/dbid" })
-			)
-			.config(comp => {
-				//create new comp properties for data io
-				comp.protocol = comp.ctrls[1];
-				comp.server = comp.ctrls[3];
-			});
+		builder.newViewComp()
+			.style({ "align-items": "baseline" })
+			.addLabelTextField(
+				{ text: "Password:" },
+				{ varid: "tfPwd", attribProps: { type: "password", placeholder: "********" } })
+			.addButton(
+				{ text: "Test", title: "Test connection", varid: "pbTest", styleProps: { "margin-left": hgap } },
+				(target) => {
+					target.button.onclick = (evt) => {
+						this.runTestDbConnection();
+					};
+				})
+			.addTextArea(
+				{ varid: "tfTestResult", rows: "1", readOnly: true, attribProps: { placeholder: "<result>", title: "Test Result" }, styleProps: { "overflow": "hidden", "margin-left": hgap, "text-align": "left", "min-width": "80px", "width": "80px", "min-height": "14px" } })
+			.appendTo(compSet);
 
-		/**
-		 * user component
-		 */
-		let dbUser = builder.newTextComp({ label: "User:" })
-			.appendTo(compSet)
-			.style(0, { width: lbWidth })
-			.style(1, { width: tfWidth })
-			.attrb(1, { placeholder: "name" })
-			.addComp(
-				builder.newTextComp()
-					.style(0, fillerStyle)
-					.style(1, { width: tfWidth })
-					.attrb(1, { placeholder: "optional owner" })
-			)
-			.config(comp => {
-				comp.userid = comp.ctrls[1];
-				comp.owner = comp.ctrls[2];
-			});
-
-
-		/**
-		 * password component and test 
-		 */
-		let testResult = null;
-		let dbPwd = builder.newTextComp({ label: "Password:" })
-			.appendTo(compSet)
-			.style(0, { width: lbWidth })
-			.style(1, { width: tfWidth })
-			.attrb(1, { type: "password", placeholder: "********" })
-			.addComp(
-				builder.newButtonComp()
-					.style(0, fillerStyle)
-					.style(1, { width: "156px", height: "26px" })
-					.config((comp) => {
-						let pb = comp.ctrl();
-						pb.title = "Test Connection";
-						pb.value = "Test";
-						pb.onclick = (evt) => {
-							console.log("Test DB Connection");
-							if(dbUser.userid.value.length > 0 ){
-								let isOk = dbUser.userid.value === dbPwd.text.value;
-								this.setTestResult(isOk, isOk ? "" : "Connection refused - invalid credentials - demo password must be user id");
-							}
-						};
+		let connectionNames = Object.getOwnPropertyNames(this.connections);
+		builder.newViewComp()
+			.addLabelTextField(
+				{ text: "Name:" },
+				{ varid: "tfConnectionName", datalist: connectionNames, attribProps: { placeholder: "connection name" } },
+				(target)=>{
+					this.tfConnectionName = target.textfield;
+					target.textfield.addEventListener('input', (evt) => {
+						this.changeCurrentConnection(evt.currentTarget.value);
 					})
-			)
-			.addComp(
-				testResult = builder.newTextAreaComp({ label: " ", rows: 1 }, { readOnly: true })
-					.style(1, { "text-align": "left", "min-width": "80px", "width": "80px", border: "none", "min-height": "14px", resize: "none", overflow: "hidden" })
-					.attrb(1, { placeholder: "<result>", title: "Test Result" })
-					.config(comp => comp.text = comp.ctrl())
-			)
-			.config(comp => {
-				comp.text = comp.ctrls[1];
-			})
-			.style({ "align-items": "baseline" });
+				})
+			.addButton(
+				{ text: "Save Connection", title: "Save Connection", varid: "pbSave", styleProps: { "margin-left": hgap } })
+			.appendTo(compSet);
+	}
 
-		/**
-		 * demo function to simulate connection test
-		 */
-		this.setTestResult = (status = -1, text = "") => {
-			let okProps = { color: "green", resize: "none", width: "80px", height: testResult.text.style["min-height"] }
-			if (status === false) {
-				testResult.text.value = "FAILURE - " + text;
-				testResult.style(1, { color: "red", resize: "auto", width: "550px" });
-			} else if (status === true) {
-				testResult.text.value = "Success";
-				okProps.color = "green";
-				testResult.style(1, okProps);
-			} else {
-				testResult.text.value = "";
-				okProps.color = "";
-				testResult.style(1, okProps);
+	createDemoData() {
+		this.protocols = ["jdbc.oracle.thin", "jdbc.mysql"];
+		this.connections = {
+			"Oracle Test-Server": { protocol: "jdbc.oracle.thin", url: "TSORA:1521/XEPDB1", user: "admin", owner: "" },
+			"MySQL Dvlp-Server": { protocol: "jdbc.mysql", url: "DSMSQL:3306/dvlpdb1", user: "devel", owner: "" }
+		};
+	}
+
+	changeCurrentConnection(key){
+		if(this.connections.hasOwnProperty(key)){
+			this.currentConnection = this.connections[key];
+			this.writeDataToView();
+		}else{
+			this.currentConnection = null;
+		}
+	}
+
+	clearData(excludes=[]) {
+		this.showConnectionTestResult();
+		let names = Object.getOwnPropertyNames(this.elems);
+		names.forEach((name) => {
+			let ctrl = this.elems[name];
+			if(!excludes.includes(ctrl)){
+				ViewBuilder.clearControl(ctrl);
 			}
-		};
+		});
+	}
 
-		/**
-		 * connections component and save button
-		 * demo data 
-		 */
-		let connections = {
-			"Oracle Test-Server": { protocol: "jdbc:oracle:thin", url: "TSRVORA:1521/XEPDB1", user: "admin" },
-			"MySQL Dvlp-Server": { protocol: "jdbc.mysql", url: "DSRVMSQL:3306/dvlpdb1", user: "devel" }
-		};
-		let nameList = Object.getOwnPropertyNames(connections);
-		let connectionNames = builder.newTextDatalistComp({ label: "Name:", datalist: nameList })
-			.appendTo(compSet)
-			.style(0, { width: lbWidth })
-			.style(1, { width: tfWidth })
-			.attrb(1, { placeholder: "connection name", title: "Empty to clear all fields" })
-			.config((comp) => {
-				comp.text = comp.ctrl();
-				comp.ctrl().addEventListener('input', (evt) => {
-					let key = evt.currentTarget.value;
-					if (nameList.includes(key)) {
-						dbUrl.protocol.value = connections[key].protocol;
-						dbUrl.server.value = connections[key].url;
-						dbUser.userid.value = connections[key].user;
-						dbPwd.text.value = "";
-					} else if (key === "") {
-						this.clearData();
-					}
-				});
-			})
-			.addComp(
-				builder.newButtonComp()
-					.style(0, fillerStyle)
-					.style(1, { width: "156px", height: "26px" })
-					.config((comp) => {
-						let pb = comp.ctrl();
-						pb.title = "Save Connection";
-						pb.value = "Save Connection";
-						pb.onclick = (evt) => {
-							console.log("Save Connection");
-							this.setTestResult();
-						};
-					})
-			)
-			.style({ "margin-top": "15px" });
+	writeDataToView() {
+		let excludes = [this.tfConnectionName];
+		let bindings = this.uiobj.bindings;
 
-		this.clearData = ()=>{
-			dbUrl.protocol.value = "";
-			dbUrl.server.value = "";
-			dbUser.userid.value = "";
-			dbPwd.text.value = "";
-			connectionNames.text.value = "";
+		if(this.currentConnection){
+			let names = Object.getOwnPropertyNames(bindings);
+			names.forEach((name) => {
+				let ctrl = bindings[name];
+				ctrl.value = this.currentConnection[name];
+				excludes.push(ctrl);
+			});
+			this.clearData(excludes);
+		}else{
+			this.clearData();
+		}
+	}
+
+	readDataFromView() {
+		//to be overwritten
+	}
+
+	runTestDbConnection() {
+		let userId = this.elems.tfUser.value.trim();
+		let pwd = this.elems.tfPwd.value.trim();
+		if (userId && pwd) {
+			if (userId == pwd) {
+				this.showConnectionTestResult(true);
+			} else {
+				this.showConnectionTestResult(false, "Connection refused - invalid credentials - demo password must be = user id");
+			}
+		} else {
+			this.showConnectionTestResult();
+		}
+	}
+
+	showConnectionTestResult(status = -1, text = "") {
+		let ctrl = this.elems["tfTestResult"];
+		let okProps = { color: "green", resize: "none", width: "80px", height: ctrl.style["min-height"] };
+
+		if (status === false) {
+			ctrl.value = "FAILURE - " + text + "\n\n" + new Error().stack;
+			ViewBuilder.setStyleOf(ctrl, { color: "red", resize: "auto", width: "550px" });
+		} else if (status === true) {
+			ctrl.value = "Success";
+			ViewBuilder.setStyleOf(ctrl, okProps);
+		} else {
+			ctrl.value = "";
+			okProps.color = "";
+			ViewBuilder.setStyleOf(ctrl, okProps);
 		}
 	}
 }
 
 //export this view component as singleton instance
-const viewInstance = new DbConnectionsView("dbConnectionsView", "/jsmod/html-components/work-view.html");
+const viewInstance = new DbConnectionsView("dbConnectionsView", "/jsmod/html-components/work-view-tmpl.html");
 export function getView() {
 	return viewInstance;
 }

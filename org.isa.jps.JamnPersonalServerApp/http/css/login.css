@@ -22,6 +22,7 @@
     position: relative;
     width: 300px;
     padding: 30px;
+    user-select: none;
 }
 
 .login-view-row {
@@ -95,4 +96,5 @@
     text-align: left;
     padding: 10px;
     border-left: solid 4px red;
+    user-select: text;
 }

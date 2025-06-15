@@ -20,7 +20,7 @@
 		<maven.compiler.target>17</maven.compiler.target>
 		<maven.build.timestamp.format>dd-MM-yyyy HH:mm:ss</maven.build.timestamp.format>
 	    <build.timestamp>${maven.build.timestamp}</build.timestamp>
-		<do.distribution>false</do.distribution>
+		<do.distribution>true</do.distribution>
 		<author>Andreas Weidinger - IQB Services</author>
 		<authorUrl>https://iqbserve.de/</authorUrl>
 	</properties>

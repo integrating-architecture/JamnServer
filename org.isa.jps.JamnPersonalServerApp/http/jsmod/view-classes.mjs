@@ -107,9 +107,11 @@ export class GeneralView {
 		if (!this.isInitialized) {
 			this.initialize();
 		}
-		this.writeDataToView();
-		setVisibility(this.viewElement, true);
 		this.isOpen = true;
+	}
+
+	setVisible(flag) {
+		setVisibility(this.viewElement, flag);
 	}
 
 	close() {
@@ -126,7 +128,6 @@ export class GeneralView {
 
 	writeDataToView() {
 		//to be overwritten
-		//always called in showView
 	}
 
 	readDataFromView() {
@@ -218,9 +219,11 @@ export class WorkView {
 			this.initialize();
 		}
 		this.headerMenu.close();
-		this.writeDataToView();
-		setVisibility(this.viewElement, true);
 		this.isOpen = true;
+	}
+
+	setVisible(flag) {
+		setVisibility(this.viewElement, flag);
 	}
 
 	close() {
@@ -233,15 +236,6 @@ export class WorkView {
 
 	isCloseable(ctxObj = null) {
 		return !(this.isRunning || this.isPinned);
-	}
-
-	writeDataToView() {
-		//to be overwritten
-		//always called in showView
-	}
-
-	readDataFromView() {
-		//to be overwritten
 	}
 
 	setRunning(flag) {
@@ -971,7 +965,10 @@ export class ViewComp {
 		if (props.attribProps) {
 			this.#setAttributesOf(ctrl, props.attribProps);
 		}
-		//comfort method
+		//comfort methods
+		if (props.hasOwnProperty("innerHTML")) {
+			this.#setAttributesOf(ctrl, { "innerHTML": props.innerHTML });
+		}
 		if (props.hasOwnProperty("disabled")) {
 			this.#setAttributesOf(ctrl, { "disabled": props.disabled });
 		}

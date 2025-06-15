@@ -97,26 +97,29 @@ public class JavaScriptProvider {
     }
 
     /**
-     * <pre>
-     * The basic js script execution interface.
-     * The implementation creates a new js context for each call
-     * which is automatically closed after retrieving a return value;
-     * </pre>
      */
-    public JsValue eval(String pFileName, String... pArgsMember) {
-        JSCallContext lCallCtx = new JSCallContext();
-        eval(lCallCtx, pFileName, pArgsMember);
+    public JsValue runWith(Consumer<String> pOutput, String pFileName, String... pArgsMember) {
+        JSCallContext lCallCtx = new JSCallContext(pOutput);
+        run(lCallCtx, pFileName, pArgsMember);
         return lCallCtx.getResult();
     }
 
     /**
      */
-    public void eval(JSCallContext pCallCtx, String pFileName, String... pArgsMember) {
+    public JsValue run(String pFileName, String... pArgsMember) {
+        JSCallContext lCallCtx = new JSCallContext();
+        run(lCallCtx, pFileName, pArgsMember);
+        return lCallCtx.getResult();
+    }
+
+    /**
+     */
+    public void run(JSCallContext pCallCtx, String pFileName, String... pArgsMember) {
 
         Source lSrc;
         Value lBindings;
         Value lValue;
-        JsValue lResultValue = JsValue.DefaultNullValue;
+        JsValue lResultValue;
 
         // every script execution
         // has its own CallCtx/HostApp instance
@@ -161,10 +164,8 @@ public class JavaScriptProvider {
      * </pre>
      */
     public static class JsValue {
-        protected static final JsValue DefaultNullValue = new JsValue();
-
         protected Value engineValue;
-        protected String stringValue = null;
+        protected String stringValue = "";
 
         protected JsValue() {
         }
@@ -175,22 +176,22 @@ public class JavaScriptProvider {
         }
 
         /**
-         * Expects that js execution return a string value or an executable that returns
-         * a string value.
+         * <pre>
+         * Expects that js execution returns a string value 
+         * or an executable that returns a string value.
+         * </pre>
          */
         protected void resolve() {
             if (engineValue.canExecute()) {
-                stringValue = engineValue.execute().asString();
-            } else {
+                engineValue = engineValue.execute();
+            }
+            if (engineValue.isString()) {
                 stringValue = engineValue.asString();
             }
         }
 
-        /**
-         * Indicates that the js execution did not return a expected value.
-         */
-        public boolean isNull() {
-            return stringValue == null;
+        public boolean isEmpty() {
+            return stringValue.isEmpty();
         }
 
         public Value origin() {
@@ -258,7 +259,7 @@ public class JavaScriptProvider {
 
         /**
          */
-        public void createJSCliCommand(String pName, String pSource, String pDescr);
+        public void createJSCliCommand(String pName, String pSource, String pArgsDescr, String pDescrText);
 
     }
 

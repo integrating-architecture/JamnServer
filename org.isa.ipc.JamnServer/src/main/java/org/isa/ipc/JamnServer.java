@@ -2,10 +2,6 @@
 
 package org.isa.ipc;
 
-//import static org.isa.ipc.JamnServer.HttpHeader.Field.*;
-//import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.*;
-//import static org.isa.ipc.JamnServer.HttpHeader.Status.*;
-
 import static org.isa.ipc.JamnServer.HttpHeader.HTTP_DEFAULT_RESPONSE_ATTRIBUTES;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.ACCESS_CONTROL_ALLOW_HEADERS;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.ACCESS_CONTROL_ALLOW_METHODS;
@@ -339,22 +335,28 @@ public class JamnServer {
         }
 
         /**
-         * @throws IOException
          */
         protected ServerSocket createServerSocket() throws IOException {
             int lPort = config.getPort();
             ServerSocket lSocket = null;
 
-            if (!System.getProperty("javax.net.ssl.keyStore", "").isEmpty()
-                    && !System.getProperty("javax.net.ssl.keyStorePassword", "").isEmpty()) {
-                lSocket = SSLServerSocketFactory.getDefault().createServerSocket(lPort);
-            } else {
-                lSocket = ServerSocketFactory.getDefault().createServerSocket(lPort);
-            }
+            try{
+                if (!System.getProperty("javax.net.ssl.keyStore", "").isEmpty()
+                        && !System.getProperty("javax.net.ssl.keyStorePassword", "").isEmpty()) {
+                    lSocket = SSLServerSocketFactory.getDefault().createServerSocket(lPort);
+                } else {
+                    lSocket = ServerSocketFactory.getDefault().createServerSocket(lPort);
+                }
 
-            lSocket.setReuseAddress(true);
-            if (lPort == 0) {
-                config.setActualPort(lSocket.getLocalPort());
+                lSocket.setReuseAddress(true);
+                if (lPort == 0) {
+                    config.setActualPort(lSocket.getLocalPort());
+                }
+            }catch(Exception e){
+                if(lSocket!=null){
+                    lSocket.close();
+                }
+                throw e;
             }
             return lSocket;
         }
@@ -1350,7 +1352,6 @@ public class JamnServer {
                            // be reliable enough
                 }
 
-                // TODO encoding test
                 if (lByte == 13) { // CR
                     lByteBuffer.write(lByte);
                     if ((lByte = pInStream.read()) == 10) { // LF
@@ -1664,6 +1665,12 @@ public class JamnServer {
          */
         public default Object getNativeTool() {
             return null;
+        }
+
+        /**
+         */
+        public default String prettify(String pJsonInput) {
+            return pJsonInput;
         }
     }
 

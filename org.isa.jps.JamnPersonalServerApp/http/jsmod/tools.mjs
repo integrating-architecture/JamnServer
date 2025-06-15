@@ -116,19 +116,6 @@ export function newSimpleId(prfx = "") {
 
 /**
  */
-export function splitToArgs(argString, cb){
-	if(argString.length > 0){
-		let list = argString.split(" ");
-		list.forEach(item => {
-			if(item.trim().length > 0){
-				cb(item.trim());
-			}
-		});
-	}
-}
-
-/**
- */
 export const typeUtil = {
 
 	isString: (val) => {
@@ -137,6 +124,10 @@ export const typeUtil = {
 
 	isObject(val) {
 		return (val !== null && typeof val === 'object');
+	},
+
+	isFunction(val) {
+		return (val !== null && (typeof val === 'function' || val instanceof Function));
 	},
 
 	isNumber(val) {

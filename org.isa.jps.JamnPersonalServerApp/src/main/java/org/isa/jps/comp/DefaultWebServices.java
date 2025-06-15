@@ -15,18 +15,18 @@ import org.isa.jps.JamnPersonalServerApp;
 
 /**
  * <pre>
- * A few default web services. The services use request/response dtos
- * you can do it that way - but it is not mandatory (see WebServiceProvider).
- * 
- * Defining path and contentType as static constants of dtos 
- * is also just a syntactic gimmick - relevant is the annotation @WebService
+ * Some default web services. The services use request/response dtos.
  * </pre>
  */
 public class DefaultWebServices {
 
+    //WebApi end point names
+    protected static final String WSP_system_getinfos = "/system/get-infos";
+    protected static final String WSP_system_updateinfos = "/system/update-infos";
+    protected static final String WSP_service_shellcmd = "/service/shell-cmd";
+
     protected static final Logger LOG = Logger.getLogger(DefaultWebServices.class.getName());
-
-
+    
     protected OperatingSystemInterface osIFace;
 
     /**
@@ -41,10 +41,11 @@ public class DefaultWebServices {
     }
 
     /**********************************************************************************
+     * Web Service definitions
      **********************************************************************************/
     /**
      */
-    @WebService(methods = { "POST" }, path = ShellRequest.Path, contentType = ShellRequest.ContentType)
+    @WebService(methods = { "POST" }, path = WSP_service_shellcmd, contentType = APPLICATION_JSON)
     public ShellResponse runShellCommand(ShellRequest pRequest) {
         ShellResponse lResponse = new ShellResponse();
         String[] lCommand = pRequest.command.toArray(new String[0]);
@@ -59,9 +60,6 @@ public class DefaultWebServices {
      * {"command":[], "workingDir":""}
      */
     public static class ShellRequest {
-        public static final String Path = "/api/shell";
-        public static final String ContentType = APPLICATION_JSON;
-
         protected String workingDir = "";
         protected List<String> command = new ArrayList<>();
 
@@ -102,7 +100,7 @@ public class DefaultWebServices {
      **********************************************************************************/
     /**
      */
-    @WebService(methods = { "POST" }, path = SystemInfoRequest.Path, contentType = SystemInfoRequest.ContentType)
+    @WebService(methods = { "POST" }, path = WSP_system_getinfos, contentType = APPLICATION_JSON)
     public SystemInfoResponse getSystemInfo(SystemInfoRequest pRequest) {
         Properties lBuildProps = JamnPersonalServerApp.getInstance().getConfig().getBuildProperties();
         return new SystemInfoResponse()
@@ -118,7 +116,7 @@ public class DefaultWebServices {
 
     /**
      */
-    @WebService(methods = { "POST" }, path = SystemInfoRequest.UpdatePath, contentType = SystemInfoRequest.ContentType)
+    @WebService(methods = { "POST" }, path = WSP_system_updateinfos, contentType = APPLICATION_JSON)
     public SystemInfoResponse updateSystemInfo(SystemInfoRequest pRequest) {
         //only demo purpose
         LOG.info(()-> String.format("Config changes: [%s]", pRequest.getConfigChanges()));
@@ -128,10 +126,6 @@ public class DefaultWebServices {
     /**
      */
     public static class SystemInfoRequest {
-        public static final String Path = "/api/system-infos";
-        public static final String UpdatePath = "/api/update-system-infos";
-        public static final String ContentType = APPLICATION_JSON;
-
         protected Map<String, String> configChanges = new HashMap<>();
 
         protected SystemInfoRequest() {

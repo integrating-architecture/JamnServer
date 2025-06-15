@@ -28,8 +28,8 @@ import org.isa.jps.JavaScriptProvider.JavaScriptHostAppAdapter;
 public class DefaultJavaScriptHostAppAdapter implements JavaScriptHostAppAdapter {
 
     protected static Logger LOG = Logger.getLogger(DefaultJavaScriptHostAppAdapter.class.getName());
+    protected static final String LS = System.lineSeparator();
 
-    protected String name;
     protected JavaScriptProvider javaScript;
     protected CommandLineInterface cli;
     protected OperatingSystemInterface osIFace;
@@ -41,7 +41,6 @@ public class DefaultJavaScriptHostAppAdapter implements JavaScriptHostAppAdapter
     public DefaultJavaScriptHostAppAdapter(JavaScriptProvider pJavaScript, JamnPersonalServerApp pApp) {
         javaScript = pJavaScript;
 
-        name = JamnPersonalServerApp.AppName;
         appHome = pApp.getHomePath("");
         appConfig = pApp.getConfig();
         cli = pApp.getCli();
@@ -51,14 +50,7 @@ public class DefaultJavaScriptHostAppAdapter implements JavaScriptHostAppAdapter
     /*******************************************************************************
      * Public interface
      *******************************************************************************/
-
-    /**
-     */
-    @Override
-    public void initialize() {
-        createDefaultCliCommands();
-    }
-
+    
     /**
      * Create HostApp instances to be injected in the JavaScript evaluation context.
      */
@@ -165,13 +157,13 @@ public class DefaultJavaScriptHostAppAdapter implements JavaScriptHostAppAdapter
          * Create Cli Commands for JavaScripts from JavaScript - see: js-auto-load.js.
          */
         @Override
-        public void createJSCliCommand(String pName, String pSource, String pDescr) {
+        public void createJSCliCommand(String pName, String pSource, String pArgs, String pText) {
             if (cli != null) {
                 if (javaScript.sourceExists(pSource)) {
                     cli.newCommandBuilder()
                             .name(pName)
-                            .descr(pDescr)
-                            .function(ctx -> evalScript(pSource, ctx.getArgsArray()))
+                            .descr(name -> cli.newDefaultDescr(name, pArgs, pText))
+                            .function(ctx -> runScript(pSource, ctx.getArgsArray()))
                             .build();
                 } else {
                     throw new UncheckedJavaScriptHostException(
@@ -189,24 +181,9 @@ public class DefaultJavaScriptHostAppAdapter implements JavaScriptHostAppAdapter
 
     /**
      */
-    protected String evalScript(String pFileName, String... pArgs) {
-        Object lResult = javaScript.eval(pFileName, pArgs);
+    protected String runScript(String pFileName, String... pArgs) {
+        Object lResult = javaScript.run(pFileName, pArgs);
         return lResult != null ? lResult.toString() : "";
-    }
-
-    /**
-     */
-    protected void createDefaultCliCommands() {
-        if (cli != null) {
-            cli.newCommandBuilder()
-                    .name("runjs")
-                    .descr("Run a JS script: runjs <filename> <args ...>")
-                    .function(ctx -> {
-                        String scriptName = ctx.getArgsList().remove(0);
-                        return evalScript(scriptName, ctx.getArgsArray());
-                    })
-                    .build();
-        }
     }
 
     /*******************************************************************************

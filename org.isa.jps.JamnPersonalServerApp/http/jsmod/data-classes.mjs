@@ -9,7 +9,7 @@ export class WsoCommonMessage {
 	reference = "";
 	textdata = "";
 	command = "";
-	args = [];
+	argsSrc = "";
 	script = "";
 	status = "";
 	error = "";

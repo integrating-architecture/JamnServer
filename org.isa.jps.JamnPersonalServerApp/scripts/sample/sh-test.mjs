@@ -54,9 +54,12 @@ function run() {
 	sh(test.cmd.pwd, workspace, outputConsumer);
 	sh(test.cmd.ls, workspace, outputConsumer);
 
-	return scriptResult;
+	echo("\nFirst line of collected output: "+scriptResult[0]);
+	echo("Last line of collected output: "+scriptResult[scriptResult.length-1]);
+	return "Done";//scriptResult;
 }
 
+run();
 
 //return joined output as script return value
-run().join(LS);
+//run().join(LS);

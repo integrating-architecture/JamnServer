@@ -1,8 +1,0 @@
-{
-    "title": "org.xyz.sample.JavaCommand",
-    "binPath": "C:\\isa.dev\\projects\\github\\JamnServer\\org.isa.jps.JamnPersonalServerApp\\jcmds\\sample\\org.xyz.sample.JavaCommand.jar",
-    "libsPath": "",
-    "libs": [],
-    "version": "",
-    "runMethodName": "execute"
-}

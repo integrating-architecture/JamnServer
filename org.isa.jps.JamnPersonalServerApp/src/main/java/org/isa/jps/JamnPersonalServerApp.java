@@ -8,7 +8,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,12 +20,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.isa.ipc.JamnServer;
@@ -41,13 +40,13 @@ import org.isa.ipc.JamnWebSocketProvider.WsoMessageProcessor;
 import org.isa.jps.comp.ChildProcessManager;
 import org.isa.jps.comp.ChildProcessor;
 import org.isa.jps.comp.CommandLineInterface;
-import org.isa.jps.comp.DefaultCLICommands;
+import org.isa.jps.comp.CLICommandInitializer;
 import org.isa.jps.comp.DefaultFileEnricherValueProvider;
 import org.isa.jps.comp.DefaultJavaScriptHostAppAdapter;
 import org.isa.jps.comp.DefaultServerAccessManager;
 import org.isa.jps.comp.DefaultWebServices;
 import org.isa.jps.comp.DefaultWebSocketMessageProcessor;
-import org.isa.jps.comp.JavaCommandProvider;
+import org.isa.jps.comp.ExtensionHandler;
 import org.isa.jps.comp.OperatingSystemInterface;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -101,19 +100,11 @@ public class JamnPersonalServerApp {
     protected static final String SERVICE_PROVIDER_ID = "ServiceProvider";
     protected static final String WEBSOCKET_PROVIDER_ID = "WebSocketProvider";
 
-    // folders under a user defined home directory
-    protected static final String APP_LIBS_DIR = "libs";
-    protected static final String WEB_FILE_ROOT = "http";
-    protected static final String SCRIPT_ROOT = "scripts";
-    protected static final String JCMD_ROOT = "jcmds";
-    protected static final String EXTENSION_ROOT = "extensions";
-    protected static final String WORKSPACE_ROOT = "workspace";
-
     // files
     protected static final String PROPERTIES_NAME = "jps.properties";
     protected static final String LOGGING_PROPERTIES_NAME = "jps.logging.properties";
     protected static final String BUILD_INFO_PROPERTIES_NAME = "build.info.properties";
-    protected static final String EXTENSION_DEF_FILE = "app-extension-defs.json";
+    protected static final String EXTENSION_AUTOLOAD_FILE = "extentions-auto-load.json";
     protected static final String DEV_LIBS_PATH = "dev.libs.path";
 
     public static final String JPS_PROFILE = "jps.profile";
@@ -121,6 +112,7 @@ public class JamnPersonalServerApp {
     public static final String CHILD_PROFILE = "child";
     public static final String JPS_CHILD_ID = "jps.child.id";
     public static final String JPS_PARENT_URL = "jps.parent.url";
+    public static final String WEBSERVICE_URL_ROOT = "webservice.url.root";
 
     // just a logging text snippet
     protected static final String INIT_LOGPRFX = "JPS init -";
@@ -148,19 +140,14 @@ public class JamnPersonalServerApp {
 
     // JavaScript Provider
     protected JavaScriptProvider javaScript;
-    // Java commands Provider
-    protected JavaCommandProvider javaCommands;
+    // Extensions
+    protected ExtensionHandler extensionHandler;
 
     // internal components
     protected OperatingSystemInterface osIFace;
     protected CommandLineInterface jpsCli;
     protected ChildProcessManager childManager;
     protected ChildProcessor childProcessor;
-
-    // a content dispatcher predicate
-    // to distinguish content and services
-    // will later be forwarded to the webServiceProvider
-    protected Predicate<String> isServiceRequest = path -> false;
 
     /*********************************************************
      * Public methods
@@ -175,10 +162,9 @@ public class JamnPersonalServerApp {
      * @throws IOException
      * @throws SecurityException
      * @throws WebServiceDefinitionException
-     * @throws AppExtensionDefinitionException
      */
     public JamnPersonalServerApp initialize(String[] pArgs)
-            throws SecurityException, IOException, WebServiceDefinitionException, AppExtensionDefinitionException {
+            throws SecurityException, IOException, WebServiceDefinitionException {
 
         initLogging();
         initConfig(pArgs);
@@ -197,6 +183,8 @@ public class JamnPersonalServerApp {
                     CHILD_PROFILE));
         }
 
+        onInitializationEnd();
+
         return this;
     }
 
@@ -204,7 +192,7 @@ public class JamnPersonalServerApp {
      * Default JamnPersonalServer-App initialization routine
      */
     protected void doAppInitialization()
-            throws IOException, WebServiceDefinitionException, AppExtensionDefinitionException {
+            throws IOException, WebServiceDefinitionException {
 
         osIFace = new OperatingSystemInterface(config, null);
 
@@ -221,10 +209,10 @@ public class JamnPersonalServerApp {
 
         initChildManagement();
         initJavaScript();
-        initJavaCommands();
 
         initExtensions();
 
+        CLICommandInitializer.createSystemCommands(this);
     }
 
     /**
@@ -241,6 +229,22 @@ public class JamnPersonalServerApp {
 
         childProcessor = new ChildProcessor(config, jsonTool);
         childProcessor.connect();
+    }
+
+    /**
+     */
+    protected void onInitializationEnd() {
+        List<String> lLines = new ArrayList<>();
+        lLines.add("");
+        lLines.add("<<< Initialization Summary >>>");
+        lLines.add("Currently registered WebService endpoints:");
+        lLines.add(String.join(LS, getWebServiceProvider().getAllServicePathNames()));
+        lLines.add("");
+        lLines.add("WebService root: " + config.getWebServiceUrlRoot());
+        lLines.add("WebSocket root: " + config.getWebSocketUrlRoot());
+        lLines.add("");
+
+        LOG.info(() -> String.join(LS, lLines));
     }
 
     /**
@@ -336,8 +340,14 @@ public class JamnPersonalServerApp {
 
     /**
      */
-    public JavaCommandProvider getJCmdProvider() {
-        return javaCommands;
+    public ExtensionHandler getExtensionHandler() {
+        return extensionHandler;
+    }
+
+    /**
+     */
+    public JamnWebServiceProvider getWebServiceProvider() {
+        return webServiceProvider;
     }
 
     /**
@@ -442,16 +452,22 @@ public class JamnPersonalServerApp {
                     .setConfig(config)
                     .build();
             childManager.initialize();
+
+            CLICommandInitializer.createProcessCommands(childManager);
         }
     }
 
     /**
      */
     protected void initCli() {
-        if (config.isCliEnabled()) {
-            jpsCli = new CommandLineInterface();
-            DefaultCLICommands.create();
-        } else {
+        jpsCli = new CommandLineInterface()
+                .setEncoding(standardEncoding)
+                .setInputFile(Paths.get(AppHome.toString(), config.getCliInputFileName()));
+
+        CLICommandInitializer.initializeWith(jpsCli);
+        CLICommandInitializer.createCliCommands(osIFace);
+
+        if (!config.isCliEnabled()) {
             LOG.info(() -> String.format("%s CLI is Disabled. To enable set config [%s] property [cli.enabled=true]",
                     INIT_LOGPRFX, PROPERTIES_NAME));
         }
@@ -471,8 +487,10 @@ public class JamnPersonalServerApp {
 
             String lAutoLoadScript = getConfig().getJsAutoLoadScript();
             if (javaScript.sourceExists(lAutoLoadScript)) {
-                javaScript.eval(lAutoLoadScript);
+                javaScript.run(lAutoLoadScript);
             }
+
+            CLICommandInitializer.createJavaScriptCliCommands(javaScript);
 
             LOG.info(() -> String.format("%s JavaScript Provider initialized [%s]", INIT_LOGPRFX, lScriptPath));
         } else {
@@ -484,107 +502,44 @@ public class JamnPersonalServerApp {
 
     /**
      */
-    protected void initJavaCommands() throws IOException {
-        if (config.isJCmdEnabled()) {
-            Path lJCmdPath = Tool.ensureSubDir(config.getJCmdRoot(), AppHome);
-            javaCommands = new JavaCommandProvider(lJCmdPath, config, getJsonTool());
-
-            javaCommands.initialize();
-
-            LOG.info(() -> String.format("%s Java Commands Provider initialized [%s]", INIT_LOGPRFX, lJCmdPath));
-        } else {
-            LOG.info(() -> String.format(
-                    "%s Java Commands is Disabled. To enable ensure libraries and set config [%s] property [jcmd.enabled=true]",
-                    INIT_LOGPRFX, PROPERTIES_NAME));
-        }
-    }
-
-    /**
-     * @throws IOException
-     * @throws AppExtensionDefinitionException
-     */
-    protected void initExtensions() throws IOException, AppExtensionDefinitionException {
+    protected void initExtensions() throws IOException {
         if (config.isExtensionsEnabled()) {
             // ensure the extensions root folder
             Path lRootPath = Tool.ensureSubDir(config.getExtensionRoot(), AppHome);
+            Tool.ensureSubDir(config.getExtensionBin(), lRootPath);
+            Tool.ensureSubDir(config.getExtensionData(), lRootPath);
 
-            Path lDefFile = Paths.get(lRootPath.toString(), config.getExtensionDefFileName());
-            if (!Files.exists(lDefFile)) {
-                String lDefJson = jsonTool.toString(new AppExtensionDef[] { new AppExtensionDef() });
-                Files.writeString(lDefFile, lDefJson, standardEncoding, StandardOpenOption.CREATE);
+            extensionHandler = new ExtensionHandler(lRootPath, config, jsonTool);
+            CLICommandInitializer.createExtensionCliCommands(extensionHandler);
 
-                LOG.info(() -> String.format("%s default EMPTY App Extension definition created [%s]%s%s", INIT_LOGPRFX,
-                        lDefFile, LS,
-                        "--> edit and ADD Extension definitions! <--"));
+            Path lAutoloadFile = Paths.get(lRootPath.toString(), config.getExtensionsAutoloadFileName());
+            if (!Files.exists(lAutoloadFile)) {
+                Files.writeString(lAutoloadFile, "[]", standardEncoding, StandardOpenOption.CREATE);
+
+                LOG.info(() -> String.format("%s default EMPTY App Extensions autoload file created [%s]", INIT_LOGPRFX,
+                        lAutoloadFile));
                 return;
             }
 
-            // init plugable extensions defined in definition file
-            String lExtensionDef = new String(Files.readAllBytes(lDefFile));
-            List<AppExtensionDef> lExtensions = Arrays
-                    .asList(jsonTool.toObject(lExtensionDef, AppExtensionDef[].class));
-
-            AtomicInteger lCount = new AtomicInteger(0);
-            for (AppExtensionDef def : lExtensions) {
-                if (!def.isEmpty()) {
-                    createExtension(def, lRootPath, lCount);
+            List<String> lErrors = new ArrayList<>();
+            String lAutoloadSrc = new String(Files.readAllBytes(lAutoloadFile));
+            List<String> lAutoLoadList = Arrays.asList(jsonTool.toObject(lAutoloadSrc, String[].class));
+            for (String name : lAutoLoadList) {
+                try {
+                    extensionHandler.loadExtension(name, null);
+                } catch (Exception e) {
+                    lErrors.add(e.toString());
                 }
             }
-
-            if (lCount.get() > 0) {
-                LOG.info(() -> String.format("%s [%s] app extensions installed from: [%s]", INIT_LOGPRFX, lCount.get(),
-                        lDefFile));
+            if (!lErrors.isEmpty()) {
+                String lMsg = String.format("Extention initialization error(s):%s%s", LS, String.join(LS, lErrors));
+                throw new UncheckedJPSException(lMsg);
             }
+
         } else {
             LOG.info(() -> String.format(
-                    "%s Extensions are Disabled. To enable ensure libraries and set config [%s] property [extensions.enabled=true]",
+                    "%s Extensions are Disabled. To enable set config [%s] property [extensions.enabled=true]",
                     INIT_LOGPRFX, PROPERTIES_NAME));
-        }
-    }
-
-    /**
-     * @throws AppExtensionDefinitionException
-     */
-    @SuppressWarnings("resource")
-    protected void createExtension(AppExtensionDef pDef, Path pRootPath, AtomicInteger... pCount)
-            throws AppExtensionDefinitionException {
-        URLClassLoader lExtensionLoader;
-        Class<?> lExtensionClass;
-        List<URL> lUrls = new ArrayList<>();
-        Path lFilePath;
-        List<String> lErrors = new ArrayList<>();
-
-        try {
-            // the extension itself
-            lFilePath = Paths.get(pRootPath.toString(), pDef.getLibName());
-            Tool.createFileURL(lFilePath, lUrls, pDef, lErrors);
-
-            // the extension libraries
-            for (String lib : pDef.getLibs()) {
-                lFilePath = Paths.get(pRootPath.toString(), lib);
-                Tool.createFileURL(lFilePath, lUrls, pDef, lErrors);
-            }
-
-            if (!lErrors.isEmpty()) {
-                throw new AppExtensionDefinitionException(
-                        String.format("Invalid Extension definition: %s%s", LS, String.join(LS, lErrors)));
-            }
-
-            lExtensionLoader = new URLClassLoader(lUrls.toArray(new URL[lUrls.size()]),
-                    Thread.currentThread().getContextClassLoader());
-
-            lExtensionClass = lExtensionLoader.loadClass(pDef.getClassName());
-            lExtensionClass.getDeclaredConstructor().newInstance();
-
-            LOG.info(() -> String.format("Extension installed [%s]", pDef));
-            if (pCount.length == 1) {
-                pCount[0].getAndIncrement();
-            }
-
-        } catch (AppExtensionDefinitionException ae) {
-            throw ae;
-        } catch (Exception e) {
-            throw new AppExtensionDefinitionException(String.format("Failed to install AppExtension [%s]", pDef), e);
         }
     }
 
@@ -614,6 +569,18 @@ public class JamnPersonalServerApp {
                     throw new UncheckedJsonException(UncheckedJsonException.TOJSON_ERROR, e);
                 }
             }
+
+            @Override
+            public String prettify(String pJsonInput) {
+                try {
+                    Object lJsonObj = jack.readValue(pJsonInput, Object.class);
+                    return jack.writerWithDefaultPrettyPrinter().writeValueAsString(lJsonObj);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return pJsonInput;
+            }
+
         };
         LOG.info(() -> String.format("%s json tool installed [%s]", INIT_LOGPRFX, ObjectMapper.class.getName()));
     }
@@ -623,6 +590,8 @@ public class JamnPersonalServerApp {
     protected void initServer() {
         server = new JamnServer(config.getProperties());
         server.setAccessManager(new DefaultServerAccessManager(config));
+
+        CLICommandInitializer.createServerCliCommands(server);
     }
 
     /**
@@ -635,8 +604,12 @@ public class JamnPersonalServerApp {
         // no leading slash because relative path
         JamnWebContentProvider lWebContentProvider = JamnWebContentProvider.Builder(lRootPath)
                 .setConfig(server.getConfig())
+                // create and set a file enricher with a provider for template values
                 .setFileEnricher(new DefaultFileEnricher(
-                        new DefaultFileEnricherValueProvider(AppHome, config)))
+                        new DefaultFileEnricherValueProvider(AppHome, config)
+                                // set the service url root as injectable value for web content
+                                // e.g. javascript modules - see webapi.mjs
+                                .addValue(WEBSERVICE_URL_ROOT, config.getWebServiceUrlRoot())))
                 .build();
 
         // a playful construct
@@ -647,7 +620,7 @@ public class JamnPersonalServerApp {
             return lPath.equals("/index.html") ? config.getWebAppMainPage() : lPath;
         };
 
-        // add it to server
+        // add the provider to server
         server.addContentProvider(CONTENT_PROVIDER_ID, lWebContentProvider);
         LOG.info(() -> String.format("%s content provider installed [%s] on [%s]", INIT_LOGPRFX,
                 JamnWebContentProvider.class.getSimpleName(), lRootPath));
@@ -661,20 +634,19 @@ public class JamnPersonalServerApp {
         if (this.server != null && config.isWebServiceEnabled()) {
 
             // create the WebService provider
-            webServiceProvider = JamnWebServiceProvider.newBuilder().setJsonTool(jsonTool);
+            webServiceProvider = JamnWebServiceProvider.newBuilder()
+                    .setJsonTool(jsonTool)
+                    .setUrlRoot(config.getWebServiceUrlRoot());
 
-            // set a predicate to identify a webservice request
-            // by default all paths registered at the webservice provider
-            // are ServiceRequests - see initContentDispatcher
-            isServiceRequest = webServiceProvider::isServicePath;
             server.addContentProvider(SERVICE_PROVIDER_ID, webServiceProvider);
 
             LOG.info(() -> String.format("%s web service provider installed [%s]", INIT_LOGPRFX,
                     JamnWebServiceProvider.class.getSimpleName()));
 
-            // install default app web services
-            DefaultWebServices lDefaultWS = new DefaultWebServices(osIFace);
-            registerWebServices(lDefaultWS);
+            // install app default web services
+            registerWebServices(new DefaultWebServices(osIFace));
+
+            CLICommandInitializer.createWebServiceProviderCliCommands(webServiceProvider, getJsonTool());
         }
     }
 
@@ -684,7 +656,7 @@ public class JamnPersonalServerApp {
         if (this.server != null && config.isWebSocketEnabled()) {
             // create the WebSocketProvider
             webSocketProvider = JamnWebSocketProvider.newBuilder()
-                    .addConnectionPath(config.getDefaultWebSocketUrlPath())
+                    .addConnectionPath(config.getWebSocketUrlRoot())
                     .build();
 
             webSocketProvider.addMessageProcessor(
@@ -695,7 +667,7 @@ public class JamnPersonalServerApp {
 
             LOG.info(() -> String.format("%s web socket provider installed [%s] at [%s]", INIT_LOGPRFX,
                     JamnWebSocketProvider.class.getSimpleName(),
-                    "ws://<host>:" + server.getConfig().getPort() + config.getDefaultWebSocketUrlPath()));
+                    "ws://<host>:" + server.getConfig().getPort() + config.getWebSocketUrlRoot()));
 
         }
     }
@@ -703,6 +675,9 @@ public class JamnPersonalServerApp {
     /**
      */
     protected void initContentDispatcher() {
+        Predicate<String> isServiceRequest = webServiceProvider != null ? webServiceProvider::isServicePath
+                : path -> false;
+
         server.setContentProviderDispatcher((RequestMessage pRequest) -> {
             String lPath = pRequest.getPath();
             if (isServiceRequest.test(lPath)) {
@@ -722,6 +697,14 @@ public class JamnPersonalServerApp {
     /**
      */
     public static class Config {
+        // CONFIG DEFAULT folder names under the home directory
+        private static final String WEB_FILE_ROOT = "http";
+        private static final String SCRIPT_ROOT = "scripts";
+        private static final String EXTENSION_ROOT = "extensions";
+        private static final String EXTENSION_BIN = "bin";
+        private static final String EXTENSION_DATA = "data";
+        private static final String WORKSPACE_ROOT = "workspace";
+
         protected static final String DEFAULT_CONFIG = String.join(LF,
                 "##",
                 "## " + AppName + " Config Properties",
@@ -729,23 +712,25 @@ public class JamnPersonalServerApp {
                 "#JPS Profile", JPS_PROFILE + "=" + APP_PROFILE, "",
                 "#WebContentProvider files root folder", "web.file.root=" + WEB_FILE_ROOT, "",
                 "#Web File-Enricher root folder", "web.file.enricher.root=http/jsmod/html-components", "",
-                "#JPS extension libraries root folder", "jps.extension.root=" + EXTENSION_ROOT, "",
+                "#JPS extensions root folder name", "jps.extension.root=" + EXTENSION_ROOT, "",
+                "#JPS extensions bin folder name", "jps.extension.bin=" + EXTENSION_BIN, "",
+                "#JPS extensions data folder name", "jps.extension.data=" + EXTENSION_DATA, "",
                 "#JPS workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
-                "#JPS Extension definition file name", "jps.extension.def.file=" + EXTENSION_DEF_FILE, "",
+                "#JPS Extensions auto load file name", "jps.extensions.autoload.file=" + EXTENSION_AUTOLOAD_FILE, "",
                 "#WebApp main Page", "webapp.main.page=/workbench.html", "",
                 "#Extensions enabled", "extensions.enabled=false", "",
                 "#JavaScriptProvider script root folder", "script.root=" + SCRIPT_ROOT, "",
                 "#JavaScript auto-load script", "js.auto.load.script=js-auto-load.js", "",
-                "#JavaCommands enabled", "jcmd.enabled=true", "",
-                "#JavaCommandProvider root folder", "jcmd.root=" + JCMD_ROOT, "",
+                "#CLI input file", "cli.input.file=jps.cli.input.txt", "",
                 "#CLI enabled", "cli.enabled=true", "",
                 "#JavaScript enabled", "javascript.enabled=false", "",
                 "#JavaScript debug enabled", "javascript.debug.enabled=false", "",
                 "#Server enabled", "server.enabled=true", "",
                 "#WebService enabled", "webservice.enabled=true", "",
                 "#WebSocket enabled", "websocket.enabled=true", "",
-                "#WebSocket default url path", "default.websocket.url.path=/wsoapi", "",
-                "#Child WebSocket default url path", "default.child.websocket.url.path=/childapi", "",
+                "#WebSocket url root", "websocket.url.root=/wsoapi", "",
+                "#WebService url root", "webservice.url.root=/webapi", "",
+                "#Child WebSocket url root", "child.websocket.url.root=/childapi", "",
                 "#JVM debug option",
                 "jvm.debug.option=-agentlib:jdwp=transport=dt_socket,address=localhost:9009,server=y,suspend=y", "",
                 "#Server autostart", "server.autostart=true", "",
@@ -801,12 +786,24 @@ public class JamnPersonalServerApp {
             return props.getProperty("jps.extension.root", EXTENSION_ROOT);
         }
 
+        public String getExtensionBin() {
+            return props.getProperty("jps.extension.bin", EXTENSION_BIN);
+        }
+
+        public String getExtensionData() {
+            return props.getProperty("jps.extension.data", EXTENSION_DATA);
+        }
+
         public String getWorkspaceRoot() {
             return props.getProperty("jps.workspace.root", WORKSPACE_ROOT);
         }
 
-        public String getExtensionDefFileName() {
-            return props.getProperty("jps.extension.def.file", EXTENSION_DEF_FILE);
+        public String getExtensionsAutoloadFileName() {
+            return props.getProperty("jps.extensions.autoload.file", EXTENSION_AUTOLOAD_FILE);
+        }
+
+        public String getCliInputFileName() {
+            return props.getProperty("cli.input.file", "jps.cli.input.txt");
         }
 
         public String getWebAppMainPage() {
@@ -823,10 +820,6 @@ public class JamnPersonalServerApp {
 
         public String getJsAutoLoadScript() {
             return props.getProperty("js.auto.load.script", "js-auto-load.js");
-        }
-
-        public String getJCmdRoot() {
-            return props.getProperty("jcmd.root", JCMD_ROOT);
         }
 
         public int getPort() {
@@ -849,12 +842,16 @@ public class JamnPersonalServerApp {
             return props.getProperty("jvm.debug.option", "");
         }
 
-        public String getDefaultWebSocketUrlPath() {
-            return props.getProperty("default.websocket.url.path", "/wsoapi");
+        public String getWebSocketUrlRoot() {
+            return props.getProperty("websocket.url.root", "/wsoapi");
         }
 
-        public String getDefaultChildWebSocketUrlPath() {
-            return props.getProperty("default.child.websocket.url.path", "/childapi");
+        public String getWebServiceUrlRoot() {
+            return props.getProperty(WEBSERVICE_URL_ROOT, "/webapi");
+        }
+
+        public String getChildWebSocketUrlRoot() {
+            return props.getProperty("child.websocket.url.root", "/childapi");
         }
 
         public boolean hasAppProfile() {
@@ -875,10 +872,6 @@ public class JamnPersonalServerApp {
 
         public boolean isJavaScriptEnabled() {
             return Boolean.parseBoolean(props.getProperty("javascript.enabled", "false"));
-        }
-
-        public boolean isJCmdEnabled() {
-            return Boolean.parseBoolean(props.getProperty("jcmd.enabled", "false"));
         }
 
         public boolean isJavaScriptDebugEnabled() {
@@ -908,71 +901,14 @@ public class JamnPersonalServerApp {
 
     /**
      */
-    public static class AppExtensionDef {
-        protected String libName = "";
-        protected String className = "";
-        protected List<String> libs = new ArrayList<>();
-
-        public AppExtensionDef() {
-        }
-
-        public AppExtensionDef(String pLibName, String pClassName, List<String> pLibs) {
-            this();
-            libName = pLibName.trim();
-            className = pClassName.trim();
-            libs.addAll(pLibs);
-        }
-
-        public String getLibName() {
-            return libName;
-        }
-
-        public String getClassName() {
-            return className;
-        }
-
-        public List<String> getLibs() {
-            return libs;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("AppExtensionDef [%s : %s]", className, libName);
-        }
-
-        // json excluded
-        public boolean isEmpty() {
-            return (libName.isEmpty() || className.isEmpty());
-        }
-
-    }
-
-    /**
-     * Exceptions thrown during Extension initialization/creation.
-     */
-    public static class AppExtensionDefinitionException extends Exception {
-        private static final long serialVersionUID = 1L;
-
-        AppExtensionDefinitionException(String pMsg) {
-            super(pMsg);
-        }
-
-        AppExtensionDefinitionException(String pMsg, Throwable t) {
-            super(pMsg, t);
-        }
-
-    }
-
-    /**
-     */
     public static class UncheckedJPSException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
-        UncheckedJPSException(String pMsg) {
+        public UncheckedJPSException(String pMsg) {
             super(pMsg);
         }
 
-        UncheckedJPSException(String pMsg, Exception pCause) {
+        public UncheckedJPSException(String pMsg, Exception pCause) {
             super(pMsg, pCause);
         }
     }
@@ -983,11 +919,32 @@ public class JamnPersonalServerApp {
     /**
      */
     public static class CommonHelper {
+        public static final Pattern RexgNewLine = Pattern.compile("\\r?\\n|\\r");
+        public static final Pattern RexgWhiteSpaces = Pattern.compile("\\s+");
 
         protected static Charset StandardEncoding = StandardCharsets.UTF_8;
 
         protected static void setEncoding(Charset pEncoding) {
             StandardEncoding = pEncoding;
+        }
+
+        /**
+         */
+        protected static Function<Object, String> commandReturnValueFormatter = value -> {
+            StringBuilder lBuilder = new StringBuilder()
+                    .append(LS)
+                    .append("<return_value>").append(LS)
+                    .append(value.toString()).append(LS)
+                    .append("</return_value>").append(LS);
+            return lBuilder.toString();
+        };
+
+        public static void setCommandReturnValueFormatter(Function<Object, String> formatter) {
+            commandReturnValueFormatter = formatter;
+        }
+
+        public String formatCommandReturn(Object pVal) {
+            return commandReturnValueFormatter.apply(pVal);
         }
 
         /**
@@ -1091,10 +1048,56 @@ public class JamnPersonalServerApp {
             }
 
             if (inQuote) {
-                throw new RuntimeException("Missing start/end quote in command line string");
+                throw new UncheckedJPSException("Missing start/end quote in command line string");
             }
 
             return newToken.toArray(new String[newToken.size()]);
+        }
+
+        /**
+         */
+        public String[] parseCommandLine(String pText, String[] pMarker) {
+            pMarker = (pMarker == null || pMarker.length != 2) ? new String[] { "<![CDATA[", "]]>" } : pMarker;
+
+            pText = RexgWhiteSpaces.matcher(pText).replaceAll(" ");
+            pText = RexgNewLine.matcher(pText).replaceAll("").trim();
+
+            List<String> args = new ArrayList<>();
+            String startMark = pMarker[0];
+            String endMark = pMarker[1];
+
+            int startOffset = startMark.length();
+            int endOffset = endMark.length();
+            String block;
+            int srcStart = 0;
+            int start = pText.indexOf(startMark);
+            int end;
+            String[] token;
+
+            while (start > -1) {
+                if (start > srcStart) {
+                    block = pText.substring(srcStart, start);
+                    token = block.trim().split(" ");
+                    args.addAll(Arrays.asList(rebuildQuotedWhitespaceStrings(token)));
+                }
+                end = pText.indexOf(endMark, start);
+                if (end > -1) {
+                    block = pText.substring(start + startOffset, end);
+                    args.add(block);
+                } else {
+                    throw new UncheckedJPSException("Missing block end mark [" + endMark + "] for [" + startMark + "]");
+                }
+                srcStart = end + endOffset;
+                start = pText.indexOf(startMark, srcStart);
+            }
+
+            if (srcStart < pText.length()) {
+                block = pText.substring(srcStart);
+                token = block.trim().split(" ");
+                args.addAll(Arrays.asList(rebuildQuotedWhitespaceStrings(token)));
+            }
+
+            return args.toArray(new String[args.size()]);
         }
 
     }

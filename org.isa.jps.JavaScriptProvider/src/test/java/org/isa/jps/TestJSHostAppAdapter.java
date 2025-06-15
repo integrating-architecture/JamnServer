@@ -68,7 +68,7 @@ public class TestJSHostAppAdapter implements JavaScriptHostAppAdapter {
         }
 
         @Override
-        public void createJSCliCommand(String pName, String pSource, String pDescr) {
+        public void createJSCliCommand(String pName, String pSource, String pArgsDescr, String pDescrText) {
         }
 
         @Override

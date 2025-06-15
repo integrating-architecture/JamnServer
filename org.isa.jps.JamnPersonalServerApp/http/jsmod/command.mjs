@@ -1,8 +1,8 @@
 /* Authored by www.integrating-architecture.de */
 
-import { NL, newSimpleId, splitToArgs } from '../jsmod/tools.mjs';
+import { NL, newSimpleId } from '../jsmod/tools.mjs';
 import { WsoCommonMessage, CommandDef } from '../jsmod/data-classes.mjs';
-import { WorkView, ViewBuilder, IconElement } from '../jsmod/view-classes.mjs';
+import { WorkView, ViewBuilder } from '../jsmod/view-classes.mjs';
 
 /**
  * A general View class for commands.
@@ -19,7 +19,7 @@ import { WorkView, ViewBuilder, IconElement } from '../jsmod/view-classes.mjs';
  * The web socket counterpart on the server-side is:
  *  - org.isa.jps.comp.DefaultWebSocketMessageProcessor
  * The server side scripts are located in subdir
- *  - "scripts" for JS / and "jcmds" for java
+ *  - "scripts" for JS / and "extensions" for java
  * 
  * Creating dynamic content and components
  * Jamn supports 3 approaches and their combinations:
@@ -60,7 +60,7 @@ class CommandView extends WorkView {
 			this.commandName = this.commandDef.command + " " + this.commandDef.script;
 		}
 	}
-	
+
 	initialize() {
 		super.initialize();
 		this.setTitle(this.commandDef.title);
@@ -73,6 +73,7 @@ class CommandView extends WorkView {
 		this.createWsoConnection();
 
 		this.isInitialized = true;
+		this.setVisible(true);
 	}
 
 	createUI() {
@@ -109,7 +110,7 @@ class CommandView extends WorkView {
 				varid: "taArgs",
 				styleProps: { "width": "400px", "min-width": "400px", "height": "45px", "min-height": "45px", "text-align": "left" },
 				attribProps: {
-					title: (this.commandDef.options.args ? "Command arguments: -h for help" : "<no args>"),
+					title: (this.commandDef.options.args ? "Command arguments: -h for help" : "<no args>") + "\nStructured text like e.g. JSON must be wrapped in a <![CDATA[ structured text ]]> tag.",
 					placeholder: (this.commandDef.options.args ? " -h + Enter for help" : "<no args>"),
 					disabled: !this.commandDef.options.args
 				}
@@ -134,6 +135,7 @@ class CommandView extends WorkView {
 					let iconBar = target.container;
 
 					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoDeleteNamedArgs", iconName: "trash", title: "Delete current named arg" });
+					target.comp.addContainer({ parentCtrl: iconBar, styleProps: { height: "20px", "border-right": "1px solid var(--border-gray)" } })
 					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoSaveNamedArgs", iconName: "save", title: "Save current named args" });
 					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoClearArgChoice", iconName: "eraser", title: "Clear args and choice", styleProps: { "margin-left": "20px", "margin-right": "5px" } })
 				})
@@ -207,7 +209,7 @@ class CommandView extends WorkView {
 	}
 
 	setRunning(flag) {
-		super.setRunning(flag);	
+		super.setRunning(flag);
 		this.pbRun.disabled = flag;
 	}
 
@@ -216,10 +218,7 @@ class CommandView extends WorkView {
 		wsoMsg.command = this.commandDef.command;
 		wsoMsg.script = this.commandDef.script;
 
-		splitToArgs(this.taArgs.value.trim(), arg => {
-			wsoMsg.args.push(arg);
-		});
-
+		wsoMsg.argsSrc = this.taArgs.value.trim();
 		this.deleteOutput();
 		WbApp.sendWsoMessage(wsoMsg, () => {
 			this.setRunning(true);
@@ -232,7 +231,7 @@ class CommandView extends WorkView {
 	}
 
 	setArgsSelection(key) {
-		if (this.namedArgs[key]) {
+		if (this.commandDef.options.args && this.namedArgs[key]) {
 			this.taArgs.value = this.namedArgs[key];
 		}
 	}

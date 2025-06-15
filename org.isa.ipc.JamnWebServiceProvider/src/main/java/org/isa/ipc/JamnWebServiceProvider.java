@@ -15,7 +15,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -72,6 +75,8 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     protected JsonToolWrapper jsonTool;
     protected Config config = new Config();
 
+    protected String urlRoot = "";
+
     /**
      * A map holding all registered services.
      */
@@ -103,6 +108,13 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
      */
     public JamnWebServiceProvider setConfig(Config pConfig) {
         config = pConfig;
+        return this;
+    }
+
+    /**
+     */
+    public JamnWebServiceProvider setUrlRoot(String pUrlRoot) {
+        urlRoot = pUrlRoot;
         return this;
     }
 
@@ -145,6 +157,11 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
 
                 lServiceObj = new ServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass, serviceMethod,
                         () -> jsonTool);
+
+                if(!urlRoot.isEmpty()){
+                    lServiceObj.path = new StringBuilder(urlRoot).append(lServiceObj.path).toString();
+                }
+
                 if (!serviceRegistry.containsKey(lServiceObj.path)) {
                     serviceRegistry.put(lServiceObj.path, lServiceObj);
                     final String info = String.format("WebService installed [%s] at [%s]",
@@ -167,6 +184,35 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
         return serviceRegistry.containsKey(pPath);
     }
 
+    /**
+     */
+    public List<String> getAllServicePathNames() {
+        List<String> lNames = new ArrayList<>(serviceRegistry.keySet());
+        Collections.sort(lNames);
+        return lNames;
+    }
+
+    /**
+     * Calling a WebService internally from java bypassing the http layer.
+     */
+    public String doDirectCall(String pPath, String pRequestBody) throws WebServiceException {
+        ServiceObject lService = null;
+        if (serviceRegistry.containsKey(pPath)) {
+            try{
+                lService = serviceRegistry.get(pPath);
+                Object lResult = lService.callWith(pRequestBody);
+                if (lResult instanceof String result) {
+                    return result;
+                }
+            }catch(Exception e){
+                throw new WebServiceException("WebService direct call failure", e);
+            }
+        }else{
+            throw new WebServiceException(String.format("WebService direct call to unknown [%s]", pPath));
+        }
+        return "";
+    }
+ 
     /*********************************************************
      * The public Annotation Interfaces to annotate methods as WebServices.
      *********************************************************/
@@ -347,6 +393,15 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
         WebServiceException(String pHttpStatus, String pMsg) {
             super(pMsg);
             httpStatus = pHttpStatus;
+        }
+        WebServiceException(String pMsg, Throwable pCause) {
+            super(pMsg, pCause);
+            httpStatus = "direct call";
+        }
+
+        WebServiceException(String pMsg) {
+            super(pMsg);
+            httpStatus = "direct call";
         }
 
         public String getHttpStatus() {

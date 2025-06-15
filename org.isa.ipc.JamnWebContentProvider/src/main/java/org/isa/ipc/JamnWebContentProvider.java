@@ -167,12 +167,14 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
                 } else {
                     pResponse.setStatus(SC_204_NO_CONTENT);
                 }
+            }else{
+                LOG.warning(() -> String.format("WebContentProvider Warning: Unsupported HTTP Method [%s]", pRequest.getMethod()));
             }
         } catch (WebContentException ce) {
-            LOG.fine(() -> String.format("WebContent Error: [%s]%s%s", ce.getMessage(), LS, getStackTraceFrom(ce)));
+            LOG.fine(() -> String.format("WebContentProvider Error: [%s]%s%s", ce.getMessage(), LS, getStackTraceFrom(ce)));
             pResponse.setStatus(ce.getHttpStatus());
         } catch (Exception e) {
-            LOG.severe(String.format("Internal Error GET [%s]%s%s%s%s", pRequest.getPath(), LS, e, LS,
+            LOG.severe(String.format("WebContentProvider internal Error GET [%s]%s%s%s%s", pRequest.getPath(), LS, e, LS,
                     getStackTraceFrom(e)));
             pResponse.setStatus(SC_500_INTERNAL_ERROR);
         }

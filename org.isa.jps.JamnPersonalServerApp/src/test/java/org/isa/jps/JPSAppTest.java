@@ -45,7 +45,7 @@ class JPSAppTest {
 
     @Test
     void testCliBlankCommand() {
-        String lVal = ServerApp.getCli().execCmdBlank("system config");
+        String lVal = ServerApp.getCli().execCmdBlank("list config");
         assertTrue(lVal.contains("javascript.enabled=false"), "Error Cli command");
     }
 

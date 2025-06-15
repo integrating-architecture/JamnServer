@@ -2,6 +2,7 @@
 
 import { callWebService, typeUtil } from '../jsmod/tools.mjs';
 import { WorkView, WorkViewTable, TableData, ViewBuilder } from '../jsmod/view-classes.mjs';
+import * as webapi from '../jsmod/webapi.mjs';
 
 let builder = new ViewBuilder();
 builder.defaultStyles.label = { "min-width": "80px", "text-align": "right" };
@@ -17,7 +18,7 @@ class SystemInfoView extends WorkView {
 	configBoxElems = {};
 	configTable;
 
-	needsDataReload = true;
+	needsViewDataRefresh = true;
 
 	initialize() {
 		super.initialize();
@@ -27,6 +28,14 @@ class SystemInfoView extends WorkView {
 		this.#initConfigBox();
 
 		this.isInitialized = true;
+	}
+
+	open() {
+		super.open();
+		getInfos((data) => {
+			this.writeDataToView(data);
+			this.setVisible(true);
+		});
 	}
 
 	/**
@@ -101,90 +110,87 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
-	writeDataToView() {
-		if (this.needsDataReload) {
-			//server data fetch call back
-			getInfos((data) => {
-				clearConfigChanges();
+	writeDataToView(data) {
+		if (this.needsViewDataRefresh) {
+			clearConfigChanges();
 
-				this.appBoxElems["tfName"].value = data.name;
-				this.appBoxElems["tfVersion"].value = `${data.version} - Build [${data.buildDate} UTC]`;
-				this.appBoxElems["tfDescription"].value = data.description;
+			this.appBoxElems["tfName"].value = data.name;
+			this.appBoxElems["tfVersion"].value = `${data.version} - Build [${data.buildDate} UTC]`;
+			this.appBoxElems["tfDescription"].value = data.description;
 
-				//create+build a table data object
-				let tableData = new TableData();
-				// "data.config" has the structure: { name1:value1, name2:value2 ... }
-				// create a 2 column tableData from it
-				let names = Object.getOwnPropertyNames(data.config);
-				names.forEach((name) => {
-					let row = new Map();
-					//mark the read only key column to filter out 
-					row.set("key:" + name, name);
-					row.set(name, data.config[name]);
-					tableData.addRow(name, row);
-				})
+			//create+build a table data object
+			let tableData = new TableData();
+			// "data.config" has the structure: { name1:value1, name2:value2 ... }
+			// create a 2 column tableData from it
+			let names = Object.getOwnPropertyNames(data.config);
+			names.forEach((name) => {
+				let row = new Map();
+				//mark the read only key column to filter out 
+				row.set("key:" + name, name);
+				row.set(name, data.config[name]);
+				tableData.addRow(name, row);
+			})
 
-				//define cell editing on double click
-				tableData.cellDblClick = (rowKey, colKey, evt) => {
+			//define cell editing on double click
+			tableData.cellDblClick = (rowKey, colKey, evt) => {
 
-					//editing only for the value column
-					if (!colKey.startsWith("key:")) {
-						//get the origin data from the data object (model)
-						let dataRow = tableData.rows.get(rowKey);
-						let dataValue = dataRow.get(colKey);
-						console.log(dataValue);
+				//editing only for the value column
+				if (!colKey.startsWith("key:")) {
+					//get the origin data from the data object (model)
+					let dataRow = tableData.rows.get(rowKey);
+					let dataValue = dataRow.get(colKey);
+					console.log(dataValue);
 
-						//create+handle a simple cell input field
-						let cellElem = evt.currentTarget;
-						if (cellElem.getElementsByTagName('input').length > 0) return;
-						//for simplicity use the html table cell value
-						let orgCellValue = cellElem.innerHTML;
-						cellElem.innerHTML = '';
+					//create+handle a simple cell input field
+					let cellElem = evt.currentTarget;
+					if (cellElem.getElementsByTagName('input').length > 0) return;
+					//for simplicity use the html table cell value
+					let orgCellValue = cellElem.innerHTML;
+					cellElem.innerHTML = '';
 
-						let inputFieldProps = {};
-						inputFieldProps.booleanValue = typeUtil.booleanFromString(orgCellValue);
-						let cellInput = this.configTable.newCellInputField(inputFieldProps);
-						cellInput.value = orgCellValue;
+					let inputFieldProps = {};
+					inputFieldProps.booleanValue = typeUtil.booleanFromString(orgCellValue);
+					let cellInput = this.configTable.newCellInputField(inputFieldProps);
+					cellInput.value = orgCellValue;
 
-						cellInput.onblur = (evt) => {
-							let newValue = cellInput.value;
-							cellElem.removeChild(cellInput.comp);
-							if (typeUtil.isBooleanString(newValue) && !typeUtil.isBooleanString(orgCellValue)) {
-								newValue = orgCellValue;
-							}
-							cellElem.innerHTML = newValue !== orgCellValue ? newValue : orgCellValue;
+					cellInput.onblur = (evt) => {
+						let newValue = cellInput.value;
+						cellElem.removeChild(cellInput.comp);
+						if (typeUtil.isBooleanString(newValue) && !typeUtil.isBooleanString(orgCellValue)) {
+							newValue = orgCellValue;
+						}
+						cellElem.innerHTML = newValue !== orgCellValue ? newValue : orgCellValue;
+						ckeckConfigChange(colKey, dataValue, cellElem);
+					};
+
+					cellInput.onkeydown = (evt) => {
+						if (evt.keyCode == 13) {
+							cellInput.blur();
+						} else if (evt.keyCode == 27) {
+							cellInput.blur();
+							cellElem.innerHTML = orgCellValue;
 							ckeckConfigChange(colKey, dataValue, cellElem);
-						};
+						}
+					};
 
-						cellInput.onkeydown = (evt) => {
-							if (evt.keyCode == 13) {
-								cellInput.blur();
-							} else if (evt.keyCode == 27) {
-								cellInput.blur();
-								cellElem.innerHTML = orgCellValue;
-								ckeckConfigChange(colKey, dataValue, cellElem);
-							}
-						};
+					cellElem.appendChild(cellInput.comp);
+					cellInput.focus();
+				}
+			};
 
-						cellElem.appendChild(cellInput.comp);
-						cellInput.focus();
-					}
-				};
+			this.configTable.setData(tableData);
+			this.configTable.sortByColumn(0);
 
-				this.configTable.setData(tableData);
+			this.configTable.getHeader(0).getElementsByTagName("i")[0].onclick = (evt) => {
 				this.configTable.sortByColumn(0);
+				this.configTable.toggleColSort(0);
+			};
 
-				this.configTable.getHeader(0).getElementsByTagName("i")[0].onclick = (evt) => {
-					this.configTable.sortByColumn(0);
-					this.configTable.toggleColSort(0);
-				};
+			this.configTable.getHeader(0).getElementsByTagName("input")[0].onkeyup = (evt) => {
+				this.configTable.filterRows(0, evt.target.value);
+			};
 
-				this.configTable.getHeader(0).getElementsByTagName("input")[0].onkeyup = (evt) => {
-					this.configTable.filterRows(0, evt.target.value);
-				};
-
-				this.needsDataReload = false;
-			});
+			this.needsViewDataRefresh = false;
 		}
 	}
 }
@@ -204,7 +210,7 @@ export function getInfos(cb) {
 		cb(infoData);
 	} else {
 		//load the infos from server
-		callWebService("/api/system-infos").then((data) => {
+		callWebService(webapi.system_getinfos).then((data) => {
 			infoData = data;
 			cb(infoData);
 		});
@@ -215,7 +221,7 @@ export function getInfos(cb) {
  */
 function updateInfos(request, cb) {
 	//send changes to the server
-	callWebService("/api/update-system-infos", JSON.stringify(request)).then((response) => {
+	callWebService(webapi.system_updateinfos, JSON.stringify(request)).then((response) => {
 		cb(response);
 	});
 }

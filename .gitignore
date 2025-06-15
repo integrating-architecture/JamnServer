@@ -9,7 +9,8 @@
 *snippets*
 **/workspace
 
-org.xyz*/**
+org.xy*/**
+org.isa.jps.ext*/**
 
 # Files #
 *.class
@@ -26,6 +27,7 @@ org.xyz*/**
 # see http://www.java.com/en/download/help/error_hotspot.xml #
 hs_err_pid*
 replay_pid*
-org.isa.JamnServer.code-workspace
+*.code-workspace
 jps.properties
 *.log*
+org.isa.jps.JamnPersonalServerApp/jps.cli.input.txt

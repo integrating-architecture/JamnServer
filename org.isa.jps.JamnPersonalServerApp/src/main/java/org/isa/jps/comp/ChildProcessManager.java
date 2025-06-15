@@ -82,7 +82,7 @@ public class ChildProcessManager implements ShellProcessListener {
      */
     public void initialize() throws IOException {
         // default "/childapi"
-        wsApiPath = config.getDefaultChildWebSocketUrlPath();
+        wsApiPath = config.getChildWebSocketUrlRoot();
         workspaceRoot = Tool.ensureSubDir(config.getWorkspaceRoot(), Paths.get(appHome)).toString();
 
         defaultChildDef = new ChildProcessDef()

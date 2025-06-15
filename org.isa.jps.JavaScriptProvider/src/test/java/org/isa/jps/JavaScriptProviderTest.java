@@ -38,10 +38,10 @@ class JavaScriptProviderTest {
     @Test
     void testEvalAndArgs() {
 
-        JsValue lVal = JavaScript.eval("js-eval-and-args.js");
+        JsValue lVal = JavaScript.run("js-eval-and-args.js");
         assertEquals("no args", lVal.asString(), "EvalAndArgs error");
 
-        lVal = JavaScript.eval("js-eval-and-args.js", "arg-0");
+        lVal = JavaScript.run("js-eval-and-args.js", "arg-0");
         assertEquals("arg-0", lVal.asString(), "EvalAndArgs error");
 
     }
@@ -49,31 +49,31 @@ class JavaScriptProviderTest {
     @Test
     void testJavaClassAccess() {
 
-        JsValue lVal = JavaScript.eval("java-class-access.js");
+        JsValue lVal = JavaScript.run("java-class-access.js");
         assertEquals("Name is: TestClass", lVal.asString(), "Java Class error");
     }
 
     @Test
     void testJsNullReturn() {
 
-        JsValue lVal = JavaScript.eval("js-return-null.js");
-        assertTrue(lVal.isNull());
-        assertEquals(null, lVal.asString());
+        JsValue lVal = JavaScript.run("js-return-null.js");
+        assertTrue(lVal.isEmpty());
+        assertEquals("", lVal.asString());
     }
 
     @Test
     void testJsFunctionReturn() {
 
-        JsValue lVal = JavaScript.eval("js-return-function.js");
-        assertFalse(lVal.isNull());
+        JsValue lVal = JavaScript.run("js-return-function.js");
+        assertFalse(lVal.isEmpty());
         assertEquals("function return value", lVal.asString());
     }
 
     @Test
     void testJsModuleImport() {
 
-        JsValue lVal = JavaScript.eval("js-mod-fnc-import.mjs");
-        assertFalse(lVal.isNull());
+        JsValue lVal = JavaScript.run("js-mod-fnc-import.mjs");
+        assertFalse(lVal.isEmpty());
         assertEquals("Hello User", lVal.asString());
     }
 

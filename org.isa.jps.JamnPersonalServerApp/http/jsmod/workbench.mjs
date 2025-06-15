@@ -108,6 +108,8 @@ function initWebSocket() {
  */
 function initUI() {
 
+	//document.onclick = (evt) => { WorkbenchInterface.statusLineInfo(""); };
+
 	initTitlebar();
 	initSidebar();
 	initStatusline();
@@ -171,14 +173,15 @@ function initTitlebar() {
 	WorkbenchInterface.titleInfo(`Tiny Demo - V.${systemData.version}`);
 
 	ViewComp.newFor(document.getElementById("wtb.ctrl.panel"))
-		.addActionIcon({ iconName: "caretup", title: "Up step through views" }, (target) => {
+		.addActionIcon({ iconName: "caretup", title: "Backward step through views" }, (target) => {
 			target.icon.onclick = () => {
 				viewManager.stepViewsUp();
 			}
 		})
-		.addActionIcon({ iconName: "caretdown", title: "Down step through views" }, (target) => {
-			target.icon.onclick = () => {
+		.addActionIcon({ iconName: "caretdown", title: "Forward step through views" }, (target) => {
+			target.icon.onclick = (evt) => {
 				viewManager.stepViewsDown();
+				evt.stopPropagation();
 			}
 		});
 }

@@ -1,29 +1,44 @@
 /* Authored by www.integrating-architecture.de */
 
 import { WorkView, ViewBuilder } from './view-classes.mjs';
+import { callWebService } from '../jsmod/tools.mjs';
+import * as webapi from '../jsmod/webapi.mjs';
 
 /**
- * An experimental WorkView created in javascript using a builder object.
+ * A Database connection WorkView created in javascript using a builder object.
  */
 class DbConnectionsView extends WorkView {
 
 	elems = {};
 	uiobj = {};
 
-	protocols;
-	connections;
+	connections = null;
 	currentConnection;
-	tfConnectionName;
 
 	initialize() {
 		super.initialize();
 		this.setTitle("Database Connections");
 
-		this.extendViewMenu();
-		this.createDemoData();
-		this.createUI();
+		this.getConnections(() => {
+			this.extendViewMenu();
+			this.createUI();
+			this.setVisible(true);
+			this.isInitialized = true;
+		})
+	}
 
-		this.isInitialized = true;
+	getConnections(cb) {
+		if (this.connections) {
+			cb(this.connections);
+		} else {
+			//load the data from server
+			callWebService(webapi.service_get_dbconnections).then((response) => {
+				//connections are sent as an array - create an object from it
+				this.connections = {};
+				response.connections.forEach((item) => this.connections[item.name] = item);
+				cb(this.connections);
+			});
+		}
 	}
 
 	extendViewMenu() {
@@ -42,7 +57,7 @@ class DbConnectionsView extends WorkView {
 		//define some style defaults
 		builder.defaultStyles.comp = { "margin-bottom": "0" };
 		builder.defaultStyles.label = { "width": "70px" };
-		builder.defaultStyles.button = { "width": "156px", height: "26px" };
+		builder.defaultStyles.button = { "width": "156px", "height": "26px" };
 		builder.defaultStyles.textField = { "width": "150px" };
 		let hgap = "20px";
 
@@ -51,14 +66,44 @@ class DbConnectionsView extends WorkView {
 		this.viewWorkarea.prepend(compSet);
 
 		//build the controls
+		let connectionNames = Object.getOwnPropertyNames(this.connections);
+		builder.newViewComp()
+			.style({ "margin-bottom": "10px" })
+			.addLabelTextField(
+				{ text: "Name:" },
+				{ varid: "tfConnectionName", datalist: connectionNames, attribProps: { placeholder: "connection name" } },
+				(target) => {
+					target.textfield.style.width = "250px";
+					target.textfield.addEventListener('input', (evt) => {
+						this.changeCurrentConnection(evt.currentTarget.value);
+					})
+				})
+			.addActionIcon({ varid: "icoErase", iconName: "eraser", title: "Clear current selection", styleProps: { "margin-left": "10px" } }, (target) => {
+				target.icon.onclick = () => {
+					this.clearData();
+				}
+			})
+			.addActionIcon({ varid: "icoSave", iconName: "save", title: "Save current connection", styleProps: { "margin-left": "20px" } }, (target) => {
+				target.icon.onclick = () => {
+					this.saveConnection();
+				}
+			})
+			.addContainer({ styleProps: { width: "20px", height: "20px", "margin-right": "20px", "border-right": "1px solid var(--border-gray)" } })
+			.addActionIcon({ varid: "icoDelete", iconName: "trash", title: "Delete current connection" }, (target) => {
+				target.icon.onclick = () => {
+					this.deleteConnection();
+				}
+			})
+			.appendTo(compSet);
+
+		let propsBox = builder.newFieldset({ title: "Connection properties", clazzes: ["wkv-compset-border"], styleProps: { width: "700px", "row-gap": "10px", "margin-bottom": "0px" } });
+		compSet.append(propsBox);
+
 		builder.newViewComp()
 			.addLabelTextField(
 				{ text: "DB Url:" },
-				{ varid: "tfUrlProtocol", datalist: this.protocols, attribProps: { placeholder: "protocol", "data-bind": "protocol" } })
-			.addLabelTextField(
-				{ text: "@", styleProps: { width: hgap, "margin": "0", "text-align": "center" } },
-				{ varid: "tfUrlServer", styleProps: { width: "400px" }, attribProps: { placeholder: "server:port/dbid", "data-bind": "url" } })
-			.appendTo(compSet);
+				{ varid: "tfDbUrl", styleProps: { width: "600px" }, attribProps: { placeholder: "url like e.g. - jdbc:oracle:thin:@localhost:1521/XEPDB1", "data-bind": "url" } })
+			.appendTo(propsBox);
 
 		builder.newViewComp()
 			.addLabelTextField(
@@ -66,7 +111,7 @@ class DbConnectionsView extends WorkView {
 				{ varid: "tfUser", attribProps: { placeholder: "name", "data-bind": "user" } })
 			.addTextField(
 				{ varid: "tfOwner", attribProps: { placeholder: "optional owner", "data-bind": "owner" }, styleProps: { "margin-left": hgap } })
-			.appendTo(compSet);
+			.appendTo(propsBox);
 
 		builder.newViewComp()
 			.style({ "align-items": "baseline" })
@@ -82,57 +127,43 @@ class DbConnectionsView extends WorkView {
 				})
 			.addTextArea(
 				{ varid: "tfTestResult", rows: "1", readOnly: true, attribProps: { placeholder: "<result>", title: "Test Result" }, styleProps: { "overflow": "hidden", "margin-left": hgap, "text-align": "left", "min-width": "80px", "width": "80px", "min-height": "14px" } })
-			.appendTo(compSet);
+			.appendTo(propsBox);
 
-		let connectionNames = Object.getOwnPropertyNames(this.connections);
-		builder.newViewComp()
-			.addLabelTextField(
-				{ text: "Name:" },
-				{ varid: "tfConnectionName", datalist: connectionNames, attribProps: { placeholder: "connection name" } },
-				(target)=>{
-					this.tfConnectionName = target.textfield;
-					target.textfield.addEventListener('input', (evt) => {
-						this.changeCurrentConnection(evt.currentTarget.value);
-					})
-				})
-			.addButton(
-				{ text: "Save Connection", title: "Save Connection", varid: "pbSave", styleProps: { "margin-left": hgap } })
-			.appendTo(compSet);
 	}
 
-	createDemoData() {
-		this.protocols = ["jdbc.oracle.thin", "jdbc.mysql"];
-		this.connections = {
-			"Oracle Test-Server": { protocol: "jdbc.oracle.thin", url: "TSORA:1521/XEPDB1", user: "admin", owner: "" },
-			"MySQL Dvlp-Server": { protocol: "jdbc.mysql", url: "DSMSQL:3306/dvlpdb1", user: "devel", owner: "" }
-		};
-	}
-
-	changeCurrentConnection(key){
-		if(this.connections.hasOwnProperty(key)){
+	changeCurrentConnection(key) {
+		if (this.connections.hasOwnProperty(key)) {
 			this.currentConnection = this.connections[key];
 			this.writeDataToView();
-		}else{
+		} else {
 			this.currentConnection = null;
 		}
 	}
 
-	clearData(excludes=[]) {
-		this.showConnectionTestResult();
+	clearData(excludes = []) {
 		let names = Object.getOwnPropertyNames(this.elems);
 		names.forEach((name) => {
 			let ctrl = this.elems[name];
-			if(!excludes.includes(ctrl)){
+			if (!excludes.includes(ctrl)) {
 				ViewBuilder.clearControl(ctrl);
 			}
 		});
+
+		let key = this.elems.tfConnectionName.value.trim();
+		if (key !== "" && this.connections.hasOwnProperty(key)) {
+			this.currentConnection = this.connections[key];
+		} else {
+			this.currentConnection = null;
+		}
+
+		this.showConnectionTestResult();
 	}
 
 	writeDataToView() {
-		let excludes = [this.tfConnectionName];
+		let excludes = [this.elems.tfConnectionName];
 		let bindings = this.uiobj.bindings;
 
-		if(this.currentConnection){
+		if (this.currentConnection) {
 			let names = Object.getOwnPropertyNames(bindings);
 			names.forEach((name) => {
 				let ctrl = bindings[name];
@@ -140,19 +171,43 @@ class DbConnectionsView extends WorkView {
 				excludes.push(ctrl);
 			});
 			this.clearData(excludes);
-		}else{
+		} else {
 			this.clearData();
 		}
 	}
 
-	readDataFromView() {
-		//to be overwritten
+	saveConnection() {
+		if (this.currentConnection) {
+			let request = JSON.stringify({ connections: [this.currentConnection] });
+			callWebService(webapi.service_save_dbconnections, request).then((response) => {
+				if (response.status === "ok") {
+					console.log("Saved: ok");
+				}
+			});
+		}
+	}
+
+	deleteConnection() {
+		if (this.currentConnection) {
+			WbApp.confirm({
+				message: `<b>Delete item</b><br>Do you want to delete connection <b>[${this.currentConnection.name}]</b> ?`
+			}, (val) => {
+				if (val) {
+					let request = JSON.stringify({ connections: [this.currentConnection] });
+					callWebService(webapi.service_delete_dbconnections, request).then((response) => {
+						if (response.status === "ok") {
+							console.log("Deleted: ok");
+						}
+					});
+				}
+			});
+		}
 	}
 
 	runTestDbConnection() {
 		let userId = this.elems.tfUser.value.trim();
 		let pwd = this.elems.tfPwd.value.trim();
-		if (userId && pwd) {
+		if (userId) {
 			if (userId == pwd) {
 				this.showConnectionTestResult(true);
 			} else {

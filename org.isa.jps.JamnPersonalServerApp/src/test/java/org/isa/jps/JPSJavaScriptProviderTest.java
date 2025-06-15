@@ -72,7 +72,7 @@ class JPSJavaScriptProviderTest {
             JSCallContext pCallCtx = new JSCallContext(output::add);
 
             // calling a shell command - e.g. dir/ls
-            JavaScript.eval(pCallCtx, "/sample/sh-test.mjs");
+            JavaScript.run(pCallCtx, "/sample/sh-test.mjs");
 
             // output first item should be the script echo print
             LOG.info(String.format("JS shell test call [%s]", output.iterator().next()));

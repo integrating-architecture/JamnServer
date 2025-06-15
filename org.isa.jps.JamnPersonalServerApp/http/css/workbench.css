@@ -159,6 +159,7 @@ div#sidebar .sbar-topic-list {
     margin: 0;
     font-size: 1.1em;
     color: var(--text-gray);
+    overflow-x: auto;
 }
 
 div#sidebar .sbar-item-list {
@@ -499,7 +500,8 @@ tr.wkv:hover td {
     transform: translateX(-50%);
     top: 20%;
     left: 50%;
-    width: 400px;
+    min-width: 400px;
+    width: fit-content;
     background: var(--standard-dlg-content-bg);
     color: var(--standard-dlg-content-fg);
     padding: 0px;

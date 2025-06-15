@@ -67,8 +67,8 @@ class JPSWebProviderTest {
 
         HttpRequest lRequest = HttpRequest.newBuilder()
                 .POST(HttpRequest.BodyPublishers.ofString(lData))
-                .uri(new URI(ServerURL + ShellRequest.Path))
-                .headers("Content-Type", ShellRequest.ContentType)
+                .uri(new URI(ServerURL + "/webapi/service/shell-cmd"))
+                .headers("Content-Type", "application/json")
                 .build();
 
         HttpResponse<String> lResponse = Client.send(lRequest, BodyHandlers.ofString());

@@ -3,9 +3,7 @@ package org.isa.jps.comp;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -18,7 +16,7 @@ import org.isa.jps.JamnPersonalServerApp.CommonHelper;
 import org.isa.jps.JamnPersonalServerApp.Config;
 import org.isa.jps.JavaScriptProvider;
 import org.isa.jps.JavaScriptProvider.JSCallContext;
-import org.isa.jps.comp.JavaCommandProvider.JCCallContext;
+import org.isa.jps.comp.ExtensionHandler.ExtensionCallContext;
 
 /**
  * <pre>
@@ -35,7 +33,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     protected static final CommonHelper Tool = new CommonHelper();
 
     protected static final String CMD_RUNJS = "runjs";
-    protected static final String CMD_RUNJC = "runjc";
+    protected static final String CMD_RUNEXT = "runext";
     protected static final String STATUS_SUCCESS = "success";
     protected static final String STATUS_ERROR = "error";
 
@@ -44,7 +42,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     protected AtomicBoolean isAvailable;
 
     protected JavaScriptProvider jsProvider;
-    protected JavaCommandProvider jcProvider;
+    protected ExtensionHandler extensionHandler;
     protected JamnWebSocketProvider wsoProvider;
 
     protected Charset encoding = StandardCharsets.UTF_8;
@@ -93,11 +91,12 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
                 if (CMD_RUNJS.equalsIgnoreCase(pRequestMsg.getCommand())) {
                     runJSCommand(pConnectionId, pRequestMsg, lResponseMsg);
                     lResponseMsg.setStatus(STATUS_SUCCESS);
-                } else if (CMD_RUNJC.equalsIgnoreCase(pRequestMsg.getCommand())) {
-                    runJCCommand(pConnectionId, pRequestMsg, lResponseMsg);
+                } else if (CMD_RUNEXT.equalsIgnoreCase(pRequestMsg.getCommand())) {
+                    runExtCommand(pConnectionId, pRequestMsg, lResponseMsg);
                     lResponseMsg.setStatus(STATUS_SUCCESS);
                 } else {
-                    throw new Exception(String.format("Unsupported command [%s]", pRequestMsg.getCommand()));
+                    throw new UncheckedWsoProcessorException(
+                            String.format("Unsupported command [%s]", pRequestMsg.getCommand()));
                 }
             } catch (Exception e) {
                 lResponseMsg.setStatus(STATUS_ERROR);
@@ -115,6 +114,12 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
 
     /**
      */
+    protected String[] parseArgsFrom(String pArgsSrc) {
+        return Tool.parseCommandLine(pArgsSrc, null);
+    }
+
+    /**
+     */
     protected void runJSCommand(String pConnectionId, WsoCommonMessage pRequestMsg, WsoCommonMessage lResponseMsg) {
 
         WsoCommonMessage lOutputMsg = new WsoCommonMessage(pRequestMsg.getReference());
@@ -124,33 +129,41 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
             String lJsonMsg = json.toString(lOutputMsg);
             wsoProvider.sendMessageTo(pConnectionId, lJsonMsg.getBytes(encoding));
         });
-        js().eval(lCallCtx, pRequestMsg.getScript(), pRequestMsg.getArgsArray());
-    }
-
-        /**
-     */
-    protected void runJCCommand(String pConnectionId, WsoCommonMessage pRequestMsg, WsoCommonMessage lResponseMsg) {
-
-        WsoCommonMessage lOutputMsg = new WsoCommonMessage(pRequestMsg.getReference());
- 
-        JCCallContext lCallCtx = new JCCallContext((String output) -> {
-            lOutputMsg.setTextdata(output);
-            String lJsonMsg = json.toString(lOutputMsg);
-            wsoProvider.sendMessageTo(pConnectionId, lJsonMsg.getBytes(encoding));
-        });
-        jc().run(lCallCtx, pRequestMsg.getScript(), pRequestMsg.getArgsArray());
+        js().run(lCallCtx, pRequestMsg.getScript(), parseArgsFrom(pRequestMsg.getArgsSrc()));
+        if (lCallCtx.getResult() != null && !lCallCtx.getResult().isEmpty() && lCallCtx.getOutputConsumer() != null) {
+            String lResultPrint = Tool.formatCommandReturn(lCallCtx.getResult());
+            lCallCtx.getOutputConsumer().accept(lResultPrint);
+        }
     }
 
     /**
      */
-    protected JavaCommandProvider jc() {
-        if (jcProvider == null) {
-            jcProvider = JamnPersonalServerApp.getInstance().getJCmdProvider();
-            if (jcProvider == null) {
-                throw new UncheckedWsoProcessorException("ERROR Java Commands NOT available");
+    protected void runExtCommand(String pConnectionId, WsoCommonMessage pRequestMsg, WsoCommonMessage lResponseMsg) {
+
+        WsoCommonMessage lOutputMsg = new WsoCommonMessage(pRequestMsg.getReference());
+
+        ExtensionCallContext lCallCtx = new ExtensionCallContext((String output) -> {
+            lOutputMsg.setTextdata(output);
+            String lJsonMsg = json.toString(lOutputMsg);
+            wsoProvider.sendMessageTo(pConnectionId, lJsonMsg.getBytes(encoding));
+        });
+        ext().run(lCallCtx, pRequestMsg.getScript(), parseArgsFrom(pRequestMsg.getArgsSrc()));
+        if (lCallCtx.getResult() != null && !lCallCtx.getResult().isEmpty() && lCallCtx.getOutputConsumer() != null) {
+            String lResultPrint = Tool.formatCommandReturn(lCallCtx.getResult());
+            lCallCtx.getOutputConsumer().accept(lResultPrint);
+        }
+    }
+
+    /**
+     */
+    protected ExtensionHandler ext() {
+        if (extensionHandler == null) {
+            extensionHandler = JamnPersonalServerApp.getInstance().getExtensionHandler();
+            if (extensionHandler == null) {
+                throw new UncheckedWsoProcessorException("ERROR Extension Handler NOT available");
             }
         }
-        return jcProvider;
+        return extensionHandler;
     }
 
     /**
@@ -172,7 +185,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
         protected String reference = "";
         protected String textdata = "";
         protected String command = "";
-        protected List<String> args = new ArrayList<>();
+        protected String argsSrc = "";
         protected String script = "";
         protected String status = "";
         protected String error = "";
@@ -202,12 +215,8 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
             return command;
         }
 
-        public List<String> getArgs() {
-            return args;
-        }
-
-        public String[] getArgsArray() {
-            return args.toArray(new String[args.size()]);
+        public String getArgsSrc() {
+            return argsSrc;
         }
 
         public String getScript() {

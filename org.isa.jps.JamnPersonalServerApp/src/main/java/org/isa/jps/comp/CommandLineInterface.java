@@ -2,7 +2,12 @@
 package org.isa.jps.comp;
 
 import java.io.Console;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,20 +33,51 @@ public class CommandLineInterface {
     protected static final Logger LOG = Logger.getLogger(CommandLineInterface.class.getName());
     protected static final CommonHelper Tool = JamnPersonalServerApp.Tool;
     protected static final CliCommand UnknownCommand = new CliCommand("",
-            args -> "unknown command - type: [? | h | help] for help");
+            args -> String.format("unknown command [%s] - for help type: [? | h | help]", args.get(0)));
+    //read input file - command name
+    protected static final String RIF = "rif";
 
     protected Thread worker;
     protected boolean work = false;
     protected Map<String, CliCommand> commands = new HashMap<>();
     protected Function<String, String> commandProcessor;
     protected ConsoleWrapper console;
+    protected Path inputFile;
+    protected Charset standardEncoding = StandardCharsets.UTF_8;
 
     protected Predicate<String> defaultHelpChecker = input -> ("?".equals(input) || "h".equals(input)
             || "help".equals(input));
 
+    protected Function<String[], String> descrFormatter = parts -> {
+        String lArgs = parts[1].isEmpty() ? "[no args]" : parts[1];
+        return new StringBuilder(parts[0]).append(" : ").append(lArgs).append(" - ").append(parts[2]).toString();
+    };
+
     public CommandLineInterface() {
         commandProcessor = createDefaultCommandProcessor();
         console = new ConsoleWrapper(() -> "jps>");
+    }
+
+    /**
+     */
+    public void echo(Object pVal){
+        if(console!=null){
+            console.printValue(pVal);
+        }
+    }
+
+    /**
+     */
+    public CommandLineInterface setInputFile(Path pFile) {
+        inputFile = pFile;
+        return this;
+    }
+
+    /**
+     */
+    public CommandLineInterface setEncoding(Charset pEncoding) {
+        standardEncoding = pEncoding;
+        return this;
     }
 
     /**
@@ -72,9 +108,42 @@ public class CommandLineInterface {
         return commandProcessor.apply(pCmdLine);
     }
 
+    /**
+     */
+    public String newDefaultDescr(String pName, String pArgs, String pText) {
+        return descrFormatter.apply(new String[] { pName, pArgs, pText });
+    }
+
+    /**
+     */
+    public void setDescrFormatter(Function<String[], String> descrFormatter) {
+        this.descrFormatter = descrFormatter;
+    }
+
+    /**
+     */
+    public CommandBuilder newCommandBuilder() {
+        return new CommandBuilder();
+    }
+
     /*********************************************************
      * internal methods and classes
      *********************************************************/
+
+    protected String getCommandLineFromInputFile() {
+        String lCommandLine = "";
+        if (!Files.exists(inputFile)) {
+            LOG.warning(() -> String.format("CLI Inputfile does NOT exist [%s]", inputFile));
+        } else {
+            try {
+                lCommandLine = new String(Files.readAllBytes(inputFile), standardEncoding);
+            } catch (IOException e) {
+                LOG.severe(() -> String.format("Error reading CLI Inputfile [%s] [%s]", inputFile, e));
+                e.printStackTrace();
+            }
+        }
+        return lCommandLine;
+    }
 
     /**
      * <pre>
@@ -84,30 +153,37 @@ public class CommandLineInterface {
      */
     protected Function<String, String> createDefaultCommandProcessor() {
         return commandLine -> {
-            if (commandLine != null) {
-                commandLine = commandLine.trim();
-            }
             String name = "";
             String[] args = {};
-            String[] token = tokenizeCmdLine(commandLine);
+            String[] token = null;
+
+            commandLine = commandLine == null ? "" : commandLine.trim();
+            if (commandLine.equalsIgnoreCase(RIF) || commandLine.startsWith(RIF+" ")) {
+                commandLine = getCommandLineFromInputFile();
+            }
+
+            token = Tool.parseCommandLine(commandLine, null);
 
             if (token.length >= 1) {
                 name = token[0];
+            }else{
+                return "";
             }
             if (token.length >= 2) {
                 args = new String[token.length - 1];
                 System.arraycopy(token, 1, args, 0, args.length);
             }
-            if (name.isEmpty()) {
-                return "";
-            }
             if (defaultHelpChecker.test(name)) {
                 return getHelp();
             }
             CliCommand cmd = commands.getOrDefault(name, UnknownCommand);
+            if (cmd == UnknownCommand) {
+                return cmd.execute(new String[]{name}, console);
+            }
             if (args.length > 0 && defaultHelpChecker.test(args[0])) {
                 return cmd.getDescr();
             }
+
             return cmd.execute(args, console);
         };
     }
@@ -145,11 +221,17 @@ public class CommandLineInterface {
     /**
      */
     protected String getHelp() {
-        return commands.entrySet()
+        StringBuilder lBuilder = new StringBuilder(LS)
+            .append(this.newDefaultDescr(RIF, "[no args]", String.format("Read command from input file: [%s]", inputFile))).append(LS)
+            .append(commands.entrySet()
                 .stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(e -> e.getValue().getDescr())
-                .collect(Collectors.joining(LS));
+                .collect(Collectors.joining(LS))
+            )
+            .append(LS);
+
+        return lBuilder.toString();
     }
 
     /**
@@ -180,6 +262,14 @@ public class CommandLineInterface {
 
         public boolean hasArg(int pIdx, String pKey) {
             return get(pIdx).equals(pKey);
+        }
+
+        public boolean hasFlag(String pKey, Object pVal) {
+            parseArgsToMap();
+            if (argMap.containsKey(pKey) && pVal != null) {
+                return argMap.get(pKey).trim().equalsIgnoreCase(pVal.toString().trim());
+            }
+            return false;
         }
 
         public List<String> getArgsList() {
@@ -239,10 +329,6 @@ public class CommandLineInterface {
         }
     }
 
-    public CommandBuilder newCommandBuilder() {
-        return new CommandBuilder();
-    }
-
     public class CommandBuilder {
         private CliCommand cmd = new CliCommand();
 
@@ -254,8 +340,8 @@ public class CommandLineInterface {
             return this;
         }
 
-        public CommandBuilder descr(String pDescr) {
-            cmd.descr = pDescr;
+        public CommandBuilder descr(Function<String, String> pFnc) {
+            cmd.descr = pFnc.apply(cmd.name);
             return this;
         }
 
@@ -336,10 +422,8 @@ public class CommandLineInterface {
             if (pValue != null) {
                 if (useSysConsole()) {
                     sysConsole.printf("%s%s", pValue, LS);
-                    sysConsole.printf(LS);
                 } else {
                     outStream.println(pValue);
-                    outStream.print(LS);
                 }
             }
         }
@@ -356,9 +440,4 @@ public class CommandLineInterface {
 
     }
 
-    /**
-     */
-    protected static String[] tokenizeCmdLine(String pCmdLine) {
-        return Tool.rebuildQuotedWhitespaceStrings(pCmdLine.split(" "));
-    }
 }

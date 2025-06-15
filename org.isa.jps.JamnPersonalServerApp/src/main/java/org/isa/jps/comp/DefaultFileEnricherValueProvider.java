@@ -4,6 +4,7 @@ package org.isa.jps.comp;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Properties;
 
 import org.isa.ipc.JamnWebContentProvider.ExprString.ValueProvider;
 import org.isa.ipc.JamnWebContentProvider.WebFile;
@@ -22,6 +23,8 @@ public class DefaultFileEnricherValueProvider implements ValueProvider {
     protected Path appHome;
     protected Config config;
     protected String componentsRootPath;
+
+    protected Properties values = new Properties();
 
     /**
      */
@@ -45,9 +48,18 @@ public class DefaultFileEnricherValueProvider implements ValueProvider {
         if (pKey.endsWith(".html")) {
             lFilePath = getComponentFilePathFor(pKey, lWebFile);
             lValue = getFileContent(lFilePath);
+        }else if(values.containsKey(pKey)){
+            lValue = values.getProperty(pKey);
         }
 
         return lValue;
+    }
+
+    /**
+     */
+    public DefaultFileEnricherValueProvider addValue(String pKey, String pValue){
+        values.setProperty(pKey, pValue);
+        return this;
     }
 
     /**

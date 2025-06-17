@@ -33,7 +33,7 @@ There is No deployment - No dependency management - No external tooling required
 
 Workbench App <a href="https://iqbserve.de:9090/" target="_blank">Demo</a>
 <br>
-<img src="https://github.com/user-attachments/assets/e81d3e65-bf31-457e-8067-35aac042a809" width="600" height="400"></br>   
+<img src="https://github.com/user-attachments/assets/e2fe7d5b-015f-467d-b1dc-c9e6f37d35fd" width="600" height="400"></br>   
 
 <br></br>
 ## Disclamer  

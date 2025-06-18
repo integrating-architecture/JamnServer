@@ -26,7 +26,7 @@ The basic design is layered and modular - so users can easily adapt anything to 
 The <a href="/org.isa.jps.JamnPersonalServerApp">Personal App</a> exemplary assembles the Jamn Components in one application scaffolding (< 200 KB) extending the combination with a folder structure, a JavaScript Backend integration and a WebUI base for Browser based Frontends. It is a sample and a playground for possible use cases.
 
 Individual user functions and services can be implemented on the Backend-Side in Java, Java-Script or as Shell-Scripts<br>
-and on the Frontend-Side in HTML/CSS and Java-Script, as required.
+and on the Frontend-Side in HTML/CSS and Java-Script, as required ([e.g. Extensions](https://github.com/integrating-architecture/JamnServer/tree/master/org.isa.jps.JamnPersonalServerApp/extensions)).
 
 The App and the UI can be used local and/or remote - without changes and without having to meet any specifications or any other restrictions.<br>
 There is No deployment - No dependency management - No external tooling required.  

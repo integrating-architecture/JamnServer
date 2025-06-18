@@ -1,5 +1,5 @@
 ### Jamn Personal Server - Extensions
-JPS is intended as an instantly and ad hoc extensible toolbox - which on the one hand can be script like programmed and on the other hand makes Network capability, platform Shell, Web and Java available.
+JPS is intended as an instantly and ad hoc extensible toolbox - which on the one hand can be extended and programmed by scripts and on the other hand provides Network capability, platform Shell, Web and Java programs seamlessly.
 
 For this purpose, JPS offers a programming interface by
 

@@ -27,28 +27,27 @@ import org.isa.jps.JamnPersonalServerApp.Config;
  * <pre>
  * Extensions are the Jamn interface to Java based plugable functionality.
  * 
- * An extension is defined by a <apphome>/extensions/<extension name>.json definition file
- * where the filename is the extensions unique id - e.g. sample.Extension.json.
+ * An extension is defined by a <apphome>/extensions/<my-extension-name>.json definition file
+ * where the filename is the extensions unique id - e.g. sample.Command.json.
  * 
  * An extension is realized by a independent java class.
- * From Jaman's perspective, there are no mandatory requirements for the class.
- * A connection only requires a public constructor, either with or without a map parameter.
- * 
- * The second optional connection point is a freely nameable "execution" method
- * with a String array of arguments returning an optional String result.
+ * From the Jamn's perspective, there are no hard requirements for the class.
+ * Jamn just needs:
+ *  - a public constructor, either with or without a Map parameter
+ *  - a optional, freely nameable "execution" method with a String array of arguments returning a String
  * 
  * Extensions differ in terms of the visibility of Java objects/classes.
  * In "app" scope mode the extension has direct java access to the underlaying Jamn App and its classes.
  * But NOT to other extensions.
  * In "" blank mode the java scope is restricted to the blank JavaSE platform.
- * Independently of this, an extension can define any of its own imports.
+ * Independently of this, an extension can define any of its own imports and dependencies.
  * 
  * The Jamn extension mechanism is NO module system
  * and there is NO class, instance or state handling performed.
  * From the jamn point of view extension calls are stateless function calls
  * that always lead to a new object instantiation.
  * 
- * How ever ... an extension can implement internaly any other kind of behavior.
+ * How ever ... an extension can implement internally any other kind of behavior and technology.
  * </pre>
  */
 public class ExtensionHandler {
@@ -57,13 +56,15 @@ public class ExtensionHandler {
     protected static final Logger LOG = Logger.getLogger(ExtensionHandler.class.getName());
     protected static final CommonHelper Tool = JamnPersonalServerApp.Tool;
 
+    // the default constructor argument class
     protected static Class<?> defaultContextClass = Map.class;
+    // the default instance run/execution method name
+    protected static String defaultRunMethod = "execute";
 
     protected Charset encoding;
     protected JamnServer.JsonToolWrapper json;
     protected Config config;
     protected Path pathBase;
-    protected String defaultRunMethod = "execute";
 
     protected Map<String, ExtensionCartridge> extensions;
 
@@ -156,10 +157,7 @@ public class ExtensionHandler {
 
                 pCat.clazz = pCat.loader.loadClass(lDef.getClassName());
                 pCat.initConstructor(defaultContextClass);
-
-                if (lDef.hasRunMethod()) {
-                    pCat.runMethod = pCat.clazz.getMethod(lDef.getRunMethod(), String[].class);
-                }
+                pCat.initRunMethod(defaultRunMethod);
             }
 
         } catch (UncheckedExtensionException e) {
@@ -188,7 +186,7 @@ public class ExtensionHandler {
                 lDef = json.toObject(lJson, ExtensionDef.class);
             } else {
                 throw new UncheckedExtensionException(
-                        String.format("Unknown extension [%s]", lDefFile));
+                        String.format("NO extension definition-file found [%s]", lDefFile));
             }
         } catch (IOException e) {
             throw new UncheckedExtensionException(
@@ -264,6 +262,20 @@ public class ExtensionHandler {
                 useContext = true;
             } catch (NoSuchMethodException e) {
                 constructor = clazz.getConstructor();
+            }
+        }
+
+        /**
+         */
+        protected void initRunMethod(String pDefaultName) throws NoSuchMethodException, SecurityException {
+            if (def.hasRunMethod()) {
+                runMethod = clazz.getMethod(def.getRunMethod(), String[].class);
+            } else {
+                try {
+                    runMethod = clazz.getMethod(pDefaultName, String[].class);
+                } catch (NoSuchMethodException e) {
+                    LOG.warning(() -> String.format("NO run method found/defined for extension [%s]", def));
+                }
             }
         }
 

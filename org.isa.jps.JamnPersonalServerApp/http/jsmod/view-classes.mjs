@@ -738,6 +738,7 @@ class DefaultCompCSSClasses {
 	compSet = "wkv-compset";
 	comp = "wkv-ctrlcomp";
 	label = "wkv-label-ctrl";
+	link = "wkv-link-ctrl";
 	actionIcon = "wkv-header-action-ctrl";
 	button = "wkv-button-ctrl";
 	textField = "wkv-value-ctrl";
@@ -1107,6 +1108,25 @@ export class ViewComp {
 
 		if (configCb) {
 			configCb({ comp: this, label: ctrl });
+		}
+
+		return this;
+	}
+
+	addLink(props = { text: "unknown", clazzes: "" }, configCb = null) {
+		let typeId = "link";
+		let ctrl = document.createElement("a");
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+		ctrl.innerHTML = props.text;
+
+		this.#applyDefaultStyles(ctrl, typeId);
+		this.#applyProperties(ctrl, props)
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (configCb) {
+			configCb({ comp: this, link: ctrl });
 		}
 
 		return this;

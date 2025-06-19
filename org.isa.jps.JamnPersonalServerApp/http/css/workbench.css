@@ -694,6 +694,13 @@ hr.solid {
     color: var(--text-gray);
 }
 
+.wkv-link-ctrl {
+    display: inline-block;
+    font-size: 1.0em;
+    font-weight: 300;
+    color: var(--isa-title-blue);
+}
+
 .wkv-value-ctrl {
     font-size: 1.0em;
     font-weight: 300;
@@ -819,6 +826,16 @@ hr.solid {
     margin-inline: 0;
     margin: 0;
     margin-bottom: 20px;
+}
+
+.wkv-col-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.wkv-row-container {
+    display: flex;
+    flex-direction: row;
 }
 
 .wkv-compset-border {

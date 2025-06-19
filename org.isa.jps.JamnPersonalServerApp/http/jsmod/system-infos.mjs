@@ -8,6 +8,8 @@ let builder = new ViewBuilder();
 builder.defaultStyles.label = { "min-width": "80px", "text-align": "right" };
 let boxWidth = "720px";
 
+let app_scm_tab1 = "?tab=readme-ov-file#jamn---just-another-micro-node-server";
+
 /**
  * Concrete view class for the info component
  */
@@ -50,12 +52,26 @@ class SystemInfoView extends WorkView {
 		builder.newViewComp()
 			.addLabelTextField({ text: "Name:" }, { varid: "tfName", readOnly: true })
 			.appendTo(compSet);
+
 		builder.newViewComp()
 			.addLabelTextField({ text: "Version:" }, { varid: "tfVersion", readOnly: true })
 			.appendTo(compSet);
+
 		builder.newViewComp()
-			.addLabelTextArea({ text: "Description:" }, { varid: "tfDescription", rows: 3, readOnly: true })
-			.style({ "align-items": "baseline" })
+			.addLabel({ text: "Description:" })
+			.addContainer({ clazzes: "wkv-col-container", styleProps: { width: "100%" } }, (target) => {
+				let container = target.container;
+
+				target.comp.addTextArea({
+					parentCtrl: container, varid: "tfDescription", rows: 3, readOnly: true
+				});
+				target.comp.addLink({
+					parentCtrl: container, varid: "lnkReadMore", text: " ... read more on GitHub",
+					attribProps: { title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" }
+				});
+
+			})
+			.style({ "align-items": "baseline", "padding-right": "5px" })
 			.appendTo(compSet);
 	}
 
@@ -117,6 +133,7 @@ class SystemInfoView extends WorkView {
 			this.appBoxElems["tfName"].value = data.name;
 			this.appBoxElems["tfVersion"].value = `${data.version} - Build [${data.buildDate} UTC]`;
 			this.appBoxElems["tfDescription"].value = data.description;
+			this.appBoxElems["lnkReadMore"].href = data.links["app.scm"] + app_scm_tab1;
 
 			//create+build a table data object
 			let tableData = new TableData();

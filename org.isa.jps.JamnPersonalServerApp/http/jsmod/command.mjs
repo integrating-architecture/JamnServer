@@ -123,7 +123,7 @@ class CommandView extends WorkView {
 					}
 				}
 			})
-			.addContainer({ styleProps: { display: "flex", "flex-direction": "column", "margin-left": hgap } }, (target) => {
+			.addContainer({ clazzes: "wkv-col-container", styleProps: { "margin-left": hgap } }, (target) => {
 				let container = target.container;
 
 				target.comp.addTextField({
@@ -131,7 +131,7 @@ class CommandView extends WorkView {
 					styleProps: { "width": "200px" }, attribProps: { placeholder: "named args", "data-bind": "namedArgs" }
 				});
 
-				target.comp.addContainer({ parentCtrl: container, styleProps: { display: "flex", "flex-direction": "row", gap: "20px", "align-self": "flex-end", "margin-top": "5px" } }, (target) => {
+				target.comp.addContainer({ clazzes: "wkv-row-container", parentCtrl: container, styleProps: { gap: "20px", "align-self": "flex-end", "margin-top": "5px" } }, (target) => {
 					let iconBar = target.container;
 
 					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoDeleteNamedArgs", iconName: "trash", title: "Delete current named arg" });
@@ -147,7 +147,7 @@ class CommandView extends WorkView {
 
 		this.taOutput = builder.newViewComp()
 			.style({ "align-items": "flex-start" })
-			.addContainer({ styleProps: { display: "flex", "flex-direction": "column", "align-items": "center", "gap": "15px" } }, (target) => {
+			.addContainer({ clazzes: "wkv-col-container", styleProps: { "align-items": "center", "gap": "15px" } }, (target) => {
 				let labelBar = target.container;
 
 				target.comp.addLabelTextArea(

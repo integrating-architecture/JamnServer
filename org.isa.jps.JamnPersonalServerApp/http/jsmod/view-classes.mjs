@@ -171,6 +171,8 @@ export class WorkView {
 	isPinned = false;
 	isCollapsed = false;
 
+	workAreaDisplay;
+
 	constructor(id, file) {
 		this.id = id;
 		this.viewSource = new ViewSource(file);
@@ -186,6 +188,7 @@ export class WorkView {
 		this.viewElement = document.getElementById(this.id);
 		this.viewTitle = this.getElement("view.title");
 		this.viewWorkarea = this.getElement("work.view.workarea");
+		this.workAreaDisplay = this.viewWorkarea.style.display;
 		this.workIndicator = this.getElement("work.indicator");
 
 		this.closeIcon = IconElement.newIcon("close", this.getElement("close.icon"));
@@ -276,8 +279,8 @@ export class WorkView {
 
 		this.collapseIcon.toggle().and((icon) => {
 			icon.title = this.isCollapsed ? "Expand view" : "Collapse  view";
-
-			setDisplay(this.viewWorkarea, !this.isCollapsed);
+			let displayVal = !this.isCollapsed ? this.workAreaDisplay : "none";
+			setDisplay(this.viewWorkarea, displayVal);
 		});
 
 		return this.isCollapsed;

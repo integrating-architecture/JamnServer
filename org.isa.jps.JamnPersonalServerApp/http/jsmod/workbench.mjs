@@ -205,7 +205,7 @@ function initIntroBox() {
 
 	let introContentHtml = `
 		<span style="padding: 20px;">
-			<h1 style="color: var(--standard-dlg-header-bg)">Welcome to<br>Jamn Workbench</h1>
+			<h1 style="color: var(--isa-title-grayblue)">Welcome to<br>Jamn Workbench</h1>
 			<span style="font-size: 18px;">
 			<p>an example of using the Jamn Java-SE Microservice<br>together with plain Html and JavaScript<br></p>
 			<p style="margin-bottom: 5px;">to build lightweight, browser enabled

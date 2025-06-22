@@ -47,10 +47,12 @@ class SystemInfoView extends WorkView {
 		builder.setElementCollection(this.appBoxElems);
 
 		let compSet = builder.newFieldset({ title: "Application", clazzes: ["wkv-compset-border"], styleProps: { width: boxWidth } });
-		this.viewWorkarea.prepend(compSet);
+		let infoContainer = this.getElement("info.left.container");
+		infoContainer.prepend(compSet);
 
 		builder.newViewComp()
-			.addLabelTextField({ text: "Name:" }, { varid: "tfName", readOnly: true })
+			.addLabelTextField({ text: "Name:" }, { varid: "tfName", readOnly: true, 
+				styleProps:{"font-size": "18px", color: "var(--isa-title-grayblue)"}})
 			.appendTo(compSet);
 
 		builder.newViewComp()
@@ -66,8 +68,9 @@ class SystemInfoView extends WorkView {
 					parentCtrl: container, varid: "tfDescription", rows: 3, readOnly: true
 				});
 				target.comp.addLink({
-					parentCtrl: container, varid: "lnkReadMore", text: " ... read more on GitHub",
-					attribProps: { title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" }
+					parentCtrl: container, varid: "lnkReadMore", text: "Read more on GitHub ... ",
+					attribProps: { title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" },
+					styleProps: { "text-align": "right" }
 				});
 
 			})

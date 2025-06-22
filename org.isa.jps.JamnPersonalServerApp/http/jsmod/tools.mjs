@@ -126,6 +126,10 @@ export const typeUtil = {
 		return (val !== null && typeof val === 'object');
 	},
 
+	isDomElement(val) {
+		return (val !== null && (val instanceof Element || val.nodeType !== undefined));
+	},
+
 	isFunction(val) {
 		return (val !== null && (typeof val === 'function' || val instanceof Function));
 	},

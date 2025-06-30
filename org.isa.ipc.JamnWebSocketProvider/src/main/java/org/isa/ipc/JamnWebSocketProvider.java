@@ -16,10 +16,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
@@ -416,13 +416,12 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
         }
 
         /**
-         * @throws UnsupportedEncodingException
          * @throws NoSuchAlgorithmException
          */
         protected String createWebSocketAcceptKey(String pRequestKey)
-                throws NoSuchAlgorithmException, UnsupportedEncodingException {
+                throws NoSuchAlgorithmException {
             String lKey = pRequestKey + HttpHeader.MAGIC_WEBSOCKET_GUID;
-            byte[] lSha1 = MessageDigest.getInstance("SHA-1").digest(lKey.getBytes("UTF-8"));
+            byte[] lSha1 = MessageDigest.getInstance("SHA-1").digest(lKey.getBytes(StandardCharsets.UTF_8));
             lKey = Base64.getEncoder().encodeToString(lSha1);
             return lKey;
         }
@@ -441,13 +440,12 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
             int readPacketLength = 0;
             byte[] packet = new byte[1024];
             ByteArrayOutputStream packetStream = new ByteArrayOutputStream();
-            byte[] message = new byte[0];
+            byte[] message;
 
             while (connected) {
                 readPacketLength = pInStream.read(packet);
 
                 if (readPacketLength == -1) {
-                    connected = false;
                     break;
                 } else {
                     if ((packet[0] & (byte) 15) == (byte) 8) { // Disconnect packet
@@ -455,14 +453,13 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                         packet = encodeMessage(packet);
                         pOutStream.write(packet, 0, readPacketLength);
                         pOutStream.flush();
-                        connected = false;
                         break;
                     }
                     byte messageLengthByte = 0;
                     int messageLength = 0;
                     int maskIndex = 2;
                     int messageStart = 0;
-                    // b[0] is always text in my case so no need to check;
+                    // b[0] is always text in my case so no need to check
                     byte data = packet[1];
                     byte op = (byte) 127; // 0111 111
                     messageLengthByte = (byte) (data & op);
@@ -471,8 +468,8 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                     if (messageLengthByte == (byte) 126 || messageLengthByte == (byte) 127) {
                         if (messageLengthByte == (byte) 126) {
                             maskIndex = 4;
-                            // if (messageLengthInt==(byte)126), then 16-bit length is stored in packet[2]
-                            // and [3]
+                            // if messageLengthInt==(byte)126, then 16-bit length is stored in packet[2] and
+                            // [3]
                             ByteBuffer messageLength16Bit = ByteBuffer.allocateDirect(4);
                             messageLength16Bit.order(ByteOrder.BIG_ENDIAN);
                             messageLength16Bit.put((byte) 0x00);
@@ -483,7 +480,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                             totalPacketLength = messageLength + 8;
                         } else {
                             maskIndex = 10;
-                            // if (messageLengthInt==(byte)127), then 64-bit length is stored in bytes [2]
+                            // if messageLengthInt==(byte)127, then 64-bit length is stored in bytes [2]
                             // to [9]. Using only 32-bit
                             ByteBuffer messageLength64Bit = ByteBuffer.allocateDirect(4);
                             messageLength64Bit.order(ByteOrder.BIG_ENDIAN);
@@ -549,21 +546,21 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
             } else if (rawData.length >= 126 && rawData.length <= 65535) {
                 frame[1] = (byte) 126;
                 int len = rawData.length;
-                frame[2] = (byte) ((len >> 8) & (byte) 255);
+                frame[2] = (byte) ((len >> 8) & ((byte) 255 & 0xff));
                 frame[3] = (byte) (len & (byte) 255);
                 frameCount = 4;
             } else {
                 frame[1] = (byte) 127;
-                // org - int len = rawData.length;
+                // org - int len = rawData.length
                 long len = rawData.length; // note an int is not big enough in java
-                frame[2] = (byte) ((len >> 56) & (byte) 255);
-                frame[3] = (byte) ((len >> 48) & (byte) 255);
-                frame[4] = (byte) ((len >> 40) & (byte) 255);
-                frame[5] = (byte) ((len >> 32) & (byte) 255);
-                frame[6] = (byte) ((len >> 24) & (byte) 255);
-                frame[7] = (byte) ((len >> 16) & (byte) 255);
-                frame[8] = (byte) ((len >> 8) & (byte) 255);
-                frame[9] = (byte) (len & (byte) 255);
+                frame[2] = (byte) ((len >> 56) & ((byte) 255 & 0xff));
+                frame[3] = (byte) ((len >> 48) & ((byte) 255 & 0xff));
+                frame[4] = (byte) ((len >> 40) & ((byte) 255 & 0xff));
+                frame[5] = (byte) ((len >> 32) & ((byte) 255 & 0xff));
+                frame[6] = (byte) ((len >> 24) & ((byte) 255 & 0xff));
+                frame[7] = (byte) ((len >> 16) & ((byte) 255 & 0xff));
+                frame[8] = (byte) ((len >> 8) & ((byte) 255 & 0xff));
+                frame[9] = (byte) (len & ((byte) 255 & 0xff));
                 frameCount = 10;
             }
 

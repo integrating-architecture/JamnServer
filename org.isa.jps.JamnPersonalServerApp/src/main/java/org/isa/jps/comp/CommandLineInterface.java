@@ -131,15 +131,14 @@ public class CommandLineInterface {
      *********************************************************/
 
     protected String getCommandLineFromInputFile() {
-        String lCommandLine = "";
+        String lCommandLine = "<![CDATA[  **CLI input file error**  ]]>";
         if (!Files.exists(inputFile)) {
-            LOG.warning(() -> String.format("CLI Inputfile does NOT exist [%s]", inputFile));
+            LOG.severe(() -> String.format("CLI Inputfile does NOT exist [%s]", inputFile));
         } else {
             try {
                 lCommandLine = new String(Files.readAllBytes(inputFile), standardEncoding);
             } catch (IOException e) {
                 LOG.severe(() -> String.format("Error reading CLI Inputfile [%s] [%s]", inputFile, e));
-                e.printStackTrace();
             }
         }
         return lCommandLine;

@@ -576,9 +576,8 @@ public class JamnPersonalServerApp {
                     Object lJsonObj = jack.readValue(pJsonInput, Object.class);
                     return jack.writerWithDefaultPrettyPrinter().writeValueAsString(lJsonObj);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    throw new UncheckedJsonException(UncheckedJsonException.PRETTIFY_ERROR, e);
                 }
-                return pJsonInput;
             }
 
         };

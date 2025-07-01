@@ -1799,6 +1799,7 @@ public class JamnServer {
 
         public static final String TOOBJ_ERROR = "JSON: string parse to object error";
         public static final String TOJSON_ERROR = "JSON: object write as json string error";
+        public static final String PRETTIFY_ERROR = "JSON: prettiying json string error";
 
         public UncheckedJsonException(String pMsg, Throwable pCause) {
             super(pMsg, pCause);

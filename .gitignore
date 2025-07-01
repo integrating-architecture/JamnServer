@@ -5,6 +5,7 @@
 **/.settings
 **/.project
 **/.vscode
+**/.sonarlint
 **/siks
 *snippets*
 **/workspace

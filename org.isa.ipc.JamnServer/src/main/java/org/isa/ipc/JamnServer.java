@@ -6,6 +6,7 @@ import static org.isa.ipc.JamnServer.HttpHeader.HTTP_DEFAULT_RESPONSE_ATTRIBUTES
 import static org.isa.ipc.JamnServer.HttpHeader.Field.ACCESS_CONTROL_ALLOW_HEADERS;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.ACCESS_CONTROL_ALLOW_METHODS;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.ACCESS_CONTROL_ALLOW_ORIGIN;
+import static org.isa.ipc.JamnServer.HttpHeader.Field.CONNECTION;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.CONTENT_LENGTH;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.HTTP_1_0;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.HTTP_METHOD;
@@ -17,13 +18,13 @@ import static org.isa.ipc.JamnServer.HttpHeader.Field.SET_COOKIE;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.ACCESS_CONTROL_ALLOW_HEADERS_ALL;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.ACCESS_CONTROL_ALLOW_METHODS_ALL;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.ACCESS_CONTROL_ALLOW_ORIGIN_ALL;
+import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.CLOSE;
+import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.KEEP_ALIVE;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.TEXT_HTML;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_200_OK;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_204_NO_CONTENT;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_403_FORBIDDEN;
-import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_408_TIMEOUT;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -112,20 +114,24 @@ public class JamnServer {
         try {
             InputStream lIn = JamnServer.class.getResourceAsStream("/blank-server.html");
             if (lIn != null) {
-                try (BufferedReader lReader = new BufferedReader(new InputStreamReader(lIn))) {
-                    BlankServerPage = lReader.lines().collect(Collectors.joining("\n"));
-                }
+                BufferedReader lReader = new BufferedReader(new InputStreamReader(lIn));
+                BlankServerPage = lReader.lines().collect(Collectors.joining("\n"));
             }
-        } catch (SecurityException | IOException e) {
-            e.printStackTrace();
-            throw new UncheckedJamnServerException(e, "Jamn Server static initialization failed");
+        } catch (RuntimeException e) {
+            throw new UncheckedJamnServerException(e, "\nERROR - Jamn Server static initialization failed\n");
         }
     }
+
+    protected static final Function<Socket, String> GetSocketIDText = socket -> String.format("ClientSocket [%s]:",
+            socket.hashCode());
 
     public static final String LS = System.lineSeparator();
     public static final String LF = "\n";
     public static final String CRLF = "\r\n";
     public static final String WEBSOCKET_PROVIDER = "WebSocketProvider";
+    public static final String SOCKET_IDTEXT = "socket.idtext";
+    public static final String SOCKET_USAGE = "socket.usage";
+    public static final String SOCKET_EXCEPTION = "socket.exception";
 
     // extendable, customizable helper functions
     protected static HttpHelper HttpHelper = new HttpHelper();
@@ -261,7 +267,7 @@ public class JamnServer {
 
         public ServerKernel(Config pConfig) {
             config = pConfig;
-            requestProcessor = new DefaultRequestProcessor(pConfig.getEncoding());
+            requestProcessor = new DefaultRequestProcessor(pConfig);
         }
 
         /*********************************************************
@@ -293,6 +299,7 @@ public class JamnServer {
 
                         final Socket lClientSocket = lServerSocket.accept();
 
+                        // start request execution in its own thread
                         requestExecutor.execute(() -> {
                             Map<String, String> lComData = new HashMap<>(5);
                             long start = System.currentTimeMillis();
@@ -300,8 +307,8 @@ public class JamnServer {
                                 try {
                                     lClientSocket.setSoTimeout(clientSocketTimeout);
                                     lClientSocket.setTcpNoDelay(true);
-                                    requestProcessor.handleRequest(lClientSocket.getInputStream(),
-                                            lClientSocket.getOutputStream(), lClientSocket, lComData);
+                                    // delegate the concrete request handling
+                                    requestProcessor.handleRequest(lClientSocket, lComData);
 
                                 } finally {
                                     try {
@@ -310,8 +317,11 @@ public class JamnServer {
                                         }
                                     } finally {
                                         lClientSocket.close();
-                                        LOG.fine(() -> String.format("ClientSocket closed: %s - %s",
-                                                (System.currentTimeMillis() - start),
+                                        LOG.fine(() -> String.format("%s %s %s %s %s",
+                                                lComData.getOrDefault(SOCKET_IDTEXT, "unknown"),
+                                                "closed [" + (System.currentTimeMillis() - start) + "]",
+                                                "usage [" + lComData.getOrDefault(SOCKET_USAGE, "") + "]",
+                                                "exp [" + lComData.getOrDefault(SOCKET_EXCEPTION, "") + "]",
                                                 Thread.currentThread().getName()));
                                     }
                                 }
@@ -340,7 +350,7 @@ public class JamnServer {
             int lPort = config.getPort();
             ServerSocket lSocket = null;
 
-            try{
+            try {
                 if (!System.getProperty("javax.net.ssl.keyStore", "").isEmpty()
                         && !System.getProperty("javax.net.ssl.keyStorePassword", "").isEmpty()) {
                     lSocket = SSLServerSocketFactory.getDefault().createServerSocket(lPort);
@@ -352,8 +362,8 @@ public class JamnServer {
                 if (lPort == 0) {
                     config.setActualPort(lSocket.getLocalPort());
                 }
-            }catch(Exception e){
-                if(lSocket!=null){
+            } catch (Exception e) {
+                if (lSocket != null) {
                     lSocket.close();
                 }
                 throw e;
@@ -370,7 +380,6 @@ public class JamnServer {
             }
 
             clientSocketTimeout = config.getClientSocketTimeout();
-            requestProcessor.setProperty(Config.HTTP_CORS_ENABLED, String.valueOf(config.isCORSEnabled()));
 
             serverThread = new ServerThread();
             serverThread.setName(getClass().getSimpleName() + " - on Port [" + config.getPort() + "]");
@@ -479,7 +488,7 @@ public class JamnServer {
          * @param pComData - internal communication data (not used yet)
          * @throws IOException
          */
-        void handleRequest(InputStream pIn, OutputStream pOut, Socket pSocket, Map<String, String> pComData)
+        void handleRequest(Socket pSocket, Map<String, String> pComData)
                 throws IOException;
 
         /**
@@ -496,12 +505,6 @@ public class JamnServer {
         /**
          */
         default void setAccessManager(AccessManager pManager) {
-        }
-
-        /**
-         */
-        default RequestProcessor setProperty(String pKey, String pValue) {
-            return this;
         }
     }
 
@@ -569,21 +572,24 @@ public class JamnServer {
      * Please see: {@link AccessManager}
      */
     public static class DefaultRequestProcessor implements RequestProcessor {
+        protected Config config;
+        protected String encoding = StandardCharsets.UTF_8.name();
+        protected boolean keepAliveEnabled = false;
+
         /**
          */
-        public DefaultRequestProcessor(String pEncoding) {
-            this.encoding = pEncoding;
+        public DefaultRequestProcessor(Config pConfig) {
+            this.config = pConfig;
+            this.encoding = config.getEncoding();
+            this.keepAliveEnabled = config.isConnectionKeepAlive();
         }
-
-        protected Properties props = new Properties();
-        protected String encoding = StandardCharsets.UTF_8.name();
 
         // the available ContentProvider
         protected Map<String, ContentProvider> contentProviderMap = new HashMap<>();
 
         //
         protected AccessManager accessManager = (RequestMessage pRequest, ResponseMessage pResponse) -> LOG
-                        .warning(() -> "WARNING - EMPTY DEFAULT AccessManager active");
+                .warning(() -> "WARNING - EMPTY DEFAULT AccessManager active");
 
         // an empty default provider dispatcher
         protected ContentProviderDispatcher contentDispatcher = (RequestMessage pRequest) -> {
@@ -617,7 +623,6 @@ public class JamnServer {
             LOG.warning(() -> "USE of EMPTY default UpgradeHandler Content Provider");
             return SC_204_NO_CONTENT;
         };
-
 
         /**
          */
@@ -663,25 +668,18 @@ public class JamnServer {
 
         /**
          */
-        @Override
-        public RequestProcessor setProperty(String pKey, String pValue) {
-            props.setProperty(pKey, pValue);
-            return this;
-        }
-
-        /**
-         */
         protected boolean isCORSEnabled() {
-            return Boolean.valueOf(props.getProperty(Config.HTTP_CORS_ENABLED, "false"));
+            return config.isCORSEnabled();
         }
 
         /**
          */
-        protected HttpHeader readHeader(InputStream pInStream) throws IOException {
+        protected HttpHeader readHeader(InputStream pInStream, String pSocketIDText) throws IOException {
             byte[] lBytes = HttpHelper.readHttpRequestHeader(pInStream);
             String lHeader = new String(lBytes, this.encoding);
 
-            LOG.fine(() -> String.format("%s%s - Request header: %s%s", LS, Thread.currentThread().getName(),
+            LOG.fine(() -> String.format("%s%s %s - Request header: %s%s", LS, pSocketIDText,
+                    Thread.currentThread().getName(),
                     lHeader.trim(), LS));
 
             return new HttpHeader(Collections.unmodifiableMap(HttpHelper.parseHttpHeader(lHeader)));
@@ -698,59 +696,112 @@ public class JamnServer {
         }
 
         /**
+         */
+        protected ResponseMessage newResponseMessageFor(OutputStream pOutStream) {
+            ResponseMessage lResponse = new ResponseMessage(pOutStream, isCORSEnabled(),
+                    HTTP_DEFAULT_RESPONSE_ATTRIBUTES);
+            // set default close - overwrite later if request want keep-alive
+            lResponse.header().setConnectionClose();
+            return lResponse;
+        }
+
+        /**
+         */
+        protected int getInitialBufferSizeFor(String pType){
+            return "in".equalsIgnoreCase(pType) ? 4*1024 : 8*1024;
+        }
+
+        /**
          * The default handling. Read an incoming http request and reply a basic http
          * response.
          */
         @Override
-        public void handleRequest(InputStream pSocketInStream, OutputStream pSocketOutStream, Socket pSocket,
-                Map<String, String> pComData) throws IOException {
+        public void handleRequest(Socket pSocket, Map<String, String> pComData) throws IOException {
+
+            String socketIDText = GetSocketIDText.apply(pSocket);
+            pComData.put(SOCKET_IDTEXT, socketIDText);
 
             ContentProvider lContentProvider = null;
-            InputStream lInStream = new BufferedInputStream(pSocketInStream, 4096);
-            OutputStream lOutStream = new BufferedOutputStream(pSocketOutStream, 4096);
+            InputStream lInStream = new BufferedInputStream(pSocket.getInputStream(), getInitialBufferSizeFor("in"));
+            OutputStream lOutStream = new BufferedOutputStream(pSocket.getOutputStream(), getInitialBufferSizeFor("out"));
 
             RequestMessage lRequest = null;
-            ResponseMessage lResponse = new ResponseMessage(lOutStream, isCORSEnabled(),
-                    HTTP_DEFAULT_RESPONSE_ATTRIBUTES);
+            ResponseMessage lResponse = newResponseMessageFor(lOutStream);
 
+            boolean keepAlive = false;
+            // a usage counter for debugging purpose
+            int usage = 0;
             try {
-                lRequest = new RequestMessage(readHeader(lInStream));
-                lRequest.setBody(
-                        readBody(lInStream, lRequest.getContentLength(), lRequest.getEncoding()));
+                LOG.fine(() -> String.format("%s %s %s %s", socketIDText, "opened", pSocket.toString(),
+                        Thread.currentThread().getName()));
 
-                // call a possible installed access manager
-                // the manager may trigger an immediately response
-                accessManager.processRequestAccess(lRequest, lResponse);
+                do {
+                    keepAlive = false;
+                    lRequest = new RequestMessage(readHeader(lInStream, socketIDText));
+                    lRequest.setBody(readBody(lInStream, lRequest.getContentLength(), lRequest.getEncoding()));
 
-                // if accessManager has NOT already sent a response
-                if (lResponse.isNotProcessed()) {
-                    // route request to the required content provider
-                    // check for WebSocket upgrade request
-                    if (lRequest.header().isWebSocket()) {
-                        // if so switch to WebSocket processing
-                        UpgradeHandler lWebSocketHandler = getContentProviderUpgradeHandlerFor(WEBSOCKET_PROVIDER);
-                        lWebSocketHandler.handleRequest(lRequest, pSocketInStream, pSocketOutStream, pSocket, pComData);
-                    } else {
-                        // else do provided http processing
-                        lContentProvider = getContentProviderFor(lRequest);
-                        lContentProvider.createResponseContent(lRequest, lResponse);
+                    lResponse = newResponseMessageFor(lOutStream);
 
-                        lResponse.send();
+                    // call a possible installed access manager
+                    // the manager may trigger an immediately response
+                    accessManager.processRequestAccess(lRequest, lResponse);
+
+                    // if accessManager has NOT already sent a response
+                    if (lResponse.isNotProcessed()) {
+                        // route request to the required content provider
+                        // check for WebSocket upgrade request
+                        if (lRequest.header().isWebSocket()) {
+                            // if so switch to WebSocket processing
+                            UpgradeHandler lWebSocketHandler = getContentProviderUpgradeHandlerFor(WEBSOCKET_PROVIDER);
+                            lWebSocketHandler.handleRequest(lRequest, pSocket.getInputStream(),
+                                    pSocket.getOutputStream(), pSocket, pComData);
+                        } else {
+                            keepAlive = lRequest.header().hasConnectionKeepAlive();
+                            if (keepAlive && keepAliveEnabled) {
+                                lResponse.header().setConnectionKeepAlive();
+                            }
+
+                            // provided http processing
+                            lContentProvider = getContentProviderFor(lRequest);
+                            lContentProvider.createResponseContent(lRequest, lResponse);
+                            lResponse.send();
+                            usage++;
+                        }
                     }
-                }
+                    // if keep-alive loop until socket timeout
+                } while (keepAlive && keepAliveEnabled);
             } catch (InterruptedIOException e) {
-                lResponse.sendStatus(SC_408_TIMEOUT);
+                pComData.put(SOCKET_EXCEPTION, e.getMessage());
+                interruptCleanUp(socketIDText, lInStream, lOutStream);
             } catch (SecurityException se) {
                 // send 403 for any security exception
                 lResponse.sendStatus(SC_403_FORBIDDEN);
             } catch (Exception e) {
+                // send 500 for any other exception
                 lResponse.sendStatus(SC_500_INTERNAL_ERROR);
-                LOG.severe(() -> String.format("Request Handling internal/runtime ERROR: %s %s %s", e, LS,
+                LOG.severe(() -> String.format("%s Request handling internal ERROR: %s %s %s", socketIDText, e, LS,
                         getStackTraceFrom(e)));
             } finally {
                 lResponse.close();
+                pComData.put(SOCKET_USAGE, String.valueOf(usage));
             }
         }
+
+        /**
+        */
+        protected void interruptCleanUp(String pIDText, InputStream pIn, OutputStream pOut) {
+            try {
+                pIn.close();
+            } catch (Exception e) {
+                LOG.warning(String.format("%s ERROR closing input after timeout [%s]", pIDText, e.toString()));
+            }
+            try {
+                pOut.close();
+            } catch (Exception e) {
+                LOG.warning(String.format("%s ERROR closing output after timeout [%s]", pIDText, e.toString()));
+            }
+        }
+
     }
 
     /**
@@ -900,6 +951,7 @@ public class JamnServer {
             }
 
             public static final String CLOSE = "close";
+            public static final String KEEP_ALIVE = "keep-alive";
             public static final String UPGRADE = "Upgrade";
             public static final String KEEP_ALIVE_UPGRADE = "keep-alive, Upgrade";
             public static final String WEBSOCKET = "websocket";
@@ -1026,6 +1078,24 @@ public class JamnServer {
          */
         public String getWebSocketKey() {
             return get(SEC_WEBSOCKET_KEY);
+        }
+
+        /**
+         */
+        public boolean hasConnectionKeepAlive() {
+            return has(CONNECTION, KEEP_ALIVE);
+        }
+
+        /**
+         */
+        public HttpHeader setConnectionKeepAlive() {
+            return set(CONNECTION, KEEP_ALIVE);
+        }
+
+        /**
+         */
+        public HttpHeader setConnectionClose() {
+            return set(CONNECTION, CLOSE);
         }
 
         /**
@@ -1476,7 +1546,8 @@ public class JamnServer {
          *
          * </pre>
          */
-        public StringBuilder createHttpHeader(String[] pStatusLine, Map<String, String> pAttributes, List<String> pSetCookies) {
+        public StringBuilder createHttpHeader(String[] pStatusLine, Map<String, String> pAttributes,
+                List<String> pSetCookies) {
             StringBuilder lHeader = new StringBuilder(String.join(" ", pStatusLine));
             for (Map.Entry<String, String> entry : pAttributes.entrySet()) {
                 lHeader.append(CRLF).append(entry.getKey()).append(": ").append(entry.getValue());
@@ -1536,8 +1607,9 @@ public class JamnServer {
      */
     public static class Config {
 
-        public static final String HTTP_CORS_ENABLED = "http-cors-enabled";
-        public static final String CLIENT_SOCKET_TIMEOUT = "client-socket-timeout";
+        public static final String HTTP_CORS_ENABLED = "http.cors.enabled";
+        public static final String CLIENT_SOCKET_TIMEOUT = "client.socket.timeout";
+        public static final String CONNECTION_KEEP_ALIVE = "connection.keep.alive";
 
         public static final String DEFAULT_CONFIG = String.join(LF,
                 "##",
@@ -1545,9 +1617,10 @@ public class JamnServer {
                 "##", "",
                 "#Server port", "port=8099", "",
                 "#Max worker threads", "worker=5", "",
+                "#Socket timeout in millis", "client.socket.timeout=10000", "",
+                "#Use Connection:keep-alive header", "connection.keep.alive=false", "",
                 "#Encoding", "encoding=" + StandardCharsets.UTF_8.name(), "",
-                "#Socket timeout in millis", "client-socket-timeout=10000", "",
-                "#Cross origin flag", "http-cors-enabled=false", "");
+                "#Cross origin flag", "http.cors.enabled=false", "");
 
         protected Properties props = new Properties();
 
@@ -1617,6 +1690,12 @@ public class JamnServer {
          */
         public void setCORSEnabled(boolean pVal) {
             props.setProperty(HTTP_CORS_ENABLED, String.valueOf(pVal));
+        }
+
+        /**
+         */
+        public boolean isConnectionKeepAlive() {
+            return Boolean.parseBoolean(props.getProperty(CONNECTION_KEEP_ALIVE, "false"));
         }
 
         /**

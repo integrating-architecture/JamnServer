@@ -919,6 +919,8 @@ export class ViewBuilder {
  */
 export class ViewComp {
 
+	#directlySupportedAttributes = ["innerHTML", "disabled"]; 
+
 	builder;
 	comp = null;
 
@@ -962,19 +964,30 @@ export class ViewComp {
 		}
 	}
 
-	#applyProperties(ctrl, props) {
-		if (props.styleProps) {
-			this.#setStyleOf(ctrl, props.styleProps);
+	#applyDirectAttributeProperties(ctrl, props) {
+		//comfort method
+		//apply the list of direct supported attributes if any in props
+		let directPropValues = {};
+		this.#directlySupportedAttributes.forEach((name)=>{
+			if (props.hasOwnProperty(name)) {
+				directPropValues[name] = props[name];
+			}
+		});
+		if(Object.keys(directPropValues).length > 0){
+			this.#setAttributesOf(ctrl, directPropValues);
 		}
+	}
+
+	#applyProperties(ctrl, props) {
+
+		this.#applyDirectAttributeProperties(ctrl, props);
+
+		// apply the dedicated props
 		if (props.attribProps) {
 			this.#setAttributesOf(ctrl, props.attribProps);
 		}
-		//comfort methods
-		if (props.hasOwnProperty("innerHTML")) {
-			this.#setAttributesOf(ctrl, { "innerHTML": props.innerHTML });
-		}
-		if (props.hasOwnProperty("disabled")) {
-			this.#setAttributesOf(ctrl, { "disabled": props.disabled });
+		if (props.styleProps) {
+			this.#setStyleOf(ctrl, props.styleProps);
 		}
 	}
 

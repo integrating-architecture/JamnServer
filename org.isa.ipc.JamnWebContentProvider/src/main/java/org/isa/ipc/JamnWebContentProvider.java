@@ -12,6 +12,7 @@ import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_404_NOT_FOUND;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -103,8 +104,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     /**
      */
     public static JamnWebContentProvider Builder(String pWebRoot) {
-        JamnWebContentProvider lProvider = new JamnWebContentProvider(pWebRoot);
-        return lProvider;
+        return new JamnWebContentProvider(pWebRoot);
     }
     
     /**
@@ -405,7 +405,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         // where the comment characters are NOT searched or parsed
         protected static String TemplateMarker = "jamn.web.template";
         protected static int MarkLen = TemplateMarker.length() + 10;// marklen + a surcharge for comment chars
-        protected static Charset Encoding = Charset.forName("UTF-8");
+        protected static Charset Encoding = StandardCharsets.UTF_8;
 
         // the ValueProvider for expressions like "${valuekey}"
         protected ValueProvider valueProvider = null;

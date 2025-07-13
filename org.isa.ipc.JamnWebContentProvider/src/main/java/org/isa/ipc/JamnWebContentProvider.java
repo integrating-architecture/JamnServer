@@ -11,6 +11,7 @@ import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_204_NO_CONTENT;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_404_NOT_FOUND;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -50,7 +51,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     protected String webroot;
 
     // customizable file helper functions
-    public FileHelper fileHelper = new FileHelper();
+    protected FileHelper fileHelper = new FileHelper();
 
     /**
      * <pre>
@@ -106,7 +107,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     public static JamnWebContentProvider Builder(String pWebRoot) {
         return new JamnWebContentProvider(pWebRoot);
     }
-    
+
     /**
      */
     public JamnWebContentProvider setJsonTool(JsonToolWrapper pTool) {
@@ -149,6 +150,18 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     }
 
     /**
+     */
+    public FileHelper getFileHelper() {
+        return fileHelper;
+    }
+
+    /**
+     */
+    public void setFileHelper(FileHelper fileHelper) {
+        this.fileHelper = fileHelper;
+    }
+
+    /**
      * JamnServer.ContentProvider Interface method.
      */
     @Override
@@ -167,15 +180,18 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
                 } else {
                     pResponse.setStatus(SC_204_NO_CONTENT);
                 }
-            }else{
-                LOG.warning(() -> String.format("WebContentProvider Warning: Unsupported HTTP Method [%s]", pRequest.getMethod()));
+            } else {
+                LOG.warning(() -> String.format("WebContentProvider Warning: Unsupported HTTP Method [%s]",
+                        pRequest.getMethod()));
             }
         } catch (WebContentException ce) {
-            LOG.fine(() -> String.format("WebContentProvider Error: [%s]%s%s", ce.getMessage(), LS, getStackTraceFrom(ce)));
+            LOG.fine(() -> String.format("WebContentProvider Error: [%s]%s%s", ce.getMessage(), LS,
+                    getStackTraceFrom(ce)));
             pResponse.setStatus(ce.getHttpStatus());
         } catch (Exception e) {
-            LOG.severe(String.format("WebContentProvider internal Error GET [%s]%s%s%s%s", pRequest.getPath(), LS, e, LS,
-                    getStackTraceFrom(e)));
+            LOG.severe(
+                    String.format("WebContentProvider internal Error GET [%s]%s%s%s%s", pRequest.getPath(), LS, e, LS,
+                            getStackTraceFrom(e)));
             pResponse.setStatus(SC_500_INTERNAL_ERROR);
         }
     }
@@ -233,7 +249,6 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      * Internal Provider classes.
      *********************************************************/
 
-
     /*********************************************************
      * Plugable extension interfaces, classes and factory.
      *********************************************************/
@@ -242,7 +257,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      * might be a filesystem file, or a database record or what ever.
      */
     public static interface FileProvider {
-        void readAllFileBytes(WebFile pWebFile) throws Exception;
+        void readAllFileBytes(WebFile pWebFile) throws IOException;
     }
 
     /**
@@ -250,7 +265,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      * values, text or code.
      */
     public static interface FileEnricher {
-        void enrich(WebFile pFile) throws Exception;
+        void enrich(WebFile pFile);
     }
 
     /**
@@ -270,6 +285,8 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      * which can be overwritten individually
      * </pre>
      */
+    // because the public fields ar intended to be changeable
+    @SuppressWarnings("java:S1104")
     public static class FileHelper {
 
         /**
@@ -284,8 +301,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         /**
          */
         public UnaryOperator<String> getImageTypeFrom = path -> path.endsWith("/favicon.ico") ? IMAGE_X_ICON
-                    : IMAGE + path.substring(path.lastIndexOf(".") + 1, path.length());
-
+                : IMAGE + path.substring(path.lastIndexOf(".") + 1, path.length());
 
         /**
          */
@@ -418,7 +434,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         }
 
         @Override
-        public void enrich(WebFile pFile) throws Exception {
+        public void enrich(WebFile pFile) {
             String lContent = "";
             // only process if file has text format and a TEMPLATE_MARKER
             if (pFile.isTextFormat() && hasTemplateMarker(pFile)) {
@@ -456,8 +472,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     public static class ExprString {
         protected static String PatternStart = "${";
         protected static String PatternEnd = "}";
-        // matches expressions like: ${name}
-        // accepting whitespaces inside of ${}
+        // matches expressions like ${ name } accepting leading/ending whitespaces
         // BUT throwing RuntimeException - if name contains whitespaces
         protected static Pattern ExprPattern = Pattern.compile("\\$\\{[\\s]*(\\w.+)\\}");
 
@@ -518,7 +533,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
                 lPart = template.substring(lCurrentPos, lMatcher.start());
                 lName = lMatcher.group().replace(PatternStart, "").replace(PatternEnd, "").trim();
                 if (lName.contains(" ")) {
-                    throw new RuntimeException(String.format("ExprString contains whitespace(s) [%s]", lName));
+                    throw new UncheckedExprStringException(String.format("ExprString contains whitespace(s) [%s]", lName));
                 }
                 lValue = provider.getValueFor(lName, pCtx);
                 lResult.append(lPart).append(lValue);
@@ -536,6 +551,16 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
          */
         public static interface ValueProvider {
             String getValueFor(String pKey, Object pCtx);
+        }
+
+        /**
+        */
+        public static class UncheckedExprStringException extends RuntimeException {
+            private static final long serialVersionUID = 1L;
+
+            public UncheckedExprStringException(String pMsg) {
+                super(pMsg);
+            }
         }
     }
 

@@ -80,6 +80,18 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     }
 
     /**
+     */
+    @Override
+    public byte[] onError(String pConnectionId, Exception pExp) {
+        WsoCommonMessage lResponseMsg = new WsoCommonMessage("server")
+            .setStatus(STATUS_ERROR)
+            .setError(pExp.getMessage());
+
+        String  lJsonResponse = json.toString(lResponseMsg);
+        return lJsonResponse.getBytes();
+    }
+
+    /**
      * The internal processing implementation
      */
     protected WsoCommonMessage onMessage(String pConnectionId, WsoCommonMessage pRequestMsg) {

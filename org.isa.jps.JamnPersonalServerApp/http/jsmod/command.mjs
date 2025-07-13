@@ -28,7 +28,7 @@ import { WorkView, ViewBuilder } from '../jsmod/view-classes.mjs';
  * - client side dynamically loaded, manipulated, created content and components
  */
 class CommandView extends WorkView {
-
+	//websocket communication ref id
 	wsoRefId;
 
 	commandDef = new CommandDef();
@@ -76,6 +76,13 @@ class CommandView extends WorkView {
 		this.setVisible(true);
 	}
 
+	/**
+	 * <pre>
+	 * build the ui using
+	 * - an included viewHtml template
+	 * - and a dom element builder 
+	 * </pre>
+	 */
 	createUI() {
 		let builder = new ViewBuilder();
 		//set the objects to hold all control dom elements with a varid
@@ -203,6 +210,9 @@ class CommandView extends WorkView {
 				}
 			} else if (wsoMsg.hasStatusError && wsoMsg.error.includes("connection")) {
 				this.addOutputLine(NL + wsoMsg.error);
+				this.setRunning(false);
+			} else if (wsoMsg.hasStatusError && wsoMsg.hasReference("server")) {
+				this.addOutputLine(NL + "WebSocket Error [" + wsoMsg.error + "] the central connection was closed.");
 				this.setRunning(false);
 			}
 		});

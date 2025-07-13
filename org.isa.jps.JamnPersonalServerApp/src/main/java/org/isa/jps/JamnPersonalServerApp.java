@@ -613,8 +613,8 @@ public class JamnPersonalServerApp {
 
         // a playful construct
         // using lambda functions like overwritable methods
-        UnaryOperator<String> orgMapping = lWebContentProvider.fileHelper.doPathMapping;
-        lWebContentProvider.fileHelper.doPathMapping = path -> {
+        UnaryOperator<String> orgMapping = lWebContentProvider.getFileHelper().doPathMapping;
+        lWebContentProvider.getFileHelper().doPathMapping = path -> {
             String lPath = orgMapping.apply(path);
             return lPath.equals("/index.html") ? config.getWebAppMainPage() : lPath;
         };
@@ -656,6 +656,7 @@ public class JamnPersonalServerApp {
             // create the WebSocketProvider
             webSocketProvider = JamnWebSocketProvider.newBuilder()
                     .addConnectionPath(config.getWebSocketUrlRoot())
+                    .setMaxUpStreamPayloadSize(config.getWebSocketMaxUpstreamSize())
                     .build();
 
             webSocketProvider.addMessageProcessor(
@@ -697,6 +698,8 @@ public class JamnPersonalServerApp {
      */
     public static class Config {
         // CONFIG DEFAULT folder names under the home directory
+        private static final String TRUE = "true";
+        private static final String FALSE = "false";
         private static final String WEB_FILE_ROOT = "http";
         private static final String SCRIPT_ROOT = "scripts";
         private static final String EXTENSION_ROOT = "extensions";
@@ -728,6 +731,7 @@ public class JamnPersonalServerApp {
                 "#WebService enabled", "webservice.enabled=true", "",
                 "#WebSocket enabled", "websocket.enabled=true", "",
                 "#WebSocket url root", "websocket.url.root=/wsoapi", "",
+                "#WebSocket max upstream size", "websocket.max.upstream.size=65000", "",
                 "#WebService url root", "webservice.url.root=/webapi", "",
                 "#Child WebSocket url root", "child.websocket.url.root=/childapi", "",
                 "#JVM debug option",
@@ -810,7 +814,7 @@ public class JamnPersonalServerApp {
         }
 
         public boolean isExtensionsEnabled() {
-            return Boolean.parseBoolean(props.getProperty("extensions.enabled", "true"));
+            return Boolean.parseBoolean(props.getProperty("extensions.enabled", TRUE));
         }
 
         public String getScriptRoot() {
@@ -845,6 +849,10 @@ public class JamnPersonalServerApp {
             return props.getProperty("websocket.url.root", "/wsoapi");
         }
 
+        public long getWebSocketMaxUpstreamSize() {
+            return Long.valueOf(props.getProperty("websocket.max.upstream.size", "65000"));
+        }
+
         public String getWebServiceUrlRoot() {
             return props.getProperty(WEBSERVICE_URL_ROOT, "/webapi");
         }
@@ -862,35 +870,35 @@ public class JamnPersonalServerApp {
         }
 
         public boolean isCliEnabled() {
-            return Boolean.parseBoolean(props.getProperty("cli.enabled", "false"));
+            return Boolean.parseBoolean(props.getProperty("cli.enabled", FALSE));
         }
 
         public boolean isChildProcessDebugEnabled() {
-            return Boolean.parseBoolean(props.getProperty("child.process.debug.enabled", "false"));
+            return Boolean.parseBoolean(props.getProperty("child.process.debug.enabled", FALSE));
         }
 
         public boolean isJavaScriptEnabled() {
-            return Boolean.parseBoolean(props.getProperty("javascript.enabled", "false"));
+            return Boolean.parseBoolean(props.getProperty("javascript.enabled", FALSE));
         }
 
         public boolean isJavaScriptDebugEnabled() {
-            return Boolean.parseBoolean(props.getProperty("javascript.debug.enabled", "false"));
+            return Boolean.parseBoolean(props.getProperty("javascript.debug.enabled", FALSE));
         }
 
         public boolean isServerEnabled() {
-            return Boolean.parseBoolean(props.getProperty("server.enabled", "true"));
+            return Boolean.parseBoolean(props.getProperty("server.enabled", TRUE));
         }
 
         public boolean isWebServiceEnabled() {
-            return Boolean.parseBoolean(props.getProperty("webservice.enabled", "true"));
+            return Boolean.parseBoolean(props.getProperty("webservice.enabled", TRUE));
         }
 
         public boolean isWebSocketEnabled() {
-            return Boolean.parseBoolean(props.getProperty("websocket.enabled", "true"));
+            return Boolean.parseBoolean(props.getProperty("websocket.enabled", TRUE));
         }
 
         public boolean isServerAutostart() {
-            return Boolean.parseBoolean(props.getProperty("server.autostart", "true"));
+            return Boolean.parseBoolean(props.getProperty("server.autostart", TRUE));
         }
 
         public Properties getProperties() {

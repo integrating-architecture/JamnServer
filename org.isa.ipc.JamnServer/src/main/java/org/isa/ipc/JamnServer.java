@@ -451,19 +451,17 @@ public class JamnServer {
          * Interface for Upgrade Handler
          *
          * @param pRequest
-         * @param pSocketInStream
-         * @param pSocketOutStream
          * @param pSocket
          * @param pComData
          * @return
          */
         public static interface UpgradeHandler extends ContentProvider {
 
-            String handleRequest(RequestMessage pRequest, InputStream pSocketInStream, OutputStream pSocketOutStream,
-                    Socket pSocket, Map<String, String> pComData);
+            String handleRequest(RequestMessage pRequest, Socket pSocket, Map<String, String> pComData)
+                    throws IOException;
 
             /**
-             * Not used here - set to default to shade
+             * Not relevant for websocket - set to default to shade
              */
             @Override
             default void createResponseContent(RequestMessage pRequest, ResponseMessage pResponse) {
@@ -482,14 +480,11 @@ public class JamnServer {
         /**
          * The central interface method called from the socket based main thread.
          *
-         * @param pIn      - the socket input stream
-         * @param pOut     - the socket output stream
          * @param pSocket
-         * @param pComData - internal communication data (not used yet)
+         * @param pComData - internal communication data
          * @throws IOException
          */
-        void handleRequest(Socket pSocket, Map<String, String> pComData)
-                throws IOException;
+        void handleRequest(Socket pSocket, Map<String, String> pComData) throws IOException;
 
         /**
          * The interface to set the content provider that creates the use case specific
@@ -525,7 +520,7 @@ public class JamnServer {
      * <pre>
      * IMPORTANT Preamble: 
      * 
-     * The Jamn Server itself initially offers NO security components or implementations
+     * The Jamn Server initially offers NO security components or implementations
      * !!! and is therefore "COMPLETELY INSECURE" !!!
      * Security mechanisms must be added individually.
      * 
@@ -617,9 +612,8 @@ public class JamnServer {
             }
         };
 
-        protected UpgradeHandler defaultUpgradeHandler = (RequestMessage pRequest, InputStream pSocketInStream,
-                OutputStream pSocketOutStream,
-                Socket pSocket, Map<String, String> pComData) -> {
+        protected UpgradeHandler defaultUpgradeHandler = (RequestMessage pRequest, Socket pSocket,
+                Map<String, String> pComData) -> {
             LOG.warning(() -> "USE of EMPTY default UpgradeHandler Content Provider");
             return SC_204_NO_CONTENT;
         };
@@ -707,8 +701,19 @@ public class JamnServer {
 
         /**
          */
-        protected int getInitialBufferSizeFor(String pType){
-            return "in".equalsIgnoreCase(pType) ? 4*1024 : 8*1024;
+        protected int getInitialBufferSizeFor(String pType) {
+            return "in".equalsIgnoreCase(pType) ? 4 * 1024 : 8 * 1024;
+        }
+
+        /**
+         */
+        protected boolean checkForKeepAliveConnection(RequestMessage pRequest, ResponseMessage pResponse) {     
+
+            if (pRequest.header().hasConnectionKeepAlive() && keepAliveEnabled) {
+                pResponse.header().setConnectionKeepAlive();
+                return true;
+            }
+            return false;
         }
 
         /**
@@ -723,7 +728,8 @@ public class JamnServer {
 
             ContentProvider lContentProvider = null;
             InputStream lInStream = new BufferedInputStream(pSocket.getInputStream(), getInitialBufferSizeFor("in"));
-            OutputStream lOutStream = new BufferedOutputStream(pSocket.getOutputStream(), getInitialBufferSizeFor("out"));
+            OutputStream lOutStream = new BufferedOutputStream(pSocket.getOutputStream(),
+                    getInitialBufferSizeFor("out"));
 
             RequestMessage lRequest = null;
             ResponseMessage lResponse = newResponseMessageFor(lOutStream);
@@ -753,15 +759,11 @@ public class JamnServer {
                         if (lRequest.header().isWebSocket()) {
                             // if so switch to WebSocket processing
                             UpgradeHandler lWebSocketHandler = getContentProviderUpgradeHandlerFor(WEBSOCKET_PROVIDER);
-                            lWebSocketHandler.handleRequest(lRequest, pSocket.getInputStream(),
-                                    pSocket.getOutputStream(), pSocket, pComData);
+                            lWebSocketHandler.handleRequest(lRequest, pSocket, pComData);
                         } else {
-                            keepAlive = lRequest.header().hasConnectionKeepAlive();
-                            if (keepAlive && keepAliveEnabled) {
-                                lResponse.header().setConnectionKeepAlive();
-                            }
+                            keepAlive = checkForKeepAliveConnection(lRequest, lResponse);
 
-                            // provided http processing
+                            // create and send the response content
                             lContentProvider = getContentProviderFor(lRequest);
                             lContentProvider.createResponseContent(lRequest, lResponse);
                             lResponse.send();
@@ -777,10 +779,10 @@ public class JamnServer {
                 // send 403 for any security exception
                 lResponse.sendStatus(SC_403_FORBIDDEN);
             } catch (Exception e) {
-                // send 500 for any other exception
-                lResponse.sendStatus(SC_500_INTERNAL_ERROR);
                 LOG.severe(() -> String.format("%s Request handling internal ERROR: %s %s %s", socketIDText, e, LS,
                         getStackTraceFrom(e)));
+                // send 500 for any other exception
+                lResponse.sendStatus(SC_500_INTERNAL_ERROR);
             } finally {
                 lResponse.close();
                 pComData.put(SOCKET_USAGE, String.valueOf(usage));
@@ -937,6 +939,7 @@ public class JamnServer {
             public static final String SEC_WEBSOCKET_VERSION = "Sec-WebSocket-Version";
             public static final String SEC_WEBSOCKET_EXTENSIONS = "Sec-WebSocket-Extensions";
             public static final String SEC_WEBSOCKET_ACCEPT = "Sec-WebSocket-Accept";
+            public static final String SEC_WEBSOCKET_PROTOCOL = "Sec-WebSocket-Protocol";
 
             public static final String AUTHORIZATION = "Authorization";
             public static final String BEARER = "Bearer";
@@ -1617,8 +1620,8 @@ public class JamnServer {
                 "##", "",
                 "#Server port", "port=8099", "",
                 "#Max worker threads", "worker=5", "",
-                "#Socket timeout in millis", "client.socket.timeout=10000", "",
-                "#Use Connection:keep-alive header", "connection.keep.alive=false", "",
+                "#Socket timeout in millis", "client.socket.timeout=500", "",
+                "#Use Connection:keep-alive header", "connection.keep.alive=true", "",
                 "#Encoding", "encoding=" + StandardCharsets.UTF_8.name(), "",
                 "#Cross origin flag", "http.cors.enabled=false", "");
 

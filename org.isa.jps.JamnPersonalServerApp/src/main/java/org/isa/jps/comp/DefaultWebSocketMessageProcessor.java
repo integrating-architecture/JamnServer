@@ -36,6 +36,12 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     protected static final String CMD_RUNEXT = "runext";
     protected static final String STATUS_SUCCESS = "success";
     protected static final String STATUS_ERROR = "error";
+    protected static final String SERVER_GLOBAL_REF = "server.global";
+
+    protected String headStartMark = "<";
+    protected String headEndMark = ">";
+    protected int maxHeadLen = 100;
+    protected int logSnippetLen = 1024;
 
     protected Config config;
     protected JsonToolWrapper json;
@@ -45,21 +51,56 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     protected ExtensionHandler extensionHandler;
     protected JamnWebSocketProvider wsoProvider;
 
+    //websocket messages are always utf8 encoded by spec
     protected Charset encoding = StandardCharsets.UTF_8;
 
-    public DefaultWebSocketMessageProcessor(Config pConfig, JsonToolWrapper pJson, JamnWebSocketProvider pWsoProvider,
-            Charset pEncoding) {
+    public DefaultWebSocketMessageProcessor(Config pConfig, JsonToolWrapper pJson, JamnWebSocketProvider pWsoProvider) {
         config = pConfig;
         json = pJson;
         wsoProvider = pWsoProvider;
         isAvailable = new AtomicBoolean(true);
+    }
 
-        if (pEncoding != null) {
-            encoding = pEncoding;
+    /**
+     * <pre>
+     * Jamn uses a simple, universal string message format at the app level.
+     * A message consists of
+     * - an optional <header> max 100 byte marked by <...> start/end delimiter
+     *   including a client sender reference 
+     * - the body is expected to be json representing a WsoCommonMessage object
+     * e.g. "<client_ref>{"field-name":"value" ...}" 
+     * 
+     * The method extracts the two parts from the given message byte array.
+     * </pre>
+     */
+    protected String[] createMessageHeadAndBodyParts(byte[] pSrc, Integer pSearchAreaMaxLen) {
+        String[] lParts = new String[2]; // header, body
+        String lMsgSrc = "";
+        int idx = -1;
+        byte[] lBuffer;
+
+        if (pSearchAreaMaxLen != null) {
+            int len = pSrc.length < pSearchAreaMaxLen ? pSrc.length : pSearchAreaMaxLen;
+            lBuffer = new byte[len];
+            System.arraycopy(pSrc, 0, lBuffer, 0, len);
         } else {
-            encoding = Charset.forName(config.getStandardEncoding());
+            lBuffer = pSrc;
         }
-        LOG.info(() -> String.format("WebSocket Processor encoding: [%s]", encoding));
+        lMsgSrc = new String(lBuffer, encoding);
+
+        if (lMsgSrc.startsWith(headStartMark) && lMsgSrc.length() > maxHeadLen
+                && (idx = lMsgSrc.substring(0, maxHeadLen).indexOf(headEndMark)) != -1) {
+            lParts[0] = lMsgSrc.substring(0, idx + 1);
+            lParts[0] = lParts[0].replace(headStartMark, "").replace(headEndMark, ""); // header present
+        }
+        if (lParts[0] != null) {
+            lParts[1] = lMsgSrc.substring(idx + 1, lMsgSrc.length());
+        } else {
+            lParts[0] = ""; //no header
+            lParts[1] = lMsgSrc;
+        }
+
+        return lParts;
     }
 
     /**
@@ -68,27 +109,60 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
     @Override
     public byte[] onMessage(String pConnectionId, byte[] pMessage) {
         String lJsonResponse = "";
-        String lJsonMsg = new String(pMessage, encoding);
-        LOG.info(() -> String.format("WebSocket Message received: [%s] - [%s]", lJsonMsg, pConnectionId));
+        String[] lParts = new String[2];
+        WsoCommonMessage lRequestMessage;
+        WsoCommonMessage lResponseMsg = null;
+        int lSnipLen = logSnippetLen;
 
-        WsoCommonMessage lResponseMsg = onMessage(pConnectionId, json.toObject(lJsonMsg, WsoCommonMessage.class));
+        try {
+            lParts = createMessageHeadAndBodyParts(pMessage, null);
+
+            //log infos and a snippet of the body payload
+            lSnipLen = lParts[1].length() > logSnippetLen ? logSnippetLen : lParts[1].length();
+            String text = String.format("WebSocket Message received: id[%s] - head[%s] - snippet[%s ...]", pConnectionId,
+                    lParts[0],
+                    lParts[1].substring(0, lSnipLen));
+
+            LOG.info(()->text);
+
+            lRequestMessage = json.toObject(lParts[1], WsoCommonMessage.class);
+            lResponseMsg = onMessage(pConnectionId, lRequestMessage);
+        } catch (Exception e) {
+            lResponseMsg = new WsoCommonMessage(lParts[0]);
+            lResponseMsg.setError(e.getMessage());
+            lResponseMsg.setStatus(STATUS_ERROR);
+        }
+
         if (lResponseMsg != null) {
             lJsonResponse = json.toString(lResponseMsg);
         }
-
-        return lJsonResponse.getBytes();
+        return lJsonResponse.getBytes(encoding);
     }
 
     /**
      */
     @Override
-    public byte[] onError(String pConnectionId, Exception pExp) {
-        WsoCommonMessage lResponseMsg = new WsoCommonMessage("server")
-            .setStatus(STATUS_ERROR)
-            .setError(pExp.getMessage());
+    public byte[] onError(String pConnectionId, byte[] pMessage, Exception pExp, AtomicBoolean pClose) {
+        String[] lParts = createMessageHeadAndBodyParts(pMessage, 1024);
 
-        String  lJsonResponse = json.toString(lResponseMsg);
-        return lJsonResponse.getBytes();
+        //if no client reference is available - set to global
+        // and close wso connection
+        String lRef = lParts[0].isEmpty() ? SERVER_GLOBAL_REF : lParts[0];
+        if (SERVER_GLOBAL_REF.equals(lRef)) {
+            pClose.set(true);
+        }
+
+        String t1 = pClose.get() ? "Fatal WSO Error" : "WSO Error";
+        String t2 = pClose.get() ? "Connection will be closed!" : "";
+        String lError = String.format("%s [%s] %s%s", t1, pExp.getMessage(), LS, t2);
+        LOG.severe(()->String.format("%s - ref[%s]", lError, lRef));
+
+        WsoCommonMessage lResponseMsg = new WsoCommonMessage(lRef)
+                .setStatus(STATUS_ERROR)
+                .setError(lError);
+        String lJsonResponse = json.toString(lResponseMsg);
+
+        return lJsonResponse.getBytes(encoding);
     }
 
     /**
@@ -194,6 +268,7 @@ public class DefaultWebSocketMessageProcessor implements WsoMessageProcessor {
      * A simple general message data structure for web socket communication.
      */
     public static class WsoCommonMessage {
+
         protected String reference = "";
         protected String textdata = "";
         protected String command = "";

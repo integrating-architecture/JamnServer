@@ -64,7 +64,7 @@ export function close() {
 export function sendMessage(wsoMsg, sentCb = null) {
 	if (wsoMsg instanceof WsoCommonMessage) {
 		if (isConnected()) {
-			let msg = JSON.stringify(wsoMsg);
+			let msg = createWsoMessageString(wsoMsg);
 			websocket.send(msg);
 			if (sentCb) { sentCb(); }
 			return true;
@@ -106,3 +106,9 @@ function onMessage(event) {
 
 	listener[subject].forEach((cb) => cb(wsoMsg));
 };
+
+function createWsoMessageString(wsoMsg){
+	let msg = wsoMsg.reference.length > 0 ? "<"+wsoMsg.reference+">": "";
+	msg = msg + JSON.stringify(wsoMsg);
+	return msg;
+}

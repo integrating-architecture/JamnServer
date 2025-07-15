@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 import org.isa.ipc.JamnServer.HttpHeader;
@@ -33,24 +34,23 @@ import org.isa.ipc.JamnServer.ResponseMessage;
 /**
  * <pre>
  * A rudimentary WebSocket Provider implementation for the JamnServer.
- * The construction consists of 
- *  - the top level - JamnWebSocketProvider - added to the Server
- *  - that creates a - WebSocketHandler - for every incoming connection request
+ * 
+ * The Provider is a one class wso "module" providing the basic protocol handling 
+ * and interfaces to plug in customer messaging logic.
  *  
- *  The WebSocketHandler implements the main WebSocket logic and behavior.
- *   - in particular - the WebSocket "message format magic" - see: readIncomingMessages + encodeMessage
+ * The WebSocketHandler class implements the main WebSocket logic and behavior.
+ * in particular - the WebSocket "message format magic" - see: processWsoMessageRequests + encodeWsoMessage
  *   
- *  In the present implementation there is also a WsoConnectionManager object involved
- *  that holds a references to each established handler. 
- *  How ever - since every handler represents a client connection
- *  the manager is intended to make active server-side communication possible.
- *  E.g. broadcasting messages or things like that.
+ * In the present implementation there is also a WsoConnectionManager object involved
+ * that holds a references to each established handler. 
+ * How ever - since every handler represents a client connection
+ * the manager is responsible for server-side communication to the client.
  *  
- *  The "business logic" of a WebSocket is implemented in a WsoMessageProcessor
- *  associated with one WebSocket-connection-path (resp. handler) supporting n client connections.
+ * The "business logic" of connection is implemented in a WsoMessageProcessor
+ * associated with one WebSocket-connection-path (resp. handler) supporting n client connections.
  *  
- *  You can easily play with this things by using e.g.:
- *  JamnWebSocketProvider\src\test\..\..\sample\browser-js-websocket-call.html
+ * You can easily play with this things by using e.g.:
+ * JamnWebSocketProvider\src\test\..\..\sample\browser-js-websocket-call.html
  * </pre>
  */
 public class JamnWebSocketProvider implements JamnServer.ContentProvider.UpgradeHandler {
@@ -82,8 +82,9 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
     };
 
     protected Set<String> connectionPathNames = new HashSet<>();
-    protected long maxUpStreamPayloadSize = 65000;
     protected ProviderAdapter providerAdapter = new ProviderAdapter();
+    //limit client -> server payload data size
+    protected long maxUpStreamPayloadSize = 65000;
 
     /**
      */
@@ -237,20 +238,26 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
          * <pre>
          * </pre>
          */
-        protected void processErrorFor(String pConnectionId, Exception pExp) {
+        protected boolean processErrorFor(String pConnectionId, byte[] pMessage, Exception pExp) {
+            AtomicBoolean lClose = new AtomicBoolean(false);
             WsoMessageProcessor lProcessor;
             WsoConnection lConnection = openConnections.getOrDefault(pConnectionId, null);
+
+            if (pExp instanceof FatalWsoException) {
+                lClose.set(true);
+            }
 
             if (lConnection != null) {
                 lProcessor = processorMap.getOrDefault(lConnection.getPath(), null);
                 if (lProcessor != null) {
-                    byte[] lResponse = lProcessor.onError(pConnectionId, pExp);
+                    byte[] lResponse = lProcessor.onError(pConnectionId, pMessage, pExp, lClose);
                     // if response available - send it back
                     if (lResponse != null && lResponse.length > 0) {
                         sendMessageFor(pConnectionId, lResponse);
                     }
                 }
             }
+            return lClose.get();
         }
 
         /**
@@ -297,6 +304,20 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
     }
 
     /**
+    */
+    protected static class FatalWsoException extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        protected FatalWsoException(String pMsg) {
+            super(pMsg);
+        }
+
+        protected FatalWsoException(String pMsg, Exception pCause) {
+            super(pMsg, pCause);
+        }
+    }
+
+    /**
      */
     public static class UncheckedWebSocketException extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -312,19 +333,28 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
     /**
      */
-    protected class ProviderAdapter  {
-        protected WsoConnectionManager getWsoConnectionManager(){
+    protected class ProviderAdapter {
+        protected WsoConnectionManager getWsoConnectionManager() {
             return connectionManager;
         }
-        protected WsoAccessController getWsoAccessController(){
+
+        protected WsoAccessController getWsoAccessController() {
             return accessCtrl;
         }
-        protected long getMaxUpStreamPayloadSize(){
+
+        protected long getMaxUpStreamPayloadSize() {
             return maxUpStreamPayloadSize;
         }
     }
 
     /**
+     * <pre>
+     * The handler implements the wso protocol level.
+     * It is responsible for 
+     *  - doing the handshake
+     *  - reading message bytes and create wso packet frames
+     *  - encoding and sending message bytes
+     * </pre>
      */
     protected static class WebSocketHandler implements WsoConnection {
 
@@ -480,7 +510,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
          */
         protected void processWsoMessageRequests(InputStream pInStream) throws IOException {
 
-            WsoFrame lFrame;
+            WsoFrame lFrame = new WsoFrame(WsoFrame.EmptyPacket);
             WsoFrame lFragmentedFrame = null;
             byte[] lPacket;
             int lReadPacketLength;
@@ -523,8 +553,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 } catch (SocketException se) {
                     run = false;
                 } catch (Exception e) {
-                    connectionManager.processErrorFor(connectionId, e);
-                    run = false;
+                    run = !connectionManager.processErrorFor(connectionId, lFrame.getAvailablePacketDataOnError(), e);
                 }
             }
         }
@@ -532,19 +561,19 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
         /**
          * Create a server->client websocket frame package with message payload data.
          * No masking, always text.
-         * inspired by 
+         * inspired by works like
          * https://stackoverflow.com/questions/43163592/standalone-websocket-server-without-jee-application-server
          */
         protected byte[] encodeWsoMessage(byte[] pMessageData) {
 
             int payloadLen = pMessageData.length;
-            int headerLen = 2; //minimum wso message 2 bytes
+            int headerLen = 2; // minimum wso message 2 bytes
             byte[] headerBytes = new byte[10];
 
-            //byte-1: - fin=true, opcode=text
-            headerBytes[0] = (byte) (0b10000000 | (byte) Opcode.TEXT.getCode()); //=> 10000001 = 0x81
+            // byte-1: - fin=true, opcode=text
+            headerBytes[0] = (byte) (0b10000000 | (byte) Opcode.TEXT.getCode()); // => 10000001 = 0x81
 
-            //byte-2: payload len
+            // byte-2: payload len
             if (payloadLen <= 125) {
                 headerBytes[1] = (byte) payloadLen;
             } else if (payloadLen >= 126 && payloadLen <= 65535) {
@@ -609,9 +638,13 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
         /**
          * <pre>
+         * A basic implementation of wso frame data structure.
+         * Decoding and keeping wso header and payload byte data.
          * </pre>
          */
         protected static class WsoFrame {
+            protected static final byte[] EmptyPacket = new byte[] { (byte) 0x81, 0x0 };
+
             private int readPacketLength;
             private byte[] packet;
             private byte[] maskingKey;
@@ -622,10 +655,14 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
             private int payloadLength;
             private int headerOffset;
 
-            public WsoFrame(int pReadLen, byte[] pPacket) {
+            public WsoFrame(byte[] pPacket) throws IOException {
+                this(pPacket.length, pPacket);
+            }
+
+            public WsoFrame(int pReadLen, byte[] pPacket) throws IOException {
                 // WS minimal frame = 2 bytes
                 if (pReadLen < 2) {
-                    throw new IllegalArgumentException(
+                    throw new FatalWsoException(
                             String.format("Invalid frame: insufficient packet length [%s]", pReadLen));
                 }
                 packet = new byte[pReadLen];
@@ -648,7 +685,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
             /**
              */
-            public void decodeHeader() {
+            public void decodeHeader() throws IOException {
                 decodeRSV();
                 decodeOpcode();
                 decodeIsMasked();
@@ -680,7 +717,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
             /**
              */
-            protected void decodePayloadLength() {
+            protected void decodePayloadLength() throws IOException {
                 // byte1 - bit 1-7
                 payloadLength = packet[1] & 0b01111111;
 
@@ -690,14 +727,14 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 // Extended Payload Length (if any)
                 if (payloadLength == 126) {
                     if (readPacketLength < 4) {
-                        throw new IllegalArgumentException(
+                        throw new FatalWsoException(
                                 "Invalid frame: insufficient bytes for 16-bit payload length.");
                     }
                     payloadLength = ((packet[headerOffset] & 0xFF) << 8) | (packet[headerOffset + 1] & 0xFF);
                     headerOffset += 2;
                 } else if (payloadLength == 127) {
                     if (readPacketLength < 10) {
-                        throw new IllegalArgumentException(
+                        throw new FatalWsoException(
                                 "Invalid frame: insufficient bytes for 64-bit payload length.");
                     }
                     payloadLength = 0;
@@ -710,10 +747,10 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
             /**
              */
-            protected void decodeMask() {
+            protected void decodeMask() throws IOException {
                 if (isMasked) {
                     if (packet.length < headerOffset + 4) {
-                        throw new IllegalArgumentException("Invalid frame insufficient bytes for masking key.");
+                        throw new FatalWsoException("Invalid frame insufficient bytes for masking key.");
                     }
                     maskingKey = Arrays.copyOfRange(packet, headerOffset, headerOffset + 4);
                     headerOffset += 4;
@@ -760,8 +797,10 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 int attempts = 0;
                 byte[] buffer;
 
-                if(totalPacketLength > pMaxPayloadSize){
-                    throw new IOException(String.format("Max message size exceeded: [%s] > [%s]", totalPacketLength, pMaxPayloadSize));
+                if (totalPacketLength > pMaxPayloadSize) {
+                    throw new FatalWsoException(
+                            String.format("Max message size exceeded: [%s] > [%s]", totalPacketLength,
+                                    pMaxPayloadSize));
                 }
                 if (remainingBytes > 0) {
                     buffer = new byte[totalPacketLength];
@@ -776,7 +815,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                         readPacketLength = totalPacketLength;
                         packet = buffer;
                     } else {
-                        throw new IOException(String.format(
+                        throw new FatalWsoException(String.format(
                                 "Content differnce: readLen[%s], remainingBytes[%s], buffer.length[%s], totalPacketLength[%s], attempts[%s]%s",
                                 readLen, remainingBytes, buffer.length, totalPacketLength, attempts,
                                 System.lineSeparator() + this.getDescription()));
@@ -786,9 +825,9 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
             /**
              */
-            public byte[] getPayloadData() {
+            public byte[] getPayloadData() throws IOException {
                 if (packet.length < headerOffset + payloadLength) {
-                    throw new IllegalArgumentException(
+                    throw new FatalWsoException(
                             String.format("Invalid wso packet: len[%s] < headerOffset[%s] + payloadLength[%s]",
                                     packet.length, headerOffset, payloadLength));
                 }
@@ -813,6 +852,32 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
                 return payloadData;
             }
+
+            /**
+             * <pre>
+             * Try to get the first chunk of already read package bytes
+             * to get some more informations for error handling.
+             * </pre>
+             */
+            public byte[] getAvailablePacketDataOnError() {
+
+                byte[] payloadData = new byte[packet.length];
+                try {
+                    System.arraycopy(packet, headerOffset, payloadData, 0, packet.length - headerOffset);
+
+                    // Unmask payload
+                    if (isMasked) {
+                        for (int i = 0; i < payloadData.length; i++) {
+                            payloadData[i] = (byte) (payloadData[i] ^ maskingKey[i % 4]);
+                        }
+                    }
+                } catch (Exception e) {
+                    // nothing to do
+                }
+
+                return payloadData;
+            }
+
         }
     }
 
@@ -831,7 +896,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
         /**
          */
-        public default byte[] onError(String pConnectionId, Exception pExp) {
+        public default byte[] onError(String pConnectionId, byte[] pMessage, Exception pExp, AtomicBoolean pClose) {
             return new byte[0];
         }
 

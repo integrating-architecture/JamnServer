@@ -660,8 +660,7 @@ public class JamnPersonalServerApp {
                     .build();
 
             webSocketProvider.addMessageProcessor(
-                    new DefaultWebSocketMessageProcessor(getConfig(), getJsonTool(), webSocketProvider,
-                            standardEncoding));
+                    new DefaultWebSocketMessageProcessor(getConfig(), getJsonTool(), webSocketProvider));
 
             server.addContentProvider(WEBSOCKET_PROVIDER_ID, webSocketProvider);
 

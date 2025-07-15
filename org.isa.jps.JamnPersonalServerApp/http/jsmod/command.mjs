@@ -211,7 +211,7 @@ class CommandView extends WorkView {
 			} else if (wsoMsg.hasStatusError && wsoMsg.error.includes("connection")) {
 				this.addOutputLine(NL + wsoMsg.error);
 				this.setRunning(false);
-			} else if (wsoMsg.hasStatusError && wsoMsg.hasReference("server")) {
+			} else if (wsoMsg.hasStatusError && wsoMsg.hasReference("server.global")) {
 				this.addOutputLine(NL + "WebSocket Error [" + wsoMsg.error + "] the central connection was closed.");
 				this.setRunning(false);
 			}

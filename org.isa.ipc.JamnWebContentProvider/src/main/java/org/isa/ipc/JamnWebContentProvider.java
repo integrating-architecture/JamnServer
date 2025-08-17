@@ -447,7 +447,6 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             // only process if file has text format and a TEMPLATE_MARKER
             if (pFile.isTextFormat() && hasTemplateMarker(pFile)) {
                 lContent = new String(pFile.getData(), Encoding);
-                //lContent = new ExprString(lContent, valueProvider).build(pFile);
                 lContent = ExprString.applyValues(lContent, valueProvider, pFile);
                 pFile.setData(lContent.getBytes(Encoding));
             }

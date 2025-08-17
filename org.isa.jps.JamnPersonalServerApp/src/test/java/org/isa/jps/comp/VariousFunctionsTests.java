@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.jps.comp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

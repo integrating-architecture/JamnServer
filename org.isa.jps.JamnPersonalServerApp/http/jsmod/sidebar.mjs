@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 import * as loginModule from '../jsmod/login.mjs';
 import {IconElement} from '../jsmod/view-classes.mjs';
@@ -39,12 +39,12 @@ export function createTopic(id, topicHtml) {
  */
 export function newTopicHtml(iconName, text) {
 	let iconClazz = IconElement.iconDef(iconName)[0];
-	return `<li class="sbar-topic"><span class="${iconClazz}">${text}</span>`;
+	return `<li class="sbar-topic"><span class="${iconClazz}"><span class="sbar-topic-text">${text}</span></span>`;
 };
 
 /**
- * Stores an id value in the value attribute of the item element.
- * This id is pushed to the onClick callback.
+ * Store an id in the value attribute.
+ * The id is pushed to the onClick callback.
  */
 export function newtItemHtml(idValue, text) {
 	return `<li class="sbar-item" value="${idValue}">${text}</li>`;

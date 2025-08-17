@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 import { LS, echo, sh, workspacePath, isOnUnix, ArgumentProcessor } from "tools.mjs";
 
@@ -20,7 +20,7 @@ Args: <none>
 `;
 let workspace = workspacePath();
 
-//for example 
+//for demo 
 //useing a callback to consume/pipe script output during execution
 let scriptResult = [];
 let outputConsumer = (line) => {
@@ -36,7 +36,7 @@ function run() {
 	}).directReturn) {
 		//for help arg
 		//return without processing the script itself
-		return scriptResult;
+		return;
 	}
 
 	//setup shell commands for the current platform
@@ -54,12 +54,12 @@ function run() {
 	sh(test.cmd.pwd, workspace, outputConsumer);
 	sh(test.cmd.ls, workspace, outputConsumer);
 
-	echo("\nFirst line of collected output: "+scriptResult[0]);
-	echo("Last line of collected output: "+scriptResult[scriptResult.length-1]);
-	return "Done";//scriptResult;
+	//print out some collected output
+	echo("\n\n--------\nDemo collecting output:");
+	echo("-first output line: "+scriptResult[0].trim());
+	echo("-last output line: "+scriptResult[scriptResult.length-1].trim());
+
+	return "Demo done";
 }
 
 run();
-
-//return joined output as script return value
-//run().join(LS);

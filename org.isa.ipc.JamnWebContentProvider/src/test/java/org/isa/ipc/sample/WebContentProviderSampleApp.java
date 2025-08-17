@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc.sample;
 
 import org.isa.ipc.JamnServer;
@@ -21,11 +21,9 @@ public class WebContentProviderSampleApp {
 
         // create the provider with a webroot
         // no leading slash because relative path
-        JamnWebContentProvider lWebContentProvider = JamnWebContentProvider
-                .Builder("src/test/resources/http/sample")
+        JamnWebContentProvider lWebContentProvider = new JamnWebContentProvider("src/test/resources/http/sample")
                 .setConfig(lServer.getConfig())
-                .setFileEnricher(new DefaultFileEnricher(new FileEnricherValueProvider()))
-                .build();
+                .setFileEnricher(new DefaultFileEnricher(new FileEnricherValueProvider()));
         // add it to server
         lServer.addContentProvider("WebContentProvider", lWebContentProvider);
 

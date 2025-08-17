@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.jps;
 
 import java.io.BufferedReader;
@@ -33,6 +33,7 @@ import org.isa.ipc.JamnServer.RequestMessage;
 import org.isa.ipc.JamnServer.UncheckedJsonException;
 import org.isa.ipc.JamnWebContentProvider;
 import org.isa.ipc.JamnWebContentProvider.DefaultFileEnricher;
+import org.isa.ipc.JamnWebContentProvider.FileHelper;
 import org.isa.ipc.JamnWebServiceProvider;
 import org.isa.ipc.JamnWebServiceProvider.WebServiceDefinitionException;
 import org.isa.ipc.JamnWebSocketProvider;
@@ -600,24 +601,22 @@ public class JamnPersonalServerApp {
         String lRootPath = Tool.ensureSubDir(config.getWebFileRoot(), AppHome).toString();
 
         // create the provider with a webroot
-        // no leading slash because relative path
-        JamnWebContentProvider lWebContentProvider = JamnWebContentProvider.Builder(lRootPath)
+        JamnWebContentProvider lWebContentProvider = new JamnWebContentProvider(lRootPath)
                 .setConfig(server.getConfig())
+                // extend a FileHelper method
+                .setFileHelper(new FileHelper() {
+                    @Override
+                    public String doPathMapping(String pPath) {
+                        String lPath = super.doPathMapping(pPath);
+                        return lPath.equals("/index.html") ? config.getWebAppMainPage() : lPath;
+                    }
+                })
                 // create and set a file enricher with a provider for template values
                 .setFileEnricher(new DefaultFileEnricher(
                         new DefaultFileEnricherValueProvider(AppHome, config)
                                 // set the service url root as injectable value for web content
                                 // e.g. javascript modules - see webapi.mjs
-                                .addValue(WEBSERVICE_URL_ROOT, config.getWebServiceUrlRoot())))
-                .build();
-
-        // a playful construct
-        // using lambda functions like overwritable methods
-        UnaryOperator<String> orgMapping = lWebContentProvider.getFileHelper().doPathMapping;
-        lWebContentProvider.getFileHelper().doPathMapping = path -> {
-            String lPath = orgMapping.apply(path);
-            return lPath.equals("/index.html") ? config.getWebAppMainPage() : lPath;
-        };
+                                .addValue(WEBSERVICE_URL_ROOT, config.getWebServiceUrlRoot())));
 
         // add the provider to server
         server.addContentProvider(CONTENT_PROVIDER_ID, lWebContentProvider);
@@ -633,7 +632,7 @@ public class JamnPersonalServerApp {
         if (this.server != null && config.isWebServiceEnabled()) {
 
             // create the WebService provider
-            webServiceProvider = JamnWebServiceProvider.newBuilder()
+            webServiceProvider = new JamnWebServiceProvider()
                     .setJsonTool(jsonTool)
                     .setUrlRoot(config.getWebServiceUrlRoot());
 
@@ -654,10 +653,9 @@ public class JamnPersonalServerApp {
     protected void initWebSocketProvider() {
         if (this.server != null && config.isWebSocketEnabled()) {
             // create the WebSocketProvider
-            webSocketProvider = JamnWebSocketProvider.newBuilder()
+            webSocketProvider = new JamnWebSocketProvider()
                     .addConnectionPath(config.getWebSocketUrlRoot())
-                    .setMaxUpStreamPayloadSize(config.getWebSocketMaxUpstreamSize())
-                    .build();
+                    .setMaxUpStreamPayloadSize(config.getWebSocketMaxUpstreamSize());
 
             webSocketProvider.addMessageProcessor(
                     new DefaultWebSocketMessageProcessor(getConfig(), getJsonTool(), webSocketProvider));
@@ -928,6 +926,9 @@ public class JamnPersonalServerApp {
         public static final Pattern RexgNewLine = Pattern.compile("\\r?\\n|\\r");
         public static final Pattern RexgWhiteSpaces = Pattern.compile("\\s+");
 
+        public static final String CDATA_START = "<![CDATA[";
+        public static final String CDATA_END = "]]>";
+
         protected static Charset StandardEncoding = StandardCharsets.UTF_8;
 
         protected static void setEncoding(Charset pEncoding) {
@@ -1062,15 +1063,13 @@ public class JamnPersonalServerApp {
 
         /**
          */
-        public String[] parseCommandLine(String pText, String[] pMarker) {
-            pMarker = (pMarker == null || pMarker.length != 2) ? new String[] { "<![CDATA[", "]]>" } : pMarker;
-
+        public String[] parseCommandLine(String pText) {
             pText = RexgWhiteSpaces.matcher(pText).replaceAll(" ");
             pText = RexgNewLine.matcher(pText).replaceAll("").trim();
 
             List<String> args = new ArrayList<>();
-            String startMark = pMarker[0];
-            String endMark = pMarker[1];
+            String startMark = CDATA_START;
+            String endMark = CDATA_END;
 
             int startOffset = startMark.length();
             int endOffset = endMark.length();
@@ -1104,6 +1103,16 @@ public class JamnPersonalServerApp {
             }
 
             return args.toArray(new String[args.size()]);
+        }
+
+        /**
+         */
+        public String[] parseCommandLine(String pText, UnaryOperator<String> pTokenCleaner) {
+            String[] lToken = parseCommandLine(pText);
+            for (int i = 0; i < lToken.length; i++) {
+                lToken[i] = pTokenCleaner.apply(lToken[i]);
+            }
+            return lToken;
         }
 
     }

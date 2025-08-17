@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.jps.comp;
 
 import java.io.Console;
@@ -161,7 +161,7 @@ public class CommandLineInterface {
                 commandLine = getCommandLineFromInputFile();
             }
 
-            token = Tool.parseCommandLine(commandLine, null);
+            token = Tool.parseCommandLine(commandLine);
 
             if (token.length >= 1) {
                 name = token[0];

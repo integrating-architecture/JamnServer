@@ -176,6 +176,10 @@ div#sidebar .sbar-topic {
     color: var(--text-gray);
 }
 
+div#sidebar .sbar-topic-text {
+    margin-left: 6px;
+}
+
 div#sidebar .sbar-item {
     font-size: 1em;
     color: var(--text-gray);
@@ -759,8 +763,43 @@ hr.solid {
     font-size: 16px;
 }
 
+.wkv-list-ctrl {
+    list-style-type: none;
+    padding-inline-start: 10px;
+    margin-block-start: 10px;
+    border: 1px solid var(--border-gray);
+}
+
+.wkv-list-ctrl:hover {
+    border: 1px solid var(--wkv-ctrl-border-focus);
+}
+
+.wkv-list-ctrl li {
+    color: var(--text-gray);
+    margin-bottom: 5px;
+}
+
+.wkv-list-ctrl li:hover {
+    color: var(--text-light-gray);
+}
+
+.wkv-list-ctrl li.indexed {
+    counter-increment: list-item 1;
+}
+
+.wkv-list-ctrl li.indexed::before {
+  content: counter(list-item);
+  margin-right: 15px;
+  font-size: 12px;
+}
+
+.wkv-listitem-ctrl {
+    cursor: pointer;
+}
+
 .wkv-textarea-ctrl {
     outline: none;
+    border-width: 1px;
     color: var(--text-gray);
     background-color: var(--site-bg);
     border-color: var(--border-gray);
@@ -774,6 +813,7 @@ hr.solid {
 
 .wkv-output-textarea-ctrl {
     outline: none;
+    border-width: 1px;
     color: var(--text-gray);
     background-color: var(--site-bg);
     border-color: var(--border-gray);

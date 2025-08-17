@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.jps.comp;
 
 import java.io.IOException;
@@ -6,7 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-import org.isa.ipc.JamnWebContentProvider.ExprString.ValueProvider;
+import org.isa.ipc.JamnServer.ExprString.ValueProvider;
 import org.isa.ipc.JamnWebContentProvider.WebFile;
 import org.isa.jps.JamnPersonalServerApp.Config;
 

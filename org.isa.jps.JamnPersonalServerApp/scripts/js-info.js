@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 let infos = [
 	["Graal.versionECMAScript" , Graal.versionECMAScript],

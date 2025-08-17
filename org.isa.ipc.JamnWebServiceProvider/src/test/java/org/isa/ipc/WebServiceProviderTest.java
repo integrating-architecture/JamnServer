@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,10 +70,10 @@ class WebServiceProviderTest {
         ServerURL = "http://localhost:" + Server.getConfig().getPort();
 
         // create the WebService provider
-        JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.newBuilder()
+        JamnWebServiceProvider lWebServiceProvider = new JamnWebServiceProvider()
                 .setJsonTool(Jack)
                 // register the Web-API Services
-                .registerServices(SampleWebApiServices.class).build();
+                .registerServices(SampleWebApiServices.class);
 
         // add the provider to the server
         Server.addContentProvider("WebServiceProvider", lWebServiceProvider);

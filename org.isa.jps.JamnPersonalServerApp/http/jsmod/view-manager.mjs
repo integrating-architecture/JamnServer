@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 import { getViewHtml } from '../jsmod/tools.mjs';
 import { ModalDialog, StandardDialog } from './view-classes.mjs';

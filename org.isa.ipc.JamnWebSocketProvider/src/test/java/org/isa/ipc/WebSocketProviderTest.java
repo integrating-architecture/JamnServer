@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,8 +52,7 @@ class WebSocketProviderTest {
         Server = new JamnServer(8099);
 
         // create the provider
-        JamnWebSocketProvider lWebSocketProvider = JamnWebSocketProvider.newBuilder()
-                .build();
+        JamnWebSocketProvider lWebSocketProvider = new JamnWebSocketProvider();
 
         // add a Server-Side message processor for the WebSocket
         lWebSocketProvider.addMessageProcessor((String pConnectionId, byte[] pMessage) -> {

@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 package org.isa.ipc;
 
@@ -14,6 +14,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,7 +31,7 @@ import org.isa.ipc.JamnServer.ResponseMessage;
 
 /**
  * <pre>
- * This class realizes a sample Web Service Provider.
+ * The class realizes a simple Web Service Provider.
  *
  * Usage:
  *  ...
@@ -39,10 +40,10 @@ import org.isa.ipc.JamnServer.ResponseMessage;
  *  JamnServer lServer = new JamnServer();
  * 
  *  // create the WebService provider
- *  JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.Builder()
+ *  JamnWebServiceProvider lWebServiceProvider = new JamnWebServiceProvider()
  *      .setConfig(lServer.getConfig())
  *      // register the Web-API Services
- *      .registerServices(SampleWebApiServices.class).build();
+ *      .registerServices(SampleWebApiServices.class);
  *
  *  // add the actual jamn-content-provider to the server
  *  lServer.addContentProvider("SampleServiceProvider", lWebServiceProvider);
@@ -69,7 +70,6 @@ import org.isa.ipc.JamnServer.ResponseMessage;
 public class JamnWebServiceProvider implements JamnServer.ContentProvider {
 
     protected static final String LS = System.lineSeparator();
-    protected static final String UFS = "/";
     protected static Logger LOG = Logger.getLogger(JamnWebServiceProvider.class.getName());
 
     protected JsonToolWrapper jsonTool;
@@ -82,25 +82,10 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
      */
     protected Map<String, ServiceObject> serviceRegistry = new HashMap<>();
 
-    private JamnWebServiceProvider() {
-    }
-
-    /**
-     */
-    public static JamnWebServiceProvider newBuilder() {
-        return new JamnWebServiceProvider();
-    }
-
     /**
      */
     public JamnWebServiceProvider setJsonTool(JsonToolWrapper pTool) {
         jsonTool = pTool;
-        return this;
-    }
-
-    /**
-     */
-    public JamnWebServiceProvider build() {
         return this;
     }
 
@@ -301,7 +286,6 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
             requestClass = pRequestClass;
             responseClass = pResponseClass;
             serviceMethod = pServiceMethod;
-            serviceMethod.setAccessible(true);
 
             for (String meth : pServiceAnno.methods()) {
                 httpMethods.put(meth.toUpperCase(), meth.toUpperCase());
@@ -352,8 +336,11 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
         }
 
         /**
+         * @throws InvocationTargetException 
+         * @throws IllegalArgumentException 
+         * @throws IllegalAccessException 
          */
-        protected Object callWith(String pRequestData) throws Exception {
+        protected Object callWith(String pRequestData) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException  {
             Object lRet = null;
             Object lParam = null;
 

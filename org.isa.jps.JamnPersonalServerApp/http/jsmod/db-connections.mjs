@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 import { WorkView, ViewBuilder } from './view-classes.mjs';
 import { callWebService } from '../jsmod/tools.mjs';
@@ -9,7 +9,7 @@ import * as webapi from '../jsmod/webapi.mjs';
  */
 class DbConnectionsView extends WorkView {
 
-	elems = {};
+	elem = {};
 	uiobj = {};
 
 	connections = null;
@@ -51,7 +51,7 @@ class DbConnectionsView extends WorkView {
 
 	createUI() {
 		let builder = new ViewBuilder();
-		builder.setElementCollection(this.elems);
+		builder.setElementCollection(this.elem);
 		builder.setObjectCollection(this.uiobj);
 
 		//define some style defaults
@@ -141,15 +141,15 @@ class DbConnectionsView extends WorkView {
 	}
 
 	clearData(excludes = []) {
-		let names = Object.getOwnPropertyNames(this.elems);
+		let names = Object.getOwnPropertyNames(this.elem);
 		names.forEach((name) => {
-			let ctrl = this.elems[name];
+			let ctrl = this.elem[name];
 			if (!excludes.includes(ctrl)) {
 				ViewBuilder.clearControl(ctrl);
 			}
 		});
 
-		let key = this.elems.tfConnectionName.value.trim();
+		let key = this.elem.tfConnectionName.value.trim();
 		if (key !== "" && this.connections.hasOwnProperty(key)) {
 			this.currentConnection = this.connections[key];
 		} else {
@@ -160,7 +160,7 @@ class DbConnectionsView extends WorkView {
 	}
 
 	writeDataToView() {
-		let excludes = [this.elems.tfConnectionName];
+		let excludes = [this.elem.tfConnectionName];
 		let bindings = this.uiobj.bindings;
 
 		if (this.currentConnection) {
@@ -197,6 +197,7 @@ class DbConnectionsView extends WorkView {
 					callWebService(webapi.service_delete_dbconnections, request).then((response) => {
 						if (response.status === "ok") {
 							console.log("Deleted: ok");
+							this.clearData();
 						}
 					});
 				}
@@ -205,8 +206,8 @@ class DbConnectionsView extends WorkView {
 	}
 
 	runTestDbConnection() {
-		let userId = this.elems.tfUser.value.trim();
-		let pwd = this.elems.tfPwd.value.trim();
+		let userId = this.elem.tfUser.value.trim();
+		let pwd = this.elem.tfPwd.value.trim();
 		if (userId) {
 			if (userId == pwd) {
 				this.showConnectionTestResult(true);
@@ -219,7 +220,7 @@ class DbConnectionsView extends WorkView {
 	}
 
 	showConnectionTestResult(status = -1, text = "") {
-		let ctrl = this.elems["tfTestResult"];
+		let ctrl = this.elem.tfTestResult;
 		let okProps = { color: "green", resize: "none", width: "80px", height: ctrl.style["min-height"] };
 
 		if (status === false) {

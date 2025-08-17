@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 import {echo, sh, workspacePath, isOnUnix} from "tools.mjs";
 

@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 import { callWebService, typeUtil } from '../jsmod/tools.mjs';
 import { WorkView, WorkViewTable, TableData, ViewBuilder } from '../jsmod/view-classes.mjs';
@@ -15,9 +15,9 @@ let app_scm_tab1 = "?tab=readme-ov-file#jamn---just-another-micro-node-server";
  */
 class SystemInfoView extends WorkView {
 
-	appBoxElems = {};
+	appBoxElem = {};
 
-	configBoxElems = {};
+	configBoxElem = {};
 	configTable;
 
 	needsViewDataRefresh = true;
@@ -44,7 +44,7 @@ class SystemInfoView extends WorkView {
 	 */
 	#initAppBox() {
 
-		builder.setElementCollection(this.appBoxElems);
+		builder.setElementCollection(this.appBoxElem);
 
 		let compSet = builder.newFieldset({ title: "Application", clazzes: ["wkv-compset-border"], styleProps: { width: boxWidth } });
 		let infoContainer = this.getElement("info.left.container");
@@ -82,7 +82,7 @@ class SystemInfoView extends WorkView {
 	 */
 	#initConfigBox() {
 
-		builder.setElementCollection(this.configBoxElems);
+		builder.setElementCollection(this.configBoxElem);
 
 		//get the html coded configSet element
 		let compSet = this.getElement("server.config.set");
@@ -121,7 +121,7 @@ class SystemInfoView extends WorkView {
 	/**
 	 */
 	setActionsEnabled(flag) {
-		let ctrls = [this.configBoxElems["icoSave"], this.configBoxElems["icoRedo"]];
+		let ctrls = [this.configBoxElem.icoSave, this.configBoxElem.icoRedo];
 		let styleProps = flag ? { "pointer-events": "all", color: "" } : { "pointer-events": "none", color: "var(--border-gray)" };
 
 		ctrls.forEach((ctrl) => ViewBuilder.setStyleOf(ctrl, styleProps));
@@ -133,10 +133,10 @@ class SystemInfoView extends WorkView {
 		if (this.needsViewDataRefresh) {
 			clearConfigChanges();
 
-			this.appBoxElems["tfName"].value = data.name;
-			this.appBoxElems["tfVersion"].value = `${data.version} - Build [${data.buildDate} UTC]`;
-			this.appBoxElems["tfDescription"].value = data.description;
-			this.appBoxElems["lnkReadMore"].href = data.links["app.scm"] + app_scm_tab1;
+			this.appBoxElem.tfName.value = data.name;
+			this.appBoxElem.tfVersion.value = `${data.version} - Build [${data.buildDate} UTC]`;
+			this.appBoxElem.tfDescription.value = data.description;
+			this.appBoxElem.lnkReadMore.href = data.links["app.scm"] + app_scm_tab1;
 
 			//create+build a table data object
 			let tableData = new TableData();

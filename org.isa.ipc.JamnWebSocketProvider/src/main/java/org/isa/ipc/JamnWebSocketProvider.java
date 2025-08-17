@@ -1,10 +1,10 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc;
 
-import static org.isa.ipc.JamnServer.HttpHeader.HTTP_DEFAULT_WEBSOCKET_RESPONSE_ATTRIBUTES;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.HTTP_1_1;
 import static org.isa.ipc.JamnServer.HttpHeader.Field.SEC_WEBSOCKET_ACCEPT;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.UPGRADE;
+import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.WEBSOCKET;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_101_SWITCH_PROTOCOLS;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
 
@@ -46,10 +46,10 @@ import org.isa.ipc.JamnServer.ResponseMessage;
  * How ever - since every handler represents a client connection
  * the manager is responsible for server-side communication to the client.
  *  
- * The "business logic" of connection is implemented in a WsoMessageProcessor
+ * The "business logic" of a connection is implemented in a WsoMessageProcessor
  * associated with one WebSocket-connection-path (resp. handler) supporting n client connections.
  *  
- * You can easily play with this things by using e.g.:
+ * One can easily play with this things by using e.g.:
  * JamnWebSocketProvider\src\test\..\..\sample\browser-js-websocket-call.html
  * </pre>
  */
@@ -83,22 +83,13 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
     protected Set<String> connectionPathNames = new HashSet<>();
     protected ProviderAdapter providerAdapter = new ProviderAdapter();
-    //limit client -> server payload data size
+    // limit client -> server payload data size
     protected long maxUpStreamPayloadSize = 65000;
 
     /**
      */
-    private JamnWebSocketProvider() {
+    public JamnWebSocketProvider() {
         addConnectionPath(DefaultPath);
-    }
-
-    /*********************************************************
-     * Public Interface
-     *********************************************************/
-    /**
-     */
-    public static JamnWebSocketProvider newBuilder() {
-        return new JamnWebSocketProvider();
     }
 
     /**
@@ -119,12 +110,6 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
     public JamnWebSocketProvider setMaxUpStreamPayloadSize(long pSize) {
         maxUpStreamPayloadSize = pSize;
         return this;
-    }
-
-    /**
-     */
-    public Set<String> getConnectionPathNames() {
-        return connectionPathNames;
     }
 
     /**
@@ -156,19 +141,9 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
     /**
      */
-    public JamnWebSocketProvider build() {
-        return this;
+    public Set<String> getConnectionPathNames() {
+        return connectionPathNames;
     }
-
-    /*********************************************************
-     * End - Public Interface
-     *********************************************************/
-
-    /*********************************************************
-     * <pre>
-     * The Jamn WebSocket-Server implementations.
-     * </pre>
-     *********************************************************/
 
     /**
      * The JamnServer.ContentProvider.UpgradeHandler Interface method.
@@ -473,14 +448,15 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
          */
         protected void processWsoHandshake(String pConnectionId, HttpHeader pRequestHeader)
                 throws IOException, NoSuchAlgorithmException {
-            HttpHeader lHandShakeHeader = new HttpHeader()
-                    .initWith(HTTP_DEFAULT_WEBSOCKET_RESPONSE_ATTRIBUTES, isCORSEnabled)
+
+            ResponseMessage lHandshakeResponse = new ResponseMessage(outStream);
+            lHandshakeResponse.header()
+                    .setCORSEnabled(isCORSEnabled)
                     .setHttpVersion(HTTP_1_1)
                     .setHttpStatus(SC_101_SWITCH_PROTOCOLS)
                     .setConnection(UPGRADE)
+                    .setUpgrade(WEBSOCKET)
                     .set(SEC_WEBSOCKET_ACCEPT, createWebSocketAcceptKey(pRequestHeader.getWebSocketKey()));
-
-            ResponseMessage lHandshakeResponse = new ResponseMessage(outStream, lHandShakeHeader);
 
             try {
                 lHandshakeResponse.send();
@@ -489,9 +465,9 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 connectionManager.connectionEstablished(pConnectionId, this);
 
                 LOG.info(() -> String.format("%sWebSocket connection established [%s]%s%s", LS, pConnectionId, LS,
-                        lHandShakeHeader.toString().trim()));
+                        lHandshakeResponse.header().toString().trim()));
             } catch (Exception e) {
-                lHandShakeHeader.setHttpStatus(SC_500_INTERNAL_ERROR);
+                lHandshakeResponse.header().setHttpStatus(SC_500_INTERNAL_ERROR);
                 lHandshakeResponse.send();
                 throw e;
             }

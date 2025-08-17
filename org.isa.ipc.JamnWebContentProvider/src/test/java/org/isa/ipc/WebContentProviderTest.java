@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,7 +28,7 @@ class WebContentProviderTest {
     private static String ServerURL;
 
     @BeforeAll
-    static void setupEnvironment() throws Exception {
+    static void setupEnvironment() {
         // create standard Java SE HTTP Client
         Client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
@@ -40,11 +40,9 @@ class WebContentProviderTest {
 
         // create the JamnWebContentProvider with a webroot
         // no leading slash because relative path
-        JamnWebContentProvider lWebContentProvider = JamnWebContentProvider
-                .Builder("src/test/resources/http/sample")
+        JamnWebContentProvider lWebContentProvider = new JamnWebContentProvider("src/test/resources/http/sample")
                 .setConfig(Server.getConfig())
-                .setFileEnricher(new DefaultFileEnricher(new FileEnricherValueProvider()))
-                .build();
+                .setFileEnricher(new DefaultFileEnricher(new FileEnricherValueProvider()));
         // add to server
         Server.addContentProvider("WebContentProvider", lWebContentProvider);
 

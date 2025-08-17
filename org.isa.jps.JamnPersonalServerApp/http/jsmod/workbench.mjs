@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 import { ServerOrigin, setVisibility } from '../jsmod/tools.mjs';
 import { WorkbenchViewManager } from '../jsmod/view-manager.mjs';
@@ -107,8 +107,6 @@ function initWebSocket() {
 /**
  */
 function initUI() {
-
-	//document.onclick = (evt) => { WorkbenchInterface.statusLineInfo(""); };
 
 	initTitlebar();
 	initSidebar();

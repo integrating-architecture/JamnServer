@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 import { CommandDef } from '../jsmod/data-classes.mjs';
 import { getView as systemInfosView } from '../jsmod/system-infos.mjs';
@@ -16,7 +16,7 @@ import { getView as dbConnectionsView } from './db-connections.mjs';
  * </pre>
  */
 export const topicList = {
-	system : {icon:"system", title:"&ensp;System",
+	system : {icon:"system", title:"System",
 		items : {
 			//create a view item 
 			"infos" : {title:"Infos", view:systemInfosView()},
@@ -27,7 +27,7 @@ export const topicList = {
 		}
 	},
 	
-	commands : {icon:"command", title:"&ensp;Commands",
+	commands : {icon:"command", title:"Commands",
 		items : {
 			//create view item with data
 			"testSample" : {title:"Sample: shell test", view:commandView(), data:new CommandDef("Sample: [test sh command]", "runjs", "/sample/sh-test.mjs", {args:true})},
@@ -36,7 +36,7 @@ export const topicList = {
 		}
 	},
 	
-	tools : {icon:"tools", title:"&ensp;Tools",
+	tools : {icon:"tools", title:"Tools",
 		items : {
 			"dbconnections" : {title:"DB Connections", view:dbConnectionsView()}
 		}

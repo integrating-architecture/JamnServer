@@ -1,49 +1,62 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 /**
  * Some simple data classes.
- * 
- * The classes serve to document central data structures.
+ */
+
+
+/**
+ * A common websocket message.
  */
 export class WsoCommonMessage {
+
+	//header data
 	reference = "";
-	textdata = "";
 	command = "";
+	functionModule = "";
 	argsSrc = "";
-	script = "";
 	status = "";
 	error = "";
-	
+	//payload
+	bodydata = "";
+	attachments = {};
+
 	constructor(reference) {
 		this.reference = reference;
 	}
-	
-	hasReference(id){
-		return this.reference===id;
+
+	hasReference(id) {
+		return this.reference === id;
 	}
 
-	hasStatusSuccess(){
+	hasStatusSuccess() {
 		return "success" === this.status.toLowerCase();
 	}
-	
-	hasStatusError(){
+
+	hasStatusError() {
 		return "error" === this.status.toLowerCase();
 	}
 
-	setStatusError(errorInfo){
+	setStatusError(errorInfo) {
 		this.status = "error";
 		this.error = errorInfo;
 	}
 
+	addAttachment(key, value) {
+		this.attachments[key] = value;
+	}
 };
 
+/**
+ * A common command definition.
+ */
 export class CommandDef {
 	title = "";
 	command = "";
 	script = "";
-	options = {args:false}
+	options = { args: false }
 
-	constructor(title, command, script, opt={args:false}) {
+	constructor(title, command, script, opt = { args: false }) {
 		this.title = title;
 		this.command = command;
 		this.script = script;
@@ -51,16 +64,18 @@ export class CommandDef {
 	}
 };
 
-
+/**
+ * View definition struct.
+ */
 export class ViewSource {
 	file = "";
 	html = null;
-	
+
 	constructor(file) {
 		this.file = file;
 	}
-	
-	isEmpty(){
-		return this.html==null;
+
+	isEmpty() {
+		return this.html == null;
 	}
 };

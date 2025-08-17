@@ -1,8 +1,8 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
-import { NL, newSimpleId } from '../jsmod/tools.mjs';
+import { NL, newSimpleId, fileUtil } from '../jsmod/tools.mjs';
 import { WsoCommonMessage, CommandDef } from '../jsmod/data-classes.mjs';
-import { WorkView, ViewBuilder } from '../jsmod/view-classes.mjs';
+import { WorkView, ViewBuilder, IconElement } from '../jsmod/view-classes.mjs';
 
 /**
  * A general View class for commands.
@@ -33,18 +33,15 @@ class CommandView extends WorkView {
 
 	commandDef = new CommandDef();
 	commandName = "";
+	attachments = new Map();
+	namedArgs = { none: "" };
 
-	//members for the main ui elements
-	pbRun = null;
-	taArgs = null;
-	taOutput = null;
+	//input element for file dialog
+	fileInput = null;
 
 	//member objects to collect ui elements and ui objects from the builder
-	elems = {};
+	elem = {};
 	uiobj = {};
-
-	//just demo data
-	namedArgs = { help: "-h", test: "-t -file=/temp/test.json" };
 
 	constructor(id) {
 		super(id, "");
@@ -65,9 +62,21 @@ class CommandView extends WorkView {
 		super.initialize();
 		this.setTitle(this.commandDef.title);
 
-		this.headerMenu.addItem("Delete Output", (evt) => {
-			this.deleteOutput();
+		//just some demo data
+		this.namedArgs = { help: "-h", testfile: "-file=test-data.json", cdata: '<![CDATA[ {"name":"HelloFunction", "args":["John Doe"]} ]]>' };
+
+		this.headerMenu.addItem("Clear Output", (evt) => {
+			this.clearOutput();
 		}, { separator: "top" });
+		this.headerMenu.addItem("Clear View", (evt) => {
+			this.clearAll();
+		});
+
+		this.fileInput = fileUtil.createFileInputElement("text/*, .json, .txt", (evt) => {
+			let [file] = this.fileInput.files;
+			this.fileInput.value = "";
+			this.addAttachment(file);
+		});
 
 		this.createUI();
 		this.createWsoConnection();
@@ -86,13 +95,13 @@ class CommandView extends WorkView {
 	createUI() {
 		let builder = new ViewBuilder();
 		//set the objects to hold all control dom elements with a varid
-		builder.setElementCollection(this.elems);
+		builder.setElementCollection(this.elem);
 		// and other things like e.g. datalists or "data-bind" infos
 		builder.setObjectCollection(this.uiobj);
 
 		//define some style defaults
 		builder.defaultStyles.comp = { "margin-bottom": "0" };
-		builder.defaultStyles.label = { "width": "70px" };
+		builder.defaultStyles.label = { "width": "80px" };
 		let hgap = "20px";
 
 		//create the control container
@@ -100,18 +109,17 @@ class CommandView extends WorkView {
 		this.viewWorkarea.prepend(compSet);
 
 		//create the controls
-		this.pbRun = builder.newViewComp()
+		builder.newViewComp()
 			.addLabelButton({ text: "Command:" }, { varid: "pbRun", icon: "run", text: this.commandName, title: "Run command" }, (target) => {
 				target.button.onclick = (evt) => {
 					this.runCommand();
 				};
 			})
-			.appendTo(compSet)
-			.getCtrl("pbRun");
+			.appendTo(compSet);
 
 		//arguments choice + demo data
 		let namedArgsList = Object.getOwnPropertyNames(this.namedArgs);
-		this.taArgs = builder.newViewComp()
+		builder.newViewComp()
 			.style({ "align-items": "flex-start" })
 			.addLabelTextArea({ text: "Args:" }, {
 				varid: "taArgs",
@@ -147,12 +155,33 @@ class CommandView extends WorkView {
 					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoClearArgChoice", iconName: "eraser", title: "Clear args and choice", styleProps: { "margin-left": "20px", "margin-right": "5px" } })
 				})
 			})
-			.appendTo(compSet)
-			.getCtrl("taArgs");
+			.appendTo(compSet);
+
+		//attachment list
+		builder.newViewComp()
+			.style({ "align-items": "flex-start" })
+			.addLabel({ text: "Attachments:" })
+			.addContainer({ clazzes: "wkv-col-container" }, (target) => {
+				let container = target.container;
+
+				target.comp.addContainer({ clazzes: "wkv-row-container", parentCtrl: container, styleProps: { gap: "20px", "align-self": "flex-start" } }, (target) => {
+					let iconBar = target.container;
+
+					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoRemoveAllAttachments", iconName: "trash", title: "Remove all Attachments" });
+					target.comp.addActionIcon({ parentCtrl: iconBar, varid: "icoAddAttachment", iconName: "plusNew", title: "Add Attachment" });
+				});
+
+				target.comp.addList({
+					parentCtrl: container, varid: "lstAttachments",
+					styleProps: { "min-width": "385px", "min-height": "20px", "padding": "10px" }
+				});
+
+			})
+			.appendTo(compSet);
 
 		builder.newViewComp().addSeparator({ styleProps: { width: "100%" } }).appendTo(compSet);
 
-		this.taOutput = builder.newViewComp()
+		builder.newViewComp()
 			.style({ "align-items": "flex-start" })
 			.addContainer({ clazzes: "wkv-col-container", styleProps: { "align-items": "center", "gap": "15px" } }, (target) => {
 				let labelBar = target.container;
@@ -172,26 +201,31 @@ class CommandView extends WorkView {
 					})
 					.addActionIcon({ parentCtrl: labelBar, varid: "icoOutputDelete", iconName: "trash", title: "Delete current output" }, (target) => {
 						target.icon.onclick = () => {
-							this.deleteOutput();
+							this.clearOutput();
 						}
 					});
 			})
-			.appendTo(compSet)
-			.getCtrl("taOutput");
+			.appendTo(compSet);
 
-		this.elems.tfNamedArgs.addEventListener('input', (evt) => {
+		this.elem.tfNamedArgs.addEventListener('input', (evt) => {
 			let key = evt.currentTarget.value;
 			this.setArgsSelection(key);
 		});
-		this.elems.icoClearArgChoice.onclick = () => {
+		this.elem.icoClearArgChoice.onclick = () => {
 			this.clearArgChoice();
 		};
-		this.elems.icoDeleteNamedArgs.onclick = () => {
+		this.elem.icoDeleteNamedArgs.onclick = () => {
 			this.deleteArgChoice();
 		};
-		this.elems.icoSaveNamedArgs.onclick = () => {
+		this.elem.icoSaveNamedArgs.onclick = () => {
 			this.saveArgChoice();
 		};
+		this.elem.icoAddAttachment.onclick = () => {
+			this.fileInput.click();
+		};
+		this.elem.icoRemoveAllAttachments.onclick = () => {
+			this.removeAllAttachments();
+		}
 	}
 
 	createWsoConnection() {
@@ -206,7 +240,7 @@ class CommandView extends WorkView {
 					this.addOutputLine(NL + wsoMsg.error);
 					this.setRunning(false);
 				} else {
-					this.addOutputLine(wsoMsg.textdata);
+					this.addOutputLine(wsoMsg.bodydata);
 				}
 			} else if (wsoMsg.hasStatusError && wsoMsg.error.includes("connection")) {
 				this.addOutputLine(NL + wsoMsg.error);
@@ -218,54 +252,72 @@ class CommandView extends WorkView {
 		});
 	}
 
+	clearAll() {
+		this.clearArgChoice();
+		this.clearOutput();
+		this.removeAllAttachments();
+
+		//resize elements
+		this.elem.taArgs.style.width = "0px";
+		this.elem.taArgs.style.height = "0px";
+		this.elem.taOutput.style.width = "0px";
+		this.elem.taOutput.style.height = "0px";
+	}
+
 	setRunning(flag) {
 		super.setRunning(flag);
-		this.pbRun.disabled = flag;
+		this.elem.pbRun.disabled = flag;
 	}
 
 	runCommand() {
 		let wsoMsg = new WsoCommonMessage(this.wsoRefId);
 		wsoMsg.command = this.commandDef.command;
-		wsoMsg.script = this.commandDef.script;
+		wsoMsg.functionModule = this.commandDef.script;
+		wsoMsg.argsSrc = this.elem.taArgs.value.trim();
 
-		wsoMsg.argsSrc = this.taArgs.value.trim();
-		this.deleteOutput();
+		if (this.attachments.size > 0) {
+			this.attachments.forEach(function (value, key) {
+				wsoMsg.addAttachment(value.name, value.data);
+			})
+		}
+
+		this.clearOutput();
 		WbApp.sendWsoMessage(wsoMsg, () => {
 			this.setRunning(true);
 		});
 	}
 
 	addOutputLine(line) {
-		this.taOutput.value += line + NL;
-		this.taOutput.scrollTop = this.taOutput.scrollHeight;
+		this.elem.taOutput.value += line + NL;
+		this.elem.taOutput.scrollTop = this.elem.taOutput.scrollHeight;
 	}
 
 	setArgsSelection(key) {
 		if (this.commandDef.options.args && this.namedArgs[key]) {
-			this.taArgs.value = this.namedArgs[key];
+			this.elem.taArgs.value = this.namedArgs[key];
 		}
 	}
 
 	clearArgChoice() {
-		this.elems.taArgs.value = "";
-		this.elems.tfNamedArgs.value = "";
+		this.elem.taArgs.value = "";
+		this.elem.tfNamedArgs.value = "";
 	}
 
 	getDataListObjFor(name) {
-		return this.uiobj[this.elems[name].list.id];
+		return this.uiobj[this.elem[name].list.id];
 	}
 
 	saveArgChoice() {
-		let key = this.elems.tfNamedArgs.value.trim();
+		let key = this.elem.tfNamedArgs.value.trim();
 		if (key != "") {
-			this.namedArgs[key] = this.elems.taArgs.value.trim();
+			this.namedArgs[key] = this.elem.taArgs.value.trim();
 			let datalist = this.getDataListObjFor("tfNamedArgs");
 			datalist.addOption(key);
 		}
 	}
 
 	deleteArgChoice() {
-		let key = this.elems.tfNamedArgs.value.trim();
+		let key = this.elem.tfNamedArgs.value.trim();
 
 		if (this.namedArgs[key]) {
 			WbApp.confirm({
@@ -283,20 +335,59 @@ class CommandView extends WorkView {
 
 	saveOutput() {
 		let fileName = "output_" + (this.commandDef.command + "_" + this.commandDef.script).replaceAll("/", "_") + ".txt";
-		this.saveToFile(fileName, this.taOutput.value.trim());
+		this.saveToFile(fileName, this.elem.taOutput.value.trim());
 	}
 
 	copyOutputToClipboard() {
-		this.copyToClipboard(this.taOutput.value.trim());
+		this.copyToClipboard(this.elem.taOutput.value.trim());
 	}
 
-	deleteOutput() {
+	clearOutput() {
 		if (!this.isRunning) {
-			let lastValue = this.taOutput.value;
-			this.taOutput.value = "";
+			let lastValue = this.elem.taOutput.value;
+			this.elem.taOutput.value = "";
 			return lastValue;
 		}
 		return "";
+	}
+
+	addAttachment(file) {
+		if (file && !this.attachments.has(file.name)) {
+			let attachment = new Attachment(file.name);
+			let reader = new FileReader();
+			reader.onload = (e) => {
+				attachment.data = e.target.result;
+			};
+			reader.readAsText(file);
+
+			this.attachments.set(file.name, attachment);
+			this.addAttachmentToList(attachment);
+		}
+	}
+
+	addAttachmentToList(attachment) {
+		let item = document.createElement("li");
+		item.classList.add("indexed");
+		let iconClass = IconElement.iconDef("xRemove")[0];
+		let html = `<span class='${iconClass} wkv-listitem-ctrl' title='Remove Attachment' style='margin-right: 20px;'></span> <span>${attachment.name}</span>`;
+		item.innerHTML = html;
+
+		this.elem.lstAttachments.appendChild(item);
+		item.firstChild.onclick = (evt) => {
+			let name = evt.target.parentElement.lastChild.textContent;
+			this.removeAttachmentFromList(name, item);
+		}
+	}
+
+	removeAttachmentFromList(name, item) {
+		this.elem.lstAttachments.removeChild(item);
+		this.attachments.delete(name);
+	}
+
+	removeAllAttachments() {
+		this.attachments = new Map();
+		let list = this.elem.lstAttachments;
+		while (list.firstChild) list.removeChild(list.firstChild);
 	}
 
 }
@@ -357,3 +448,11 @@ let viewHtml = `
 </div>
 <!-- work view end -->
 `;
+
+class Attachment {
+	name;
+	data;
+	constructor(name) {
+		this.name = name;
+	}
+}

@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 /**
  * <pre>
  * The package serves as a place for JamnPersonalServer specific

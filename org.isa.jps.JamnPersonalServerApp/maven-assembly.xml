@@ -26,7 +26,7 @@
 					<exclude>**/maven/**</exclude>
 					<exclude>**/graalvm/**</exclude>
 					<exclude>**/com/**</exclude>
-					<exclude>**/nanohttpd/**</exclude>
+					<exclude>**/nanohttpd/**</exclude> <!-- comes with graal js debug -->
 					<exclude>**/LICENSE.txt/**</exclude>
 					<exclude>module-info*</exclude>
 					<exclude>blank-server.html</exclude>

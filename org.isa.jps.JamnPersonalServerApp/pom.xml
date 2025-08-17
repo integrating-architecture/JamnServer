@@ -109,6 +109,9 @@
 								<copy todir="dist/jps.home/libs">
 									<fileset dir="libs" includes="*.cmd" />
 								</copy>
+								<copy todir="dist/jps.home/extensions">
+									<fileset dir="extensions" excludes="README.md" includes="**/*" />
+								</copy>
 							</target>
 						</configuration>
 						<goals>

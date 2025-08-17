@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.jps.comp;
 
 import java.util.HashMap;
@@ -83,14 +83,14 @@ public class CLICommandInitializer {
 
         cli.newCommandBuilder()
                 .name("system")
-                .descr(name -> cli.newDefaultDescr(name, "[shutdown, kill]",
-                        "Shutdown the whole application. Kill forces a hard system exit"))
+                .descr(name -> cli.newDefaultDescr(name, "[shutdown] [-kill]",
+                        "Shutdown the whole application, -kill forces a hard system exit"))
                 .function(ctx -> {
                     String lResult = "";
 
                     if (ctx.hasArg("shutdown")) {
                         if (ctx.getConfirmation("Do you really want to shutdown (y/n) ?")) {
-                            if (ctx.hasArg("kill")) {
+                            if (ctx.hasArg("-kill")) {
                                 LOG.info("Going to KILL application");
                                 System.exit(1);
                             } else {

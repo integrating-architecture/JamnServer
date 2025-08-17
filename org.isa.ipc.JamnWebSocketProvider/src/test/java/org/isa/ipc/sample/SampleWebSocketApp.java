@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc.sample;
 
 import java.util.logging.Logger;
@@ -23,8 +23,7 @@ public class SampleWebSocketApp {
         JamnServer lServer = new JamnServer();
 
         // create the JamnWebSocketProvider
-        JamnWebSocketProvider lWebSocketProvider = JamnWebSocketProvider.newBuilder()
-                .build();
+        JamnWebSocketProvider lWebSocketProvider = new JamnWebSocketProvider();
 
         // add the Server-Side message processor for the WebSocket
         lWebSocketProvider.addMessageProcessor(new WsoMessageProcessor() {

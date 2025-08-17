@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc.sample;
 
 import org.isa.ipc.JamnServer;
@@ -26,7 +26,8 @@ public class WebServiceProviderSampleApp {
         lServer.getConfig().setCORSEnabled(true);
 
         // create the WebService provider
-        JamnWebServiceProvider lWebServiceProvider = JamnWebServiceProvider.newBuilder().setConfig(lServer.getConfig())
+        JamnWebServiceProvider lWebServiceProvider = new JamnWebServiceProvider()
+                .setConfig(lServer.getConfig())
                 // create a json tool wrapper for the JamnWebServiceProvider
                 .setJsonTool(new JamnServer.JsonToolWrapper() {
                     private final ObjectMapper jack = new ObjectMapper()
@@ -52,7 +53,7 @@ public class WebServiceProviderSampleApp {
                     }
                 })
                 // register the Web-API Services
-                .registerServices(SampleWebApiServices.class).build();
+                .registerServices(SampleWebApiServices.class);
 
         // add the provider to the server
         lServer.addContentProvider("WebServiceProvider", lWebServiceProvider);

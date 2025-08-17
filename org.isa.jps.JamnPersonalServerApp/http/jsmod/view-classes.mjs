@@ -1,6 +1,6 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
-import { getChildOf, setVisibility, setDisplay, typeUtil } from '../jsmod/tools.mjs';
+import { getChildOf, setVisibility, setDisplay, typeUtil, fileUtil } from '../jsmod/tools.mjs';
 import { ViewSource } from '../jsmod/data-classes.mjs';
 
 /**
@@ -63,7 +63,9 @@ export class IconElement {
 			tableSort: ["bi-arrow-down", "bi-arrow-up"],
 			save: ["bi-floppy", ""],
 			redo: ["bi-arrow-counterclockwise", ""],
-			addnew: ["bi-plus-square", ""],
+			plusNew: ["bi-plus-square", ""],
+			minusRemove: ["bi-dash-square", ""],
+			xRemove: ["bi-x-square", ""],
 			trash: ["bi-trash", ""],
 			clipboardAdd: ["bi-clipboard-plus", ""],
 			eraser: ["bi-eraser", ""],
@@ -303,20 +305,8 @@ export class WorkView {
 	}
 
 	saveToFile(fileName, text) {
-		let outputData = this.outputArea.value.trim();
-
 		if (!this.isRunning && text.length > 0) {
-			window.showSaveFilePicker({
-				suggestedName: fileName,
-				types: [{
-					description: "Text file",
-					accept: { "text/plain": [".txt"] },
-				}],
-			}).then(async handler => {
-				let file = await handler.createWritable();
-				await file.write(outputData);
-				await file.close();
-			}).catch(err => console.error(err));
+			fileUtil.saveToFileClassic(fileName, text);
 		}
 	}
 }
@@ -698,7 +688,7 @@ export class SplitBarHandler {
 		document.onmousemove = (evt) => {
 			this.#doDrag(evt);
 		};
-		
+
 		document.onmouseup = () => {
 			document.onmousemove = document.onmouseup = null;
 			this.compBefore.style.cursor = "default";
@@ -712,7 +702,7 @@ export class SplitBarHandler {
 			y: evt.clientY - this.clickPoint.evt.clientY
 		};
 
-		if(this.orientation==="v"){
+		if (this.orientation === "v") {
 			this.#doVDrag(delta, evt);
 		}
 	}
@@ -742,6 +732,7 @@ class DefaultCompCSSClasses {
 	comp = "wkv-ctrlcomp";
 	label = "wkv-label-ctrl";
 	link = "wkv-link-ctrl";
+	list = "wkv-list-ctrl";
 	actionIcon = "wkv-header-action-ctrl";
 	button = "wkv-button-ctrl";
 	textField = "wkv-value-ctrl";
@@ -919,25 +910,25 @@ export class ViewBuilder {
  */
 export class ViewComp {
 
-	#directlySupportedAttributes = ["innerHTML", "disabled"]; 
+	#directlySupportedAttributes = ["innerHTML", "disabled"];
 
 	builder;
 	comp = null;
 
 	constructor(builder, props = { clazzes: "wkv-ctrlcomp", type: "row" }) {
 		this.builder = builder;
-		if(props){
+		if (props) {
 			this.comp = document.createElement("span");
 			this.#setClassesOf(this.comp, props.clazzes, "comp");
 			this.#applyDefaultStyles(this.comp, "comp");
 		}
 	}
 
-	static newFor(element){
+	static newFor(element) {
 		return new ViewComp(new ViewBuilder(), null).setComp(element);
 	}
 
-	setComp(comp){
+	setComp(comp) {
 		this.comp = comp;
 		return this;
 	}
@@ -968,12 +959,12 @@ export class ViewComp {
 		//comfort method
 		//apply the list of direct supported attributes if any in props
 		let directPropValues = {};
-		this.#directlySupportedAttributes.forEach((name)=>{
+		this.#directlySupportedAttributes.forEach((name) => {
 			if (props.hasOwnProperty(name)) {
 				directPropValues[name] = props[name];
 			}
 		});
-		if(Object.keys(directPropValues).length > 0){
+		if (Object.keys(directPropValues).length > 0) {
 			this.#setAttributesOf(ctrl, directPropValues);
 		}
 	}
@@ -998,12 +989,12 @@ export class ViewComp {
 		this.#registerObject(ctrl);
 	}
 
-	#registerObject(obj, id=null) {
-		if(this.builder.objectCollection){
+	#registerObject(obj, id = null) {
+		if (this.builder.objectCollection) {
 			if (id) {
 				this.builder.objectCollection[id] = obj;
 			} else if (obj.hasOwnProperty("data-bind")) {
-				if(!this.builder.objectCollection.bindings){
+				if (!this.builder.objectCollection.bindings) {
 					this.builder.objectCollection.bindings = {};
 				}
 				let key = obj["data-bind"];
@@ -1148,6 +1139,24 @@ export class ViewComp {
 		return this;
 	}
 
+	addList(props = { clazzes: "", type: "ul" }, configCb = null) {
+		let typeId = "list";
+		let ctrl = document.createElement(props.type ? props.type : "ul");
+		this.#setClassesOf(ctrl, props.clazzes, typeId);
+
+		this.#applyDefaultStyles(ctrl, typeId);
+		this.#applyProperties(ctrl, props)
+
+		this.#appendCtrl(props, ctrl);
+		this.#registerCtrl(props.varid, ctrl);
+
+		if (configCb) {
+			configCb({ comp: this, list: ctrl });
+		}
+
+		return this;
+	}
+
 	addTextField(props = { varid: "", id: "", clazzes: "" }, configCb = null) {
 		let typeId = "textField";
 		let ctrl = document.createElement("input");
@@ -1185,7 +1194,7 @@ export class ViewComp {
 		ctrl.id = this.#reworkId(props.id);
 		ctrl.title = props?.title;
 
-		if(props.icon){
+		if (props.icon) {
 			let iconClasses = [IconElement.iconDef(props.icon)[0], "wkv-button-icon"];
 			this.#setClassesOf(ctrl, iconClasses);
 		}

@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
 /**
  * Some simple helper constants and functions
@@ -116,25 +116,72 @@ export function newSimpleId(prfx = "") {
 
 /**
  */
+export const fileUtil = {
+
+	/**
+	 */
+	saveToFileFapi: (fileName, text) => {
+		window.showSaveFilePicker({
+			suggestedName: fileName,
+			types: [{
+				description: "Text file",
+				accept: { "text/plain": [".txt"] },
+			}],
+		}).then(async handler => {
+			let file = await handler.createWritable();
+			await file.write(text);
+			await file.close();
+		}).catch(err => console.error(err));
+	},
+
+	/**
+	 */
+	saveToFileClassic: (fileName, text) => {
+		let blob = new Blob([text], { type: "text/plain" });
+		let url = URL.createObjectURL(blob);
+
+		let a = document.createElement("a");
+		a.href = url;
+		a.download = fileName;
+		a.style.display = "none";
+		a.click();
+		URL.revokeObjectURL(url);
+	},
+
+	/**
+	 */
+	createFileInputElement: (fileTypes, cb) => {
+		let fileInput = document.createElement("input");
+		fileInput.type = "file";
+		fileInput.style.display = "none";
+		fileInput.accept = fileTypes;
+		fileInput.addEventListener("change", cb);
+		return fileInput;
+	}
+
+}
+
+/**
+ */
 export const typeUtil = {
 
 	isString: (val) => {
 		return (typeof val === 'string' || val instanceof String);
 	},
 
-	isObject(val) {
+	isObject: (val) => {
 		return (val !== null && typeof val === 'object');
 	},
 
-	isDomElement(val) {
+	isDomElement: (val) => {
 		return (val !== null && (val instanceof Element || val.nodeType !== undefined));
 	},
 
-	isFunction(val) {
+	isFunction: (val) => {
 		return (val !== null && (typeof val === 'function' || val instanceof Function));
 	},
 
-	isNumber(val) {
+	isNumber: (val) => {
 		return (val !== null && typeof val === 'number');
 	},
 

@@ -1,4 +1,4 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc;
 
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.IMAGE;
@@ -20,20 +20,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.isa.ipc.JamnServer.Config;
+import org.isa.ipc.JamnServer.ExprString;
+import org.isa.ipc.JamnServer.ExprString.ValueProvider;
 import org.isa.ipc.JamnServer.JsonToolWrapper;
 import org.isa.ipc.JamnServer.RequestMessage;
 import org.isa.ipc.JamnServer.ResponseMessage;
-import org.isa.ipc.JamnWebContentProvider.ExprString.ValueProvider;
 
 /**
  * <pre>
- * This class realizes a simple Web Content Provider.
+ * The class realizes a simple Web Content Provider.
  * Which is essentially a rudimentary web server 
  * with the ability to create dynamic content (see SampleWebContentApp).
  * </pre>
@@ -52,6 +50,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
 
     // customizable file helper functions
     protected FileHelper fileHelper = new FileHelper();
+    protected Predicate<WebFile> cacheableChecker = file -> true;
 
     /**
      * <pre>
@@ -68,14 +67,18 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
 
     /**
      * <pre>
-     * The fileEnricher is an interface used by the fileProvider
+     * A fileEnricher is used by the fileProvider
      * to modify the file/resource content before provision.
      * By default files can be marked as templates with placeholders like ${name} that become resolved.
      * </pre>
      */
     protected FileEnricher fileEnricher = (WebFile pFile) -> {
+        //see DefaultFileEnricher
     };
 
+    /**
+     * A rudimentary file cache. 
+     */
     protected FileCache fileCache = new FileCache() {
         private Map<String, WebFile> cacheMap = Collections.synchronizedMap(new HashMap<>());
 
@@ -95,17 +98,12 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         }
     };
 
-    private JamnWebContentProvider() {
+    protected JamnWebContentProvider() {
     }
 
-    private JamnWebContentProvider(String pRoot) {
+    public JamnWebContentProvider(String pRoot) {
+        this();
         webroot = pRoot;
-    }
-
-    /**
-     */
-    public static JamnWebContentProvider Builder(String pWebRoot) {
-        return new JamnWebContentProvider(pWebRoot);
     }
 
     /**
@@ -137,6 +135,13 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     }
 
     /**
+     */
+    public JamnWebContentProvider setCacheableChecker(Predicate<WebFile> cacheableChecker) {
+        this.cacheableChecker = cacheableChecker;
+        return this;
+    }
+
+    /**
     */
     public JamnWebContentProvider setFileProvider(FileProvider fileProvider) {
         this.fileProvider = fileProvider;
@@ -145,7 +150,8 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
 
     /**
      */
-    public JamnWebContentProvider build() {
+    public JamnWebContentProvider setFileHelper(FileHelper fileHelper) {
+        this.fileHelper = fileHelper;
         return this;
     }
 
@@ -153,12 +159,6 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      */
     public FileHelper getFileHelper() {
         return fileHelper;
-    }
-
-    /**
-     */
-    public void setFileHelper(FileHelper fileHelper) {
-        this.fileHelper = fileHelper;
     }
 
     /**
@@ -200,7 +200,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      */
     protected WebFile getFileContent(String pRequestPath, ResponseMessage pResponse)
             throws WebContentException {
-        String lDecodedPath = fileHelper.decodeRequestPath.apply(pRequestPath);
+        String lDecodedPath = fileHelper.decodeRequestPath(pRequestPath);
 
         // the decoded path gets the unique id/requestPath of the requested file
         WebFile lWebFile = new WebFile(lDecodedPath);
@@ -211,25 +211,27 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             return lWebFile;
         }
 
-        lWebFile.filePath = getFilePathFor(fileHelper.doPathMapping.apply(lDecodedPath));
+        lWebFile.filePath = getFilePathFor(fileHelper.doPathMapping(lDecodedPath));
 
         try {
-            // by default we assume html
+            // by default html is assumed
             pResponse.setContentType(TEXT_HTML);
 
-            if (fileHelper.isStyleSheet.test(lDecodedPath)) {
+            if (fileHelper.isStyleSheet(lDecodedPath)) {
                 pResponse.setContentType(TEXT_CSS);
-            } else if (fileHelper.isJavaScript.test(lDecodedPath)) {
+            } else if (fileHelper.isJavaScript(lDecodedPath)) {
                 pResponse.setContentType(TEXT_JS);
-            } else if (fileHelper.isImage.test(lDecodedPath)) {
-                pResponse.setContentType(fileHelper.getImageTypeFrom.apply(lWebFile.filePath));
+            } else if (fileHelper.isImage(lDecodedPath)) {
+                pResponse.setContentType(fileHelper.getImageTypeFrom(lWebFile.filePath));
                 lWebFile.setTextFormat(false);
             }
 
             lWebFile.setContentType(pResponse.getContentType());
             fileProvider.readAllFileBytes(lWebFile);
             fileEnricher.enrich(lWebFile);
-            fileCache.put(lWebFile.requestPath, lWebFile);
+            if(cacheableChecker.test(lWebFile)){
+                fileCache.put(lWebFile.requestPath, lWebFile);
+            }
 
         } catch (Exception e) {
             throw new WebContentException(SC_404_NOT_FOUND,
@@ -246,12 +248,9 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
     }
 
     /*********************************************************
-     * Internal Provider classes.
+     * Provider classes and interfaces.
      *********************************************************/
 
-    /*********************************************************
-     * Plugable extension interfaces, classes and factory.
-     *********************************************************/
     /**
      * A file provider delivers the concrete file content as a byte array. This
      * might be a filesystem file, or a database record or what ever.
@@ -281,45 +280,54 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
 
     /**
      * <pre>
-     * A set of customizable public File helper functions
+     * A set of customizable public File helper methods
      * which can be overwritten individually
      * </pre>
      */
-    // because the public fields ar intended to be changeable
-    @SuppressWarnings("java:S1104")
     public static class FileHelper {
 
         /**
          */
-        public UnaryOperator<String> doPathMapping = path -> {
-            if (path.equals("/") || path.equals("/index") || path.equals("/index.html") || path.equals("/index.htm")) {
+        public String doPathMapping(String pPath) {
+            if (pPath.equals("/") || pPath.equals("/index") || pPath.equals("/index.html")
+                    || pPath.equals("/index.htm")) {
                 return "/index.html";
             }
-            return path;
-        };
+            return pPath;
+        }
 
         /**
          */
-        public UnaryOperator<String> getImageTypeFrom = path -> path.endsWith("/favicon.ico") ? IMAGE_X_ICON
-                : IMAGE + path.substring(path.lastIndexOf(".") + 1, path.length());
+        public String getImageTypeFrom(String pPath) {
+            return pPath.endsWith("/favicon.ico") ? IMAGE_X_ICON
+                    : IMAGE + pPath.substring(pPath.lastIndexOf(".") + 1, pPath.length());
+        }
 
         /**
          */
-        public UnaryOperator<String> decodeRequestPath = path -> path;
+        public String decodeRequestPath(String pPath) {
+            return pPath;
+        }
 
         /**
          */
-        public Predicate<String> isStyleSheet = path -> path.endsWith(".css");
+        public boolean isStyleSheet(String pPath) {
+            return pPath.endsWith(".css");
+        }
 
         /**
          */
-        public Predicate<String> isJavaScript = path -> path.endsWith(".js") || path.endsWith(".mjs");
+        public boolean isJavaScript(String pPath) {
+            return pPath.endsWith(".js") || pPath.endsWith(".mjs");
+        }
 
         /**
          */
-        public Predicate<String> isImage = path -> path.endsWith(".png") || path.endsWith(".jpg")
-                || path.endsWith(".gif")
-                || path.endsWith(".ico");
+        public boolean isImage(String pPath) {
+            return pPath.endsWith(".png") || pPath.endsWith(".jpg")
+                    || pPath.endsWith(".gif")
+                    || pPath.endsWith(".ico");
+        }
     }
 
     /**
@@ -410,7 +418,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      * The FileEnricher is the interface used by a FileProvider to preprocess requested files.
      * 
      * This Default enricher first looks for a TemplateMarker at the head/top of the file.
-     * If such a marker is present an ExprString is used that calls the a ValueProvider
+     * If such a marker is present an ExprString is used that calls a ValueProvider
      * for all expressions like ${valuekey}.
      * </pre>
      */
@@ -439,7 +447,8 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
             // only process if file has text format and a TEMPLATE_MARKER
             if (pFile.isTextFormat() && hasTemplateMarker(pFile)) {
                 lContent = new String(pFile.getData(), Encoding);
-                lContent = new ExprString(lContent, valueProvider).build(pFile);
+                //lContent = new ExprString(lContent, valueProvider).build(pFile);
+                lContent = ExprString.applyValues(lContent, valueProvider, pFile);
                 pFile.setData(lContent.getBytes(Encoding));
             }
         }
@@ -458,111 +467,6 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         }
     }
 
-    /**
-     * <pre>
-     * A simple class implementing template strings that include variable expressions.
-     *
-     * e.g. new ExprString("Hello ${visitor} I'am ${me}")
-     *          .put("visitor", "John")
-     *          .put("me", "Andreas")
-     *          .build();
-     * results in: "Hello John I'am Andreas"
-     * </pre>
-     */
-    public static class ExprString {
-        protected static String PatternStart = "${";
-        protected static String PatternEnd = "}";
-        // matches expressions like ${ name } accepting leading/ending whitespaces
-        // BUT throwing RuntimeException - if name contains whitespaces
-        protected static Pattern ExprPattern = Pattern.compile("\\$\\{[\\s]*(\\w.+)\\}");
-
-        protected String template = "";
-        protected Map<String, String> valueMap = new HashMap<>();
-        protected ValueProvider provider = (String pKey, Object pCtx) -> valueMap.getOrDefault(pKey, "");
-
-        /**
-         */
-        protected ExprString() {
-        }
-
-        /**
-         */
-        public ExprString(String pTemplate) {
-            this();
-            template = pTemplate;
-        }
-
-        /**
-         */
-        public ExprString(String pTemplate, ValueProvider pProvider) {
-            this(pTemplate);
-            provider = pProvider;
-        }
-
-        /**
-         */
-        @Override
-        public String toString() {
-            return template;
-        }
-
-        /**
-         */
-        public ExprString put(String pKey, String pValue) {
-            valueMap.put(pKey, pValue);
-            return this;
-        }
-
-        /**
-         */
-        public String build() {
-            return build(null);
-        }
-
-        /**
-         */
-        public String build(Object pCtx) {
-            StringBuilder lResult = new StringBuilder();
-            String lPart = "";
-            String lName = "";
-            String lValue = "";
-            Matcher lMatcher = ExprPattern.matcher(template);
-
-            int lCurrentPos = 0;
-            while (lMatcher.find()) {
-                lPart = template.substring(lCurrentPos, lMatcher.start());
-                lName = lMatcher.group().replace(PatternStart, "").replace(PatternEnd, "").trim();
-                if (lName.contains(" ")) {
-                    throw new UncheckedExprStringException(String.format("ExprString contains whitespace(s) [%s]", lName));
-                }
-                lValue = provider.getValueFor(lName, pCtx);
-                lResult.append(lPart).append(lValue);
-                lCurrentPos = lMatcher.end();
-            }
-            if (lCurrentPos < template.length()) {
-                lPart = template.substring(lCurrentPos, template.length());
-                lResult.append(lPart);
-            }
-            return lResult.toString();
-        }
-
-        /**
-         * The Value Provider provides the values for the expression substitution.
-         */
-        public static interface ValueProvider {
-            String getValueFor(String pKey, Object pCtx);
-        }
-
-        /**
-        */
-        public static class UncheckedExprStringException extends RuntimeException {
-            private static final long serialVersionUID = 1L;
-
-            public UncheckedExprStringException(String pMsg) {
-                super(pMsg);
-            }
-        }
-    }
 
     /*********************************************************
      *********************************************************/

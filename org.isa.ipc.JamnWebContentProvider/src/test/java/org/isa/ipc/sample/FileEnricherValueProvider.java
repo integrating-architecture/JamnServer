@@ -1,10 +1,9 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 package org.isa.ipc.sample;
 
 import java.util.logging.Logger;
 
 import org.isa.ipc.JamnServer;
-import org.isa.ipc.JamnWebContentProvider;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -15,7 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * A file enricher value-provider sample to show a server side templating mechanism.
  * </pre>
  */
-public class FileEnricherValueProvider implements JamnWebContentProvider.ExprString.ValueProvider {
+public class FileEnricherValueProvider implements JamnServer.ExprString.ValueProvider {
 
     protected static final String LS = System.lineSeparator();
     protected static Logger LOG = Logger.getLogger(FileEnricherValueProvider.class.getName());

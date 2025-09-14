@@ -343,6 +343,7 @@ public class JavaScriptProvider {
         public static final String JS_DEBUG = "javascript.debug.enabled";
         public static final String OPTION_INSPECT_PATH = "inspect.Path";
 
+        protected static final String FALSE = "false";                
         protected static final String GRAAL_JSEOPTION = "#GraalJS Engine option";
         protected static final String DEFAULT_CONFIG = String.join(LS,
                 "#" + JavaScriptProvider.class.getSimpleName() + " Config Properties", "",
@@ -363,27 +364,27 @@ public class JavaScriptProvider {
         }
 
         public boolean isJavaScriptDebugEnabled() {
-            return Boolean.parseBoolean(props.getProperty(JS_DEBUG, "false"));
+            return Boolean.parseBoolean(props.getProperty(JS_DEBUG, FALSE));
         }
 
         public String getWarnInterpreterOnly() {
-            return props.getProperty("polyglot.engine.WarnInterpreterOnly", "false");
+            return props.getProperty(GRAAL_WARN_INTERPRETER, FALSE);
         }
 
         public String getInspectAddress() {
-            return props.getProperty("polyglot.inspect", "localhost:9229");
+            return props.getProperty(GRAAL_INSPECT, "localhost:9229");
         }
 
         public String getInspectSecure() {
-            return props.getProperty("polyglot.inspect.Secure", "false");
+            return props.getProperty(GRAAL_INSPECT_SECURE, FALSE);
         }
 
         public String getInspectSuspend() {
-            return props.getProperty("polyglot.inspect.Suspend", "false");
+            return props.getProperty(GRAAL_INSPECT_SUSPEND, FALSE);
         }
 
         public String getInspectPath() {
-            return props.getProperty("polyglot.inspect.Path", "jaman-server-js");
+            return props.getProperty(GRAAL_INSPECT_PATH, "jaman-server-js");
         }
 
         public Properties getProperties() {

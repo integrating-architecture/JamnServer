@@ -48,21 +48,50 @@ export function workspacePath(...path) {
 };
 
 /**
+ * get app home path string 
+ */
+export function homePath(...path) {
+	return HostApp.homePath(path);
+};
+
+/**
  * an object to iterate over an argument list and call corresponding functions 
  */
 export class ArgumentProcessor {
-	directReturn = false;
+	unprocessedArgs = [];
 
-	process(argList, cbs){
-		if(argList){
-			for (let i = 0; i < argList.length; i++) {
-				let arg = argList[i];
-				if(cbs[arg]){
-					cbs[arg](this);
-					if(this.directReturn){return this;}
+	constructor(unprocessedArgs = []) {
+		this.unprocessedArgs = unprocessedArgs;
+	}
+
+	parse = (arg) => {
+		let parts = arg.split("=");
+		if (parts.length == 1) {
+			return { key: parts[0], value: parts[0] };
+		} else if (parts.length == 2) {
+			return { key: parts[0], value: parts[1] };
+		}
+		return { key: "", value: "" };
+	};
+
+	process(argList, cbs) {
+		let ret = null;
+		if (argList) {
+
+			for (const arg of argList) {
+				let argObj = this.parse(arg);
+				if (cbs[argObj.key]) {
+					ret = cbs[argObj.key](argObj.value);
+				} else if (cbs["default"]) {
+					ret = cbs["default"](argObj);
+				} else {
+					this.unprocessedArgs.push(arg);
+				}
+				if (ret) {
+					return ret;
 				}
 			}
 		}
-		return this;
+		return ret;
 	}
 }

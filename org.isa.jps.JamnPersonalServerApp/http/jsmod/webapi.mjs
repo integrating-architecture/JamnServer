@@ -6,6 +6,7 @@
  * where the root part template value gets injected by the server.
  */
 
+//root part template
 export const urlRoot = "${webservice.url.root}";
 
 function get(endpoint) {

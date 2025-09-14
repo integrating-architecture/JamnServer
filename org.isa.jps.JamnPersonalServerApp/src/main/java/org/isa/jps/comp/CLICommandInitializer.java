@@ -168,22 +168,37 @@ public class CLICommandInitializer {
     /**
      */
     public static void createJavaScriptCliCommands(JavaScriptProvider pProvider) {
-        cli.newCommandBuilder()
-                .name("runjs")
-                .descr(name -> cli.newDefaultDescr(name, "[<script filename> <args ...>]", "Run a JS script"))
-                .function(ctx -> {
-                    JsValue lResult = null;
-                    if (!ctx.get(0).isEmpty()) {
-                        String scriptName = ctx.getArgsList().remove(0);
-                        lResult = pProvider.runWith(cliOutput, scriptName, ctx.getArgsArray());
-                    }
+        if (JamnPersonalServerApp.getInstance().getConfig().isJavaScriptEnabled()) {
+            JavaScriptProvider lProvider = JamnPersonalServerApp.getInstance().getJavaScript();
+            cli.newCommandBuilder()
+                    .name("runjs")
+                    .descr(name -> cli.newDefaultDescr(name, "[<script filename> <args ...>]", "Run a JS script"))
+                    .function(ctx -> {
+                        JsValue lResult = null;
+                        if (!ctx.get(0).isEmpty()) {
+                            String scriptName = ctx.getArgsList().remove(0);
+                            lResult = pProvider.runWith(cliOutput, scriptName, ctx.getArgsArray());
+                        }
 
-                    if (lResult != null && !lResult.isEmpty()) {
-                        return Tool.formatCommandReturn(lResult);
-                    }
-                    return "";
-                })
-                .build();
+                        if (lResult != null && !lResult.isEmpty()) {
+                            return Tool.formatCommandReturn(lResult);
+                        }
+                        return "";
+                    })
+                    .build();
+                    
+            cli.newCommandBuilder()
+                    .name("jsconfig")
+                    .descr(name -> cli.newDefaultDescr(name, "[suspend <true/false>]", "Set JS properties"))
+                    .function(ctx -> {
+                        String lResult = "";
+                        if (ctx.hasArg(0, "suspend")) {
+                            lResult = lProvider.getEngineOptions().setInspectSuspend(ctx.get(1));
+                        }
+                        return lResult;
+                    })
+                    .build();
+        }
     }
 
     /**
@@ -191,7 +206,8 @@ public class CLICommandInitializer {
     public static void createExtensionCliCommands(ExtensionHandler pProvider) {
         cli.newCommandBuilder()
                 .name("runext")
-                .descr(name -> cli.newDefaultDescr(name, "[<extension filename> <args ...>]", "Run a Java based extension"))
+                .descr(name -> cli.newDefaultDescr(name, "[<extension filename> <args ...>]",
+                        "Run a Java based extension"))
                 .function(ctx -> {
                     String lResult = "";
                     if (!ctx.get(0).isEmpty()) {

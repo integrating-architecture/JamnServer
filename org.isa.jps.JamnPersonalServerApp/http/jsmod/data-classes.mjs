@@ -68,14 +68,33 @@ export class CommandDef {
  * View definition struct.
  */
 export class ViewSource {
-	file = "";
-	html = null;
+	#file = "";
+	#html = null;
+	#htmlLoadListener = (viewSrc)=>{};
 
 	constructor(file) {
-		this.file = file;
+		this.#file = file;
+	}
+
+	setHtmlLoadListener(cb){
+		this.#htmlLoadListener = cb;
 	}
 
 	isEmpty() {
-		return this.html == null;
+		return this.#html == null;
 	}
+
+	setHtml(html){
+		this.#html = html;
+		this.#htmlLoadListener(this);
+	}
+
+	getHtml(){
+		return this.#html;
+	}
+
+	getFile(){
+		return this.#file;
+	}
+
 };

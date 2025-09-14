@@ -1,45 +1,61 @@
 /* Authored by iqbserve.de */
 
 import { CommandDef } from '../jsmod/data-classes.mjs';
-import { getView as systemInfosView } from '../jsmod/system-infos.mjs';
-import { getView as commandView } from '../jsmod/command.mjs';
-import { getView as dbConnectionsView } from './db-connections.mjs';
+import { getView as getSystemInfosView } from '../jsmod/system-infos.mjs';
+import { getView as getDbConnectionsView } from '../jsmod/db-connections.mjs';
+import { getView as newCmdView } from '../jsmod/command.mjs';
+import { processSystemLogin as loginAction } from '../jsmod/login.mjs';
+import * as Icons from '../jsmod/icons.mjs';
+
 
 /**
  * <pre>
  * Data object that defines the content of the Workbench Sidebar.
  * The structure is:
  * n Topics 
- *  - 1 Topic -> n Items
- * The keys must be unique on their level.
- * 
+ *  - 1 Topic 
+ *    - n Items
  * </pre>
  */
 export const topicList = {
-	system : {icon:"system", title:"System",
-		items : {
-			//create a view item 
-			"infos" : {title:"Infos", view:systemInfosView()},
-			
-			//create a functional item with just an id
-			//that gets explicite wired by the app
-			"login" : {title:"Login", id:"sidebar.system.login"}
-		}
+	system: {
+		iconName: Icons.system(), title: "System",
+		items: [
+			//create a view item with a singleton view
+			{ title: "Infos", view: getSystemInfosView() },
+
+			//create a functional item with id and an action
+			{ title: "Login", id: "sidebar.system.login", action: loginAction }
+		]
 	},
-	
-	commands : {icon:"command", title:"Commands",
-		items : {
-			//create view item with data
-			"testSample" : {title:"Sample: shell test", view:commandView(), data:new CommandDef("Sample: [test sh command]", "runjs", "/sample/sh-test.mjs", {args:true})},
-			"projectSample" : {title:"Sample: build test", view:commandView(), data:new CommandDef("Sample: [test build script]", "runjs", "/sample/build-project-test.mjs")},
-			"runextSample" : {title:"Sample: extension", view:commandView(), data:new CommandDef("Sample: [extension command]", "runext", "sample.Command", {args:true})}
-		}
+
+	commands: {
+		iconName: Icons.command(), title: "Commands",
+		items: [
+			//create new views from the same type with identifying names and data objects 
+			{
+				title: "Sample: shell test",
+				view: newCmdView("shellSampleView"),
+				data: new CommandDef("Sample: [sh command]", "runjs", "/sample/sh-test.mjs", { args: true })
+			},
+			{
+				title: "Sample: build test",
+				view: newCmdView("buildSampleView"),
+				data: new CommandDef("Sample: [build script]", "runjs", "/sample/build-project-test.mjs")
+			},
+			{
+				title: "Sample: extension",
+				view: newCmdView("extensionSampleView"),
+				data: new CommandDef("Sample: [extension command]", "runext", "sample.Command", { args: true })
+			}
+		]
 	},
-	
-	tools : {icon:"tools", title:"Tools",
-		items : {
-			"dbconnections" : {title:"DB Connections", view:dbConnectionsView()}
-		}
+
+	tools: {
+		iconName: Icons.tools(), title: "Tools",
+		items: [
+			{ title: "DB Connections", view: getDbConnectionsView() }
+		]
 	}
 }
 

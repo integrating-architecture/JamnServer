@@ -1,24 +1,64 @@
-/* Authored by www.integrating-architecture.de */
+/* Authored by iqbserve.de */
 
-import { GeneralView, IconElement } from '../jsmod/view-classes.mjs';
-import { getChildOf, setDisplay } from '../jsmod/tools.mjs';
+import { AbstractView, onClicked } from '../jsmod/view-classes.mjs';
+import { installSidebarHeaderWorkItem } from '../jsmod/sidebar.mjs';
+import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
+import * as Icons from '../jsmod/icons.mjs';
 
 /**
- * A playground implementation
- * just showing a login dialog
+ * An example LogIn module based on a html source file shown in a modal dialog.
  */
+class LoginView extends AbstractView {
 
-//export a view component as singleton 
-//in this case the view object is just the holder for the lazy loaded view html 
-//used by the modal dialog
-const viewInstance = new GeneralView("systemLoginView", "/jsmod/html-components/login.html");
-export function getView() {
-	return viewInstance;
+	username;
+	password;
+	message;
+	successMessage;
+
+	initialize() {
+		this.username = this.getElement("username");
+		this.password = this.getElement("password");
+		this.message = this.getElement("message");
+		this.successMessage = this.getElement("login.overlay");
+
+		onClicked(Icons.user(this.getElement("lbUsername")).elem, () => { this.username.value = ""; });
+		Icons.password(this.getElement("lbPassword"));
+		Icons.loginAction(this.getElement("login.action.icon"));
+
+		this.isInitialized = true;
+	}
+
+	showMessage(msgText, showFlag) {
+		this.message.innerHTML = showFlag ? msgText : "";
+		this.setDisplay(this.message, showFlag);
+	}
+
+	showSuccessMessage() {
+		this.setDisplay(this.successMessage, "inline-block");
+	}
+
+	reset() {
+		this.username.value = "";
+		this.password.value = "";
+		this.showMessage("", false);
+		this.setDisplay(this.successMessage, false);
+	}
 }
 
+/**
+ */
 let tries = 0;
 let accessToken = null;
-let sidebarLoginIcon = IconElement.newIcon("login", document.getElementById("sidebar.login.icon"));
+//create the view instance based on a html source file
+let viewInstance = new LoginView("systemLoginView", "/jsmod/html-components/login.html");
+
+//install login icon in sidebar header
+let sidebarLoginIcon = installSidebarHeaderWorkItem({
+	id: "sidebar.login.icon", iconName: Icons.login(), title: "Login",
+	action: (evt) => {
+		processSystemLogin();
+	}
+});
 
 /**
  */
@@ -28,79 +68,58 @@ export function isLoggedIn() {
 
 /**
  */
-export function processSystemLogin(dialog) {
+export function processSystemLogin() {
 
 	if (isLoggedIn()) {
 		WbApp.confirm({
 			message: "<b>Log Off</b><br>Do you want to Log Off from the Server System?"
 		}, (value) => value ? doLogOff() : null);
 	} else {
-		tries = 0;
-		dialog.setTitle("Jamn System LogIn")
-			.setAction("pb.login", () => dialogAction(dialog))
-			.setAction("pb.login.success", () => dialog.close())
-			.setElement("user.icon", (elem)=>{IconElement.newIcon("user", elem);})
-			.setElement("password.icon", (elem)=>{IconElement.newIcon("password", elem);})
-			.setElement("login.action.icon", (elem)=>{IconElement.newIcon("loginAction", elem);})
-			.open();
+		WbApp.modalDialog(viewInstance, (dialog) => {
+			viewInstance.reset();
+			tries = 0;
+			dialog.setTitle("Jamn System LogIn")
+				.setAction("pb.login", () => dialogLoginAction(dialog))
+				.setAction("pb.login.success", () => closeLogin(dialog))
+				.open();
+		});
 	}
 }
 
 /**
+ * Internals
  */
-function dialogAction(dialog) {
+/**
+ */
+function dialogLoginAction(dialog) {
 
-	let logInData = {
-		username: "username",
-		password: "password"
-	};
-
-	for (let key in logInData) {
-		logInData[key] = getChildOf(dialog.viewArea, logInData[key])?.value;
-	}
-
-	if (doLogin(logInData.username, logInData.password)) {
-		dialog.close();
+	if (doLogin()) {
+		closeLogin(dialog);
 	} else {
-		let msgElem = getChildOf(dialog.viewArea, "message");
 		if (tries < 2) {
-			msgElem.innerHTML = `We are sorry, unfortunately this login [${tries}] failed for demo reason.<br><b>Please click again ...`;
-		} 
-		setDisplay(msgElem, true);
+			let text = `We are sorry, unfortunately this login [${tries}] failed for demo reason.<br><b>Please click again ...`;
+			viewInstance.showMessage(text, true);
+		}
 		if (tries > 1) {
-			//display success message as dialog overlay
-			setDisplay(getChildOf(dialog.viewArea, "login.overlay"), "inline-block");
+			viewInstance.showSuccessMessage();
 			toggleStatus();
 		}
 	}
 }
 
-function toggleStatus() {
-
-	sidebarLoginIcon.toggle().and((icon) => {
-		if (!isLoggedIn()) {
-			icon.style.color = "green";
-			icon.title = "Log Off";
-	
-			document.getElementById("sidebar.system.login").innerHTML = "Log Off";
-	
-			accessToken = "jwt bearer";
-		} else {
-			icon.style.color = "";
-			icon.title = "Login";
-	
-			document.getElementById("sidebar.system.login").innerHTML = "Login";
-	
-			accessToken = null;
-		}	
-	});
+/**
+ */
+function closeLogin(dialog) {
+	dialog.close();
+	viewInstance.reset();
 }
 
 /**
  */
-function doLogin(user, password) {
-	console.log(`LogIn Action for - ${user}`);
+function doLogin() {
+	console.log(`LogIn Action for - ${viewInstance.username.value}`);
 	tries++;
+	//demo always false
 	return false;
 }
 
@@ -108,4 +127,25 @@ function doLogin(user, password) {
  */
 function doLogOff() {
 	toggleStatus();
+}
+
+/**
+ */
+function toggleStatus() {
+
+	sidebarLoginIcon.toggle((icon) => {
+		if (!isLoggedIn()) {
+			icon.style.color = "green";
+			icon.title = "Log Off";
+			document.getElementById("sidebar.system.login").innerHTML = "Log Off";
+
+			accessToken = "jwt bearer";
+		} else {
+			icon.style.color = "";
+			icon.title = "Login";
+			document.getElementById("sidebar.system.login").innerHTML = "Login";
+
+			accessToken = null;
+		}
+	});
 }

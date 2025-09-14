@@ -699,6 +699,7 @@ public class JamnPersonalServerApp {
         private static final String FALSE = "false";
         private static final String WEB_FILE_ROOT = "http";
         private static final String SCRIPT_ROOT = "scripts";
+        private static final String DATA_ROOT = "data";
         private static final String EXTENSION_ROOT = "extensions";
         private static final String EXTENSION_BIN = "bin";
         private static final String EXTENSION_DATA = "data";
@@ -715,6 +716,7 @@ public class JamnPersonalServerApp {
                 "#JPS extensions bin folder name", "jps.extension.bin=" + EXTENSION_BIN, "",
                 "#JPS extensions data folder name", "jps.extension.data=" + EXTENSION_DATA, "",
                 "#JPS workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
+                "#JPS data root folder", "jps.data.root=" + DATA_ROOT, "",
                 "#JPS Extensions auto load file name", "jps.extensions.autoload.file=" + EXTENSION_AUTOLOAD_FILE, "",
                 "#WebApp main Page", "webapp.main.page=/workbench.html", "",
                 "#Extensions enabled", "extensions.enabled=false", "",
@@ -780,6 +782,10 @@ public class JamnPersonalServerApp {
 
         public String getWebFileEnricherRoot() {
             return props.getProperty("web.file.enricher.root", "http/jsmod/html-components");
+        }
+
+        public String getDataRoot() {
+            return props.getProperty("jps.data.root", DATA_ROOT);
         }
 
         public String getExtensionRoot() {

@@ -1,12 +1,16 @@
 /* Authored by iqbserve.de */
 
-import { callWebService, typeUtil } from '../jsmod/tools.mjs';
-import { WorkView, WorkViewTable, TableData, ViewBuilder } from '../jsmod/view-classes.mjs';
+import { callWebService, typeUtil, clearArray } from '../jsmod/tools.mjs';
+import { WorkView, WorkViewTable, TableData, ViewBuilder, onClicked, onKeyup } from '../jsmod/view-classes.mjs';
+import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as webapi from '../jsmod/webapi.mjs';
+import * as Icons from '../jsmod/icons.mjs';
 
-let builder = new ViewBuilder();
-builder.defaultStyles.label = { "min-width": "80px", "text-align": "right" };
 let boxWidth = "720px";
+let builder = new ViewBuilder()
+	.setCompPropDefaults((props) => {
+		props.get("label").styleProps = { "min-width": "80px", "text-align": "right" };
+	});
 
 let app_scm_tab1 = "?tab=readme-ov-file#jamn---just-another-micro-node-server";
 
@@ -44,15 +48,20 @@ class SystemInfoView extends WorkView {
 	 */
 	#initAppBox() {
 
+		let compSet;
+		let infoContainer = this.getElement("info.left.container");
 		builder.setElementCollection(this.appBoxElem);
 
-		let compSet = builder.newFieldset({ title: "Application", clazzes: ["wkv-compset-border"], styleProps: { width: boxWidth } });
-		let infoContainer = this.getElement("info.left.container");
-		infoContainer.prepend(compSet);
+		builder.newViewCompFor(infoContainer)
+			.addTitledFieldset({ pos: 0, title: "Application", styleProps: { width: boxWidth } }, (target) => {
+				compSet = target.fieldset;
+			});
 
 		builder.newViewComp()
-			.addLabelTextField({ text: "Name:" }, { varid: "tfName", readOnly: true, 
-				styleProps:{"font-size": "18px", color: "var(--isa-title-grayblue)"}})
+			.addLabelTextField({ text: "Name:" }, {
+				varid: "tfName", readOnly: true,
+				styleProps: { "font-size": "18px", color: "var(--isa-title-grayblue)" }
+			})
 			.appendTo(compSet);
 
 		builder.newViewComp()
@@ -60,21 +69,26 @@ class SystemInfoView extends WorkView {
 			.appendTo(compSet);
 
 		builder.newViewComp()
-			.addLabel({ text: "Description:" })
-			.addContainer({ clazzes: "wkv-col-container", styleProps: { width: "100%" } }, (target) => {
-				let container = target.container;
-
-				target.comp.addTextArea({
-					parentCtrl: container, varid: "tfDescription", rows: 3, readOnly: true
-				});
-				target.comp.addLink({
-					parentCtrl: container, varid: "lnkReadMore", text: "Read more on GitHub ... ",
-					attribProps: { title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" },
-					styleProps: { "text-align": "right" }
-				});
-
+			.setListener((comp, elem) => {
+				if (elem.tagName === "LABEL") { comp.bag.push(elem); }
 			})
-			.style({ "align-items": "baseline", "padding-right": "5px" })
+			.style({ "align-items": "baseline", "padding-right": "5px", "margin-top": "20px" })
+			.addLabel({ text: "Description:" })
+			.addColContainer({ styleProps: { width: "100%" } }, (target) => {
+				target.comp
+					.addTextArea({ varid: "tfDescription", rows: 3, readOnly: true })
+					.addRowContainer({ styleProps: { "flex-direction": "row-reverse" } }, (target) => {
+						target.comp.addLink({
+							varid: "lnkReadMore", text: "Read more on GitHub ... ",
+							attribProps: { title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" },
+							styleProps: { "text-align": "right" }
+						});
+					});
+			})
+			.config((comp) => {
+				comp.setForAttributeOn(comp.bag[0], this.appBoxElem.tfDescription);
+				clearArray(comp.bag);
+			})
 			.appendTo(compSet);
 	}
 
@@ -92,24 +106,25 @@ class SystemInfoView extends WorkView {
 			.prependTo(compSet)
 			.style({ "flex-direction": "row-reverse", "margin-bottom": "10px", "gap": "15px" })
 			//create action icon
-			.addActionIcon({ varid: "icoSave", iconName: "save", title: "Save current changes" }, (target) => {
-				target.icon.onclick = () => {
+			.addActionIcon({ varid: "icoSave", iconName: Icons.save(), title: "Save current changes" }, (target) => {
+				onClicked(target.icon, () => {
 					updateInfos(getUpdateRequest(), (response) => {
 						if (response?.status === "ok") {
 							clearConfigChanges()
 							console.log("App-Info update done");
 						}
 					});
-				}
+				});
+
 			})
 			//create action icon
-			.addActionIcon({ varid: "icoRedo", iconName: "redo", title: "Undo changes" }, (target) => {
-				target.icon.onclick = () => {
+			.addActionIcon({ varid: "icoRedo", iconName: Icons.redo(), title: "Undo changes" }, (target) => {
+				onClicked(target.icon, () => {
 					//open confirmation dialog
 					WbApp.confirm({
 						message: "<b>Undo all changes</b><br>Do you want to discard all changes?"
 					}, (value) => value ? clearConfigChanges(true) : null);
-				};
+				});
 			});
 
 		this.setActionsEnabled(false);
@@ -201,15 +216,14 @@ class SystemInfoView extends WorkView {
 			this.configTable.setData(tableData);
 			this.configTable.sortByColumn(0);
 
-			this.configTable.getHeader(0).getElementsByTagName("i")[0].onclick = (evt) => {
+			onClicked(this.configTable.getHeader(0).getElementsByTagName("i")[0], () => {
 				this.configTable.sortByColumn(0);
 				this.configTable.toggleColSort(0);
-			};
+			});
 
-			this.configTable.getHeader(0).getElementsByTagName("input")[0].onkeyup = (evt) => {
+			onKeyup(this.configTable.getHeader(0).getElementsByTagName("input")[0], (evt) => {
 				this.configTable.filterRows(0, evt.target.value);
-			};
-
+			});
 			this.needsViewDataRefresh = false;
 		}
 	}

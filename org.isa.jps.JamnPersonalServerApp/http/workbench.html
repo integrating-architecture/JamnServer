@@ -21,10 +21,8 @@
 
   <!-- app js module initialization -->
   <script type="module">
-    import * as wb from 'workbench';
-    wb.anchorAt("approot")
-      .registerAs("WbApp")
-      .build();
+    import {anchorAt as installWorkbenchAt} from 'workbench';
+    installWorkbenchAt("approot").build();
   </script>
 
 </head>
@@ -52,20 +50,18 @@
       <div id="sidebar" style="border-right: none;">
         <div class="sidebar-header">
           <i id="sidebar.menu.icon" class="sidebar-header-icon"></i>
-
-          <div id="sidebar.header.workicons" class="sidebar-header-workicons">
-            <i id="sidebar.login.icon" class="sidebar-header-icon"></i>
-          </div>
+          <!-- work icon bar section -->
+          <div id="sidebar.header.workicons" class="sidebar-header-workicons"></div>
         </div>
 
         <!-- topic list -->
-        <ul class="sbar-topic-list" id="sidebarTopics">
+        <ul class="sbar-topic-list" id="sidebar.topic.list">
         </ul>
         <!-- topic list end -->
       </div>
       <!-- sidebar end -->
 
-      <div id="sidebar.splitter" class="vsplitter" style="border-left: 1px solid var(--border-gray);"></div>
+      <div id="sidebar.splitter" class="vsplitter" style="height: 100%; border-left: 1px solid var(--border-gray);"></div>
 
       <!-- workarea -->
       <div id="workarea"></div>

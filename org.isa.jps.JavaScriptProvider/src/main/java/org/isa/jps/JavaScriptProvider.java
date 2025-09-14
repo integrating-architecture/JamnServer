@@ -26,6 +26,11 @@ import org.graalvm.polyglot.Value;
  * -Dpolyglot.inspect.Secure=false
  * -Dpolyglot.inspect.Suspend=false
  * 
+ * to enable debug:
+ * -javascript.enabled=true
+ * -javascript.debug.enabled=true
+ * -polyglot.inspect.Suspend=true
+ * 
  * </pre>
  */
 public class JavaScriptProvider {
@@ -38,6 +43,8 @@ public class JavaScriptProvider {
     protected static final String JSID = "js";
 
     protected Config config = new Config();
+    protected EngineOptions engineOptions = new EngineOptions();
+
     protected Path sourcePathBase;
 
     protected JavaScriptHostAppAdapter hostAdapter;
@@ -58,18 +65,20 @@ public class JavaScriptProvider {
     /**
      */
     public void initialize() {
-        if (!System.getProperties().containsKey(Config.GRAAL_WARN_INTERPRETER)) {
-            System.setProperty(Config.GRAAL_WARN_INTERPRETER, config.getWarnInterpreterOnly());
-        }
+        engineOptions.setWarnInterpreter(config.getWarnInterpreterOnly());
+
         if (config.isJavaScriptDebugEnabled()) {
-            if (!System.getProperties().containsKey(Config.GRAAL_INSPECT)) {
-                System.setProperty(Config.GRAAL_INSPECT, config.getInspectAddress());
-            }
-            if (!System.getProperties().containsKey(Config.GRAAL_INSPECT_SUSPEND)) {
-                System.setProperty(Config.GRAAL_INSPECT_SUSPEND, config.getInspectSuspend());
-            }
+            engineOptions.setInspect(config.getInspectAddress());
+            engineOptions.setInspectPath(config.getInspectPath());
+            engineOptions.setInspectSuspend(config.getInspectSuspend());
         }
         hostAdapter.initialize();
+    }
+
+    /**
+     */
+    public EngineOptions getEngineOptions() {
+        return this.engineOptions;
     }
 
     /**
@@ -82,18 +91,6 @@ public class JavaScriptProvider {
      */
     public Path getSourcePath(String pSource) {
         return Paths.get(sourcePathBase.toString(), pSource);
-    }
-
-    /**
-     */
-    protected Context newContext() {
-        return Context.newBuilder(JSID)
-                .allowIO(true)
-                .currentWorkingDirectory(sourcePathBase.toAbsolutePath())
-                .option("engine.WarnInterpreterOnly", config.getWarnInterpreterOnly())
-                .allowHostAccess(HostAccess.ALL)
-                .allowHostClassLookup(className -> true)
-                .build();
     }
 
     /**
@@ -140,6 +137,19 @@ public class JavaScriptProvider {
 
     /**
      */
+    protected Context newContext() {
+        return Context.newBuilder(JSID)
+                .allowIO(true)
+                .currentWorkingDirectory(sourcePathBase.toAbsolutePath())
+                // more options e.g. suspend
+                .option("engine.WarnInterpreterOnly", config.getWarnInterpreterOnly())
+                .allowHostAccess(HostAccess.ALL)
+                .allowHostClassLookup(className -> true)
+                .build();
+    }
+
+    /**
+     */
     protected Source getSourceFile(String pName) {
         Path lSrcPath = Paths.get(sourcePathBase.toString(), pName);
         try {
@@ -153,6 +163,32 @@ public class JavaScriptProvider {
     /*********************************************************
      * Public Provider classes
      *********************************************************/
+
+    /**
+     */
+    public class EngineOptions {
+        /**
+         */
+        protected String setOption(String pName, String pVal) {
+            if (pVal != null && !pVal.isEmpty()) {
+                System.setProperty(pName, pVal);
+            }
+            return pName + "=" + System.getProperty(pName);
+        }
+
+        public String setInspectSuspend(String pVal) {
+            return setOption(Config.GRAAL_INSPECT_SUSPEND, pVal);
+        }
+        public String setWarnInterpreter(String pVal) {
+            return setOption(Config.GRAAL_WARN_INTERPRETER, pVal);
+        }
+        public String setInspect(String pVal) {
+            return setOption(Config.GRAAL_INSPECT, pVal);
+        }
+        public String setInspectPath(String pVal) {
+            return setOption(Config.GRAAL_INSPECT_PATH, pVal);
+        }
+    }
 
     /**
      * <pre>
@@ -302,8 +338,10 @@ public class JavaScriptProvider {
         public static final String GRAAL_INSPECT = "polyglot.inspect";
         public static final String GRAAL_INSPECT_SECURE = "polyglot.inspect.Secure";
         public static final String GRAAL_INSPECT_SUSPEND = "polyglot.inspect.Suspend";
+        public static final String GRAAL_INSPECT_PATH = "polyglot.inspect.Path";
 
         public static final String JS_DEBUG = "javascript.debug.enabled";
+        public static final String OPTION_INSPECT_PATH = "inspect.Path";
 
         protected static final String GRAAL_JSEOPTION = "#GraalJS Engine option";
         protected static final String DEFAULT_CONFIG = String.join(LS,
@@ -312,6 +350,7 @@ public class JavaScriptProvider {
                 GRAAL_JSEOPTION, GRAAL_INSPECT + "=localhost:9229", "",
                 GRAAL_JSEOPTION, GRAAL_INSPECT_SECURE + "=false", "",
                 GRAAL_JSEOPTION, GRAAL_INSPECT_SUSPEND + "=false", "",
+                GRAAL_JSEOPTION, GRAAL_INSPECT_PATH + "=", "jaman-server-js",
                 "#JavaScript debug enabled", JS_DEBUG + "=false", "");
 
         protected Properties props = new Properties();
@@ -341,6 +380,10 @@ public class JavaScriptProvider {
 
         public String getInspectSuspend() {
             return props.getProperty("polyglot.inspect.Suspend", "false");
+        }
+
+        public String getInspectPath() {
+            return props.getProperty("polyglot.inspect.Path", "jaman-server-js");
         }
 
         public Properties getProperties() {

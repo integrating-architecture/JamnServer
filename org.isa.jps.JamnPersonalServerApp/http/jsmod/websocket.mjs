@@ -1,6 +1,7 @@
 /* Authored by iqbserve.de */
 
 import { WsoCommonMessage } from '../jsmod/data-classes.mjs';
+import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 
 /**
  * A simple WebSocket implementation for the workbench app.

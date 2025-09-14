@@ -5,12 +5,8 @@ import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.APPLICATION_JSON;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -19,6 +15,9 @@ import java.util.stream.Collectors;
 import org.isa.ipc.JamnServer.JsonToolWrapper;
 import org.isa.ipc.JamnWebServiceProvider.WebService;
 import org.isa.ipc.JamnWebServiceProvider.WebServiceDefinitionException;
+import org.isa.jps.comp.DocumentStoreAdapter;
+import org.isa.jps.comp.DocumentStoreAdapter.DocumentStore;
+import org.isa.jps.comp.DocumentStoreAdapter.PersistentDocument;
 
 /**
  * <pre>
@@ -44,12 +43,13 @@ public class SampleExtension {
     protected static Logger LOG = Logger.getLogger(SampleExtension.class.getName());
     protected static final String LS = System.lineSeparator();
 
+    protected static DocumentStore DocStore = DocumentStoreAdapter.getExtensionStore();
+
     protected Charset standardEncoding;
     protected JsonToolWrapper jsonTool;
     protected Map<String, DbConnectionDef> connectionMap;
-    protected Path extRootPath;
-    protected Path dataFile;
-    protected String name = "";
+    protected String name;
+    protected String dataDocName;
 
     protected Map<String, Object> ctx;
 
@@ -60,53 +60,46 @@ public class SampleExtension {
      */
     public SampleExtension(Map<String, Object> pCtx) throws WebServiceDefinitionException, IOException {
         ctx = pCtx;
-        name = (String)ctx.getOrDefault("name", "unknown");
+        name = (String) ctx.getOrDefault("name", "unknown");
+        dataDocName = name + ".db-connections";
         initialize();
     }
 
     /**
      */
-    protected void initialize() throws IOException, WebServiceDefinitionException  {
+    protected void initialize() throws IOException, WebServiceDefinitionException {
         JamnPersonalServerApp lApp = JamnPersonalServerApp.getInstance();
         standardEncoding = Charset.forName(lApp.getConfig().getStandardEncoding());
         jsonTool = lApp.getJsonTool();
-        extRootPath = lApp.getHomePath(lApp.getConfig().getExtensionRoot());
-        dataFile = Paths.get(extRootPath.toString(), lApp.getConfig().getExtensionData(), String.join("", name, ".data.json"));
         loadConnections();
 
-        //register the webservice interface
+        // register the webservice interface
         lApp.registerWebServices(new DbConnectionWebServiceApi());
 
-        //register a commad to show all known db connections on the cli
+        // register a commad to show all known db connections on the cli
         lApp.getCli().newCommandBuilder()
                 .name("dbconnections")
                 .descr(cmdName -> lApp.getCli().newDefaultDescr(cmdName, "", "Show all defined db connections"))
-                .function(cmdCtx -> 
-                     connectionMap.entrySet()
-                            .stream()
-                            .sorted(Map.Entry.comparingByKey())
-                            .map(e -> e.getKey() + " = " + e.getValue().getUrl())
-                            .collect(Collectors.joining(LS))
-                )
+                .function(cmdCtx -> connectionMap.entrySet()
+                        .stream()
+                        .sorted(Map.Entry.comparingByKey())
+                        .map(e -> e.getKey() + " = " + e.getValue().getUrl())
+                        .collect(Collectors.joining(LS)))
                 .build();
     }
 
     /**
      */
     protected void loadConnections() throws IOException {
-        String lData;
-        connectionMap = new HashMap<>();
+        PersistentDocument lDoc = DocStore.find(dataDocName);
 
-        if (!Files.exists(dataFile)) {
-            lData = jsonTool.toString(createSampleData());
-            Files.writeString(dataFile, lData, standardEncoding, StandardOpenOption.CREATE);
-
-            LOG.info(() -> String.format("Extension [%s] default datafile created [%s]", getClass().getSimpleName(),
-                    dataFile));
+        if (lDoc.getContent().isEmpty()) {
+            lDoc.setContent(jsonTool.toString(createDemoData()));
+            DocStore.save(lDoc);
         }
 
-        lData = new String(Files.readAllBytes(dataFile), standardEncoding);
-        DbConnectionDef[] lDefList = jsonTool.toObject(lData, DbConnectionDef[].class);
+        connectionMap = new LinkedHashMap<>();
+        DbConnectionDef[] lDefList = jsonTool.toObject(lDoc.getContent(), DbConnectionDef[].class);
         for (DbConnectionDef def : lDefList) {
             connectionMap.put(def.getName(), def);
         }
@@ -114,7 +107,35 @@ public class SampleExtension {
 
     /**
      */
-    protected List<DbConnectionDef> createSampleData() {
+    protected void saveConnections(List<DbConnectionDef> pChanges) throws IOException {
+        PersistentDocument lDoc = new PersistentDocument(dataDocName);
+        Map<String, DbConnectionDef> lConnections = new LinkedHashMap<>(connectionMap);
+
+        for (DbConnectionDef def : pChanges) {
+            lConnections.put(def.getName(), def);
+        }
+        lDoc.setContent(jsonTool.toString(lConnections.values()));
+        DocStore.save(lDoc);
+        connectionMap = lConnections;
+    }
+
+    /**
+     */
+    protected void deleteConnections(List<DbConnectionDef> pChanges) throws IOException {
+        PersistentDocument lDoc = new PersistentDocument(dataDocName);
+        Map<String, DbConnectionDef> lConnections = new LinkedHashMap<>(connectionMap);
+
+        for (DbConnectionDef def : pChanges) {
+            lConnections.remove(def.getName());
+        }
+        lDoc.setContent(jsonTool.toString(lConnections.values()));
+        DocStore.save(lDoc);
+        connectionMap = lConnections;
+    }
+
+    /**
+     */
+    protected List<DbConnectionDef> createDemoData() {
         List<DbConnectionDef> lDefList = new ArrayList<>();
         lDefList.add(new DbConnectionDef()
                 .setName("Oracle Test-Server")
@@ -135,6 +156,7 @@ public class SampleExtension {
      */
     protected class DbConnectionWebServiceApi {
         protected static final String StatusOk = "ok";
+        protected static final String StatusError = "error";
 
         protected DbConnectionWebServiceApi() {
             // keep instantiation internal
@@ -149,14 +171,23 @@ public class SampleExtension {
 
         @WebService(path = WSP_save_dbconnections, methods = { "POST" }, contentType = APPLICATION_JSON)
         public DbConnectionResponse saveDbConnections(DbConnectionRequest pRequest) {
-            DbConnectionResponse lResponse = new DbConnectionResponse();
-            return lResponse.setStatusOk();
+            DbConnectionResponse lResponse = new DbConnectionResponse().setStatusOk();
+            try {
+                saveConnections(pRequest.getConnections());
+            } catch (Exception e) {
+                lResponse.setStatusError(String.format("Failed to save DB Connections [%s]", e));
+            }
+            return lResponse;
         }
 
         @WebService(path = WSP_delete_dbconnections, methods = { "POST" }, contentType = APPLICATION_JSON)
         public DbConnectionResponse deleteDbConnections(DbConnectionRequest pRequest) {
-            DbConnectionResponse lResponse = new DbConnectionResponse();
-            lResponse.setStatus(StatusOk);
+            DbConnectionResponse lResponse = new DbConnectionResponse().setStatusOk();
+            try {
+                deleteConnections(pRequest.getConnections());
+            } catch (Exception e) {
+                lResponse.setStatusError(String.format("Failed to delete DB Connections [%s]", e));
+            }
             return lResponse;
         }
 
@@ -178,18 +209,25 @@ public class SampleExtension {
         public static class DbConnectionResponse {
             private List<DbConnectionDef> connections = new ArrayList<>();
             private String status = "";
+            @SuppressWarnings("unused")
+            private String error = "";
+
+            private DbConnectionResponse setStatus(String status) {
+                this.status = status;
+                return this;
+            }
 
             public DbConnectionResponse setStatusOk() {
                 return setStatus(StatusOk);
             }
 
-            public boolean isStatus(String pVal) {
-                return status.equals(pVal);
+            public DbConnectionResponse setStatusError(String pErrorMsg) {
+                error = pErrorMsg;
+                return setStatus(StatusError);
             }
 
-            public DbConnectionResponse setStatus(String status) {
-                this.status = status;
-                return this;
+            public boolean isStatus(String pVal) {
+                return status.equals(pVal);
             }
 
             public DbConnectionResponse addConnection(DbConnectionDef pDef) {

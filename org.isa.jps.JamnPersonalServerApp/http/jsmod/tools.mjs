@@ -57,21 +57,6 @@ export function setDisplay(elem, flag) {
 }
 
 /**
- * Get a view html file 
- */
-export function getViewHtml(viewSrc, cb) {
-	if (viewSrc.html) {
-		cb(viewSrc.html);
-	} else {
-		//load the html from server
-		fetchPlainText(viewSrc.file).then((html) => {
-			viewSrc.html = html;
-			cb(viewSrc.html);
-		});
-	}
-}
-
-/**
  */
 export async function fetchPlainText(path) {
 	const url = ServerOrigin(path);
@@ -112,6 +97,25 @@ export async function callWebService(path, requestData = "{}") {
  */
 export function newSimpleId(prfx = "") {
 	return prfx + Math.random().toString(16).slice(2);
+}
+
+/**
+ */
+export function mergeArrayInto(target, source, allowDuplicates = false) {
+	target = target || [];
+	source = source || [];
+	//copy target
+	target = [...target];
+	source.forEach(value => {
+		if (!target.includes(value) || allowDuplicates) {
+			target.push(value);
+		}
+	});
+	return target;
+}
+
+export function clearArray(array) {
+	if (array) { array.length = 0; }
 }
 
 /**
@@ -177,6 +181,10 @@ export const typeUtil = {
 		return (val !== null && (val instanceof Element || val.nodeType !== undefined));
 	},
 
+	isArray: (val) => {
+		return Array.isArray(val);
+	},
+
 	isFunction: (val) => {
 		return (val !== null && (typeof val === 'function' || val instanceof Function));
 	},
@@ -208,3 +216,14 @@ export const typeUtil = {
 	}
 
 }
+
+export function asDurationString(ms) {
+  const hours = String(Math.floor(ms / 3600000)).padStart(2, '0');
+  const minutes = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
+  const seconds = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+  const milliseconds = String(ms % 1000).padStart(3, '0');
+
+  return `${hours}:${minutes}:${seconds}:${milliseconds}`;
+}
+
+

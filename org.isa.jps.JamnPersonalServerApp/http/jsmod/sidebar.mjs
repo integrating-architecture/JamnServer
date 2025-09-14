@@ -1,99 +1,48 @@
 /* Authored by iqbserve.de */
 
-import * as loginModule from '../jsmod/login.mjs';
-import {IconElement} from '../jsmod/view-classes.mjs';
+import { ViewBuilder, onClicked } from '../jsmod/view-classes.mjs';
+import * as sidebarContent from '../jsmod/sidebar-content.mjs';
+import * as Icons from '../jsmod/icons.mjs';
 
-
-let topicListDef = [];
-let topicListId = "sidebarTopics";
-let itemAction = (id) => { console.warn("Sidebar NO action for: " + id); };
-let collapsed = false;
 let menuIcon = null;
-let loginIcon = null;
+let collapsed = false;
 
 /**
  * Public
  */
-export function build() {
-	buildTopicList();
-	initTopicBehavior();
-	initItemAction();
-};
-
 /**
  */
-export function createTopic(id, topicHtml) {
-	let topic = { "id": id, "html": topicHtml, items: [] };
-	topicListDef.push(topic);
-
-	let addItem = {
-		addItem: (itemHtml) => {
-			topic.items.push(itemHtml);
-			return addItem;
-		}
-	};
-	return addItem;
-};
-
-/**
- */
-export function newTopicHtml(iconName, text) {
-	let iconClazz = IconElement.iconDef(iconName)[0];
-	return `<li class="sbar-topic"><span class="${iconClazz}"><span class="sbar-topic-text">${text}</span></span>`;
-};
-
-/**
- * Store an id in the value attribute.
- * The id is pushed to the onClick callback.
- */
-export function newtItemHtml(idValue, text) {
-	return `<li class="sbar-item" value="${idValue}">${text}</li>`;
-};
-
-export function newIdentifiableItemHtml(idValue, text) {
-	return `<li class="sbar-item" id="${idValue}">${text}</li>`;
-};
-
-/**
- */
-export function setItemAction(action) {
-	itemAction = action;
-};
-
-
-/**
- */
-export function initFunctionalItems(viewmanager) {
+export function initialize(viewManager) {
 
 	//sidebar collaps/menu icon
-	menuIcon = IconElement.newIcon("menu", document.getElementById("sidebar.menu.icon"));
-	menuIcon.elem.addEventListener("click", (evt) => {
-		evt.stopImmediatePropagation();
-		toogleCollaps();
+	menuIcon = Icons.menu(document.getElementById("sidebar.menu.icon")).init((icon) => {
+		onClicked(icon.elem, (evt) => {
+			toggleCollaps();
+		});
 	});
 
-
-	//sidebar login 
-	let logInAction = (evt) => {
-		evt.stopImmediatePropagation();
-		viewmanager.getModalDialog(loginModule.getView(), (dlg) => {
-			loginModule.processSystemLogin(dlg);
-		});
-	}
-	//sidebar header login icon
-	loginIcon = IconElement.newIcon("login", document.getElementById("sidebar.login.icon"));
-	loginIcon.elem.addEventListener("click", logInAction);
-
-	//sidebar system login item
-	let item = document.getElementById("sidebar.system.login");
-	item.addEventListener("click", logInAction);
+	createTopicList(sidebarContent.topicList, viewManager);
 }
 
+export function installSidebarHeaderWorkItem(def) {
+	let item = null;
+	let workIconBar = document.getElementById("sidebar.header.workicons");
+
+	if (def.iconName) {
+		item = newWorkIcon(def.id, def.iconName);
+		item.elem.title = def.title ? def.title : "";
+		workIconBar.append(item.elem);
+		onClicked(item.elem, (evt) => {
+			def.action(evt);
+		});
+	}
+	return item;
+}
 
 /**
  */
-export function toogleCollaps() {
-	let topics = document.getElementById("sidebarTopics");
+export function toggleCollaps() {
+	let topics = document.getElementById("sidebar.topic.list");
 	let workicons = document.getElementById("sidebar.header.workicons");
 	let sidebar = document.getElementById("sidebar");
 
@@ -115,83 +64,96 @@ export function toogleCollaps() {
 }
 
 /**
- * Internals
+ * Internal
  */
+/**
+ */
+function newWorkIcon(id, iconName) {
+	let elem = ViewBuilder.createDomElementFrom(`<i id=${id} class="sidebar-header-icon"></i>`);
+	let icon = Icons.newIcon(iconName, elem);
+	return icon;
+}
 
 /**
  */
-function buildTopicList() {
-	if (topicListDef.length > 0) {
-		let html = createTopicListHtml();
-		let listElem = document.getElementById(topicListId);
-		listElem.innerHTML = html;
-	}
-};
+function createTopicList(topicListDef, viewManager) {
+	let sidebarTopicListElem = document.getElementById("sidebar.topic.list");
+	let topicKey = null;
+	let topicDef = null;
+	let topicElem = null;
+	let itemListElem = null;
+	let itemKey = null;
+	let itemDef = null;
+	let itemElem = null;
 
-/**
- */
-function createTopicListHtml() {
-	let html = "";
-	let lines = [];
+	for (topicKey in topicListDef) {
+		topicDef = topicListDef[topicKey];
+		topicElem = newTopic(topicKey, topicDef);
+		itemListElem = newTopicList();
+		topicElem.append(itemListElem);
+		sidebarTopicListElem.append(topicElem);
 
-	topicListDef.forEach((topic) => {
-		lines.push(topic.html);
-		if (topic.items.length > 0) {
-			lines.push('<ul class="sbar-item-list">');
-			topic.items.forEach((item) => {
-				lines.push(item);
-			});
-			lines.push('</ul>');
+		for (let key in topicDef.items) {
+			itemKey = topicKey + "_" + key;
+			itemDef = topicDef.items[key];
+			itemElem = newTopicItem(itemDef.id, itemDef.title);
+			itemListElem.append(itemElem);
+			if (itemDef.view) {
+				itemDef.view.onInstallation(itemKey, itemDef.data, viewManager);
+				//must be set after onInstallation because view id might change
+				itemElem.dataset.viewId = itemDef.view.id;
+				viewManager.registerView(itemDef.view, itemDef.data);
+				onClicked(itemElem, (evt) => {
+					evt.stopPropagation();
+					viewManager.onComponentOpenViewRequest(evt.currentTarget.dataset.viewId);
+				});
+			} else if (itemDef.action) {
+				//custom property for direct actions 
+				itemElem.action = itemDef.action;
+				onClicked(itemElem, (evt) => {
+					evt.stopPropagation();
+					evt.currentTarget.action();
+				});
+			}
 		}
-		if (!topic.html.endsWith('</li>')) {
-			lines.push('</li>');
+	}
+}
+
+/**
+ */
+function newTopic(key, def) {
+
+	let iconClazzes = Icons.getIconClasses(def.iconName, true);
+	let text = def.title;
+	let html = `<li class="sbar-topic"><span class="${iconClazzes}"><span class="sbar-topic-text">${text}</span></span>`;
+	let elem = ViewBuilder.createDomElementFrom(html);
+
+	onClicked(elem, (evt) => {
+		evt.stopImmediatePropagation();
+		let list = evt.currentTarget.lastChild;
+		if (list) {
+			if (list.style.display == "none" || list.style.display == "") {
+				list.style.display = "block";
+			} else {
+				list.style.display = "none";
+			}
 		}
 	});
-	html = lines.join("\n");
-	return html;
-};
+
+	return elem;
+}
 
 /**
- * add click behavior show/hide to topics
  */
-function initTopicBehavior() {
-	let topics = document.getElementsByClassName("sbar-topic");
-
-	for (const item of topics) {
-		item.addEventListener("click", (evt) => {
-			let list = evt.currentTarget.querySelector('.sbar-item-list');
-			if (list) {
-				if (list.style.display == "none" || list.style.display == "") {
-					list.style.display = "block";
-				} else {
-					list.style.display = "none";
-				}
-			}
-			evt.stopImmediatePropagation();
-		});
-	}
-};
+function newTopicList() {
+	let html = `<ul class="sbar-item-list"></ul>`;
+	return ViewBuilder.createDomElementFrom(html);
+}
 
 /**
- * add click actions to items
- * on click call wbApp.openView(View-ID-to-open)
- * a <li class="sbar-item" is expected to have id="View-ID-to-open"
  */
-function initItemAction() {
-	let items = document.getElementsByClassName("sbar-item");
-	let val = null;
-
-	for (const item of items) {
-		val = item.getAttribute("value");
-		if (val && val.length > 0) {
-			//use the value attribute to forword an id to the click action
-			const value = item.getAttribute("value");
-			item.addEventListener("click", (evt) => {
-				itemAction(value);
-				evt.stopImmediatePropagation();
-			});
-		} else if (!item.getAttribute("id")) {
-			console.warn("Missing sidebar item value or id: [" + item + "]");
-		}
-	}
-};
+function newTopicItem(id, text) {
+	id = id ? "id=" + id : "";
+	let html = `<li class="sbar-item" ${id}>${text}</li>`;
+	return ViewBuilder.createDomElementFrom(html);
+}

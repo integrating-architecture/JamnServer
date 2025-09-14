@@ -1,12 +1,14 @@
 /* Authored by iqbserve.de */
 
-import { ServerOrigin, setVisibility } from '../jsmod/tools.mjs';
+import { ServerOrigin, setDisplay, setVisibility } from '../jsmod/tools.mjs';
 import { WorkbenchViewManager } from '../jsmod/view-manager.mjs';
-import { StandardDialog, IconElement, SplitBarHandler, ViewComp } from '../jsmod/view-classes.mjs';
+import { StandardDialog, SplitBarHandler, ViewBuilder, onClicked } from '../jsmod/view-classes.mjs';
 import * as websocket from '../jsmod/websocket.mjs';
 import * as sidebar from '../jsmod/sidebar.mjs';
-import * as sidebarContent from '../jsmod/sidebar-content.mjs';
 import * as systemInfos from '../jsmod/system-infos.mjs';
+import * as Icons from '../jsmod/icons.mjs';
+import { WbProperties } from '../jsmod/workbench-properties.mjs';
+
 
 /**
  * The workbench module implements the toplevel Single-Page-Application.
@@ -31,6 +33,7 @@ export function anchorAt(rootId) {
 
 		build: function () {
 			document.addEventListener("DOMContentLoaded", startApp);
+			console.log("Workbench App installed");
 		}
 	};
 };
@@ -43,6 +46,10 @@ export const WorkbenchInterface = {
 
 	confirm: (text, cb) => {
 		standardDlg.openConfirmation(text, cb);
+	},
+
+	modalDialog: (view, cb) => {
+		viewManager.getModalDialog(view, cb);
 	},
 
 	//public view action request
@@ -64,7 +71,7 @@ export const WorkbenchInterface = {
 
 	titleInfo: (info) => {
 		titleInfo.innerHTML = `[ ${info} ]`;
-	},
+	}
 };
 
 /**
@@ -73,13 +80,15 @@ export const WorkbenchInterface = {
 let rootElement = null;
 let workarea = document.getElementById("workarea");
 let modalDialog = document.getElementById("modal.dialog");
-let viewManager = new WorkbenchViewManager(workarea, modalDialog);
 
 let standardDlg = new StandardDialog();
 
 let statusLineInfo = null;
 let titleInfo = null;
 let systemData = null;
+
+let viewManager = new WorkbenchViewManager(workarea, modalDialog);
+
 
 /**
  * this is called after document load but before getting visible
@@ -90,7 +99,12 @@ function startApp() {
 		systemData = data;
 		initWebSocket();
 		initUI();
+
 		setVisibility(rootElement, true);
+
+		if (WbProperties.autoStartView) {
+			viewManager.onComponentOpenViewRequest(WbProperties.autoStartView);
+		}
 	});
 }
 
@@ -118,33 +132,8 @@ function initUI() {
 /**
  */
 function initSidebar() {
-	let topic = null;
-	let topicDef = null;
-	let topicKey = null;
-	let itemDef = null;
-	let itemKey = null;
 
-	//create the sidebar content from the - sidebar-content.mjs definitions
-	for (topicKey in sidebarContent.topicList) {
-		topicDef = sidebarContent.topicList[topicKey];
-		topic = sidebar.createTopic(topicKey, sidebar.newTopicHtml(topicDef.icon, topicDef.title));
-		for (let key in topicDef.items) {
-			itemKey = topicKey + "_" + key;
-			itemDef = topicDef.items[key];
-			if (itemDef?.view) {
-				itemDef.view.onInstallation(itemKey, itemDef?.data, viewManager);
-				viewManager.registerView(itemDef.view, itemDef?.data);
-				topic.addItem(sidebar.newtItemHtml(itemDef.view.id, itemDef.title));
-			} else if (itemDef?.id) {
-				topic.addItem(sidebar.newIdentifiableItemHtml(itemDef.id, itemDef.title));
-			}
-		}
-	}
-
-	sidebar.setItemAction((id) => viewManager.onComponentOpenViewRequest(sidebar, id));
-	sidebar.build();
-
-	sidebar.initFunctionalItems(viewManager);
+	sidebar.initialize(viewManager);
 
 	//init splitter
 	let splitter = new SplitBarHandler(
@@ -156,7 +145,7 @@ function initSidebar() {
 		//sidebar width < x - collaps it
 		if (val < 100) {
 			splitter.stop();
-			sidebar.toogleCollaps();
+			sidebar.toggleCollaps();
 			return true; //barrier hit
 		}
 		return false; //barrier NOT hit
@@ -170,17 +159,12 @@ function initTitlebar() {
 	titleInfo = document.getElementById("wtb.title.text");
 	WorkbenchInterface.titleInfo(`Tiny Demo - V.${systemData.version}`);
 
-	ViewComp.newFor(document.getElementById("wtb.ctrl.panel"))
-		.addActionIcon({ iconName: "caretup", title: "Backward step through views" }, (target) => {
-			target.icon.onclick = () => {
-				viewManager.stepViewsUp();
-			}
+	new ViewBuilder().newViewCompFor(document.getElementById("wtb.ctrl.panel"))
+		.addActionIcon({ iconName: Icons.caretup(), title: "Backward step through views" }, (target) => {
+			onClicked(target.icon, () => { viewManager.stepViewsUp(); });
 		})
-		.addActionIcon({ iconName: "caretdown", title: "Forward step through views" }, (target) => {
-			target.icon.onclick = (evt) => {
-				viewManager.stepViewsDown();
-				evt.stopPropagation();
-			}
+		.addActionIcon({ iconName: Icons.caretdown(), title: "Forward step through views" }, (target) => {
+			onClicked(target.icon, () => { viewManager.stepViewsDown(); });
 		});
 }
 
@@ -190,24 +174,36 @@ function initStatusline() {
 
 	statusLineInfo = document.getElementById("wsl.info");
 
-	let scmIcon = IconElement.newIcon("github", document.getElementById("wsl.scm.link"));
-	scmIcon.elem.setAttribute("href", systemData.links["app.scm"]);
+	Icons.github(document.getElementById("wsl.scm.link")).init((icon) => {
+		icon.elem.href = systemData.links["app.scm"];
+	});
+
 }
 
 /**
  */
 function initIntroBox() {
 
-	let data = systemData.buildInfos;
-	let scmIcon = IconElement.iconDef("github")[0];
+	let intro = document.getElementById("intro.overlay");
 
-	let introContentHtml = `
+	if (!WbProperties.showIntro) {
+		setDisplay(intro, false);
+		return;
+	};
+
+	onClicked(intro, (evt) => {
+		setDisplay(evt.currentTarget, false);
+	});
+
+	let data = systemData.buildInfos;
+
+	document.getElementById("intro.content").innerHTML = `
 		<span style="padding: 20px;">
 			<h1 style="color: var(--isa-title-grayblue)">Welcome to<br>Jamn Workbench</h1>
 			<span style="font-size: 18px;">
 			<p>an example of using the Jamn Java-SE Microservice<br>together with plain Html and JavaScript<br></p>
 			<p style="margin-bottom: 5px;">to build lightweight, browser enabled
-				<a class="${scmIcon}" style="color: var(--isa-title-blue);" title="Jamn All-In-One MicroService"
+				<a class="${Icons.getIconClasses("github", true)}" style="color: var(--isa-title-blue);" title="Jamn All-In-One MicroService"
 				target="_blank" href="${data["readme.url"]}"><span style="margin-left: 5px;">All-in-One Apps</span></a>
 			</p>
 			<a style="font-size: 10px; color: var(--isa-title-blue);" 
@@ -219,9 +215,4 @@ function initIntroBox() {
 			<img src="images/intro.jpg" alt="Intro" style="width: 350px; height: 100%;">
 		</span>
 	`;
-
-	document.getElementById("intro.content").innerHTML = introContentHtml;
-
-	let intro = document.getElementById("intro.overlay");
-	intro.onclick = () => { intro.style.display = "none" };
 }

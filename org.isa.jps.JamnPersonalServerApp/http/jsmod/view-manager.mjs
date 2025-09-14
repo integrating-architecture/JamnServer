@@ -1,6 +1,5 @@
 /* Authored by iqbserve.de */
 
-import { getViewHtml } from '../jsmod/tools.mjs';
 import { ModalDialog, StandardDialog } from './view-classes.mjs';
 
 /**
@@ -22,27 +21,22 @@ export class WorkbenchViewManager {
 	//it is implicit a singleton
 	modalDialog;
 	standardDlg;
-	
+
 	getAsCartridgeId = (viewId) => "view.cartridge." + viewId;
 
 	constructor(workarea, modalDialogElement) {
 		this.workarea = workarea;
 		this.registeredViews = {};
 		this.modalDialog = new ModalDialog(modalDialogElement);
-		
+
 		this.standardDlg = new StandardDialog();
 	}
 
 	getModalDialog(view, cb) {
-		if(!view.viewSource.html){
-			getViewHtml(view.viewSource, (html) => {
-				this.modalDialog.setViewHtml(view.viewSource.html);
-				cb(this.modalDialog);
-			});
-		}else{
-			this.modalDialog.setViewHtml(view.viewSource.html);
+		view.getViewElement((element) => {
+			this.modalDialog.setDialogViewElement(element);
 			cb(this.modalDialog);
-		}
+		});
 	}
 
 	registerView(view, viewData) {
@@ -53,17 +47,16 @@ export class WorkbenchViewManager {
 		if (flag) {
 			viewCart.style["display"] = "block";
 			viewCart.style["visibility"] = "visible";
-		} else if(this.workarea.children.length > 0){
+		} else if (this.workarea.children.length > 0) {
 			viewCart.style["display"] = "none";
 		}
 	}
 
-	createViewCartridge(viewId, html) {
+	createViewCartridge(viewId, viewElement) {
 		let viewCart = document.createElement("div");
 		viewCart.id = this.getAsCartridgeId(viewId);
 		viewCart.style = "visibility: visible; display: block;"
-		viewCart.innerHTML = html;
-		viewCart.children[0].id = viewId;
+		viewCart.appendChild(viewElement);
 
 		this.registeredViews[viewId].cart = viewCart;
 		return viewCart;
@@ -86,7 +79,7 @@ export class WorkbenchViewManager {
 		}
 	}
 
-	scrollToTop(){
+	scrollToTop() {
 		this.workarea.scrollTop = 0;
 	}
 
@@ -100,7 +93,10 @@ export class WorkbenchViewManager {
 	}
 
 	#getWorkViewOf(viewElem) {
-		while ((viewElem = viewElem.parentElement) && !viewElem.classList.contains("work-view"));
+		viewElem = viewElem.parentElement;
+		while(viewElem  && !viewElem.classList.contains("work-view")){
+			viewElem = viewElem.parentElement;
+		}
 		return viewElem;
 	}
 
@@ -115,40 +111,33 @@ export class WorkbenchViewManager {
 
 		if ("close" === action) {
 			this.closeView(viewItem);
-		} else if ("pin" === action) {
-			viewItem.view.togglePinned();
-		} else if ("collapse" === action) {
-			viewItem.view.toggleCollapsed();
-		} else if ("header.menu" === action) {
-			viewItem.view.toggleHeaderMenu();
-			evt.stopImmediatePropagation();
-		}
+		} 
 	}
 
-	getVisibleChildren(){
+	getVisibleChildren() {
 		let children = [];
 		for (let child of this.workarea.children) {
-			if(child.style.display == "block"){
+			if (child.style.display == "block") {
 				children.push(child);
 			}
 		}
 		return children;
-	}		
+	}
 
-	stepViewsDown(){
+	stepViewsDown() {
 		let children = this.getVisibleChildren();
-		if(children.length > 1){
-			this.workarea.insertBefore(children[children.length-1], children[0]);
+		if (children.length > 1) {
+			this.workarea.insertBefore(children[children.length - 1], children[0]);
 			this.scrollToTop();
 		}
 	}
 
-	stepViewsUp(){
+	stepViewsUp() {
 		let children = this.getVisibleChildren();
-		if(children.length > 1){
+		if (children.length > 1) {
 			this.workarea.insertBefore(children[0], null);
 			this.scrollToTop();
-		}	
+		}
 	}
 
 	moveView(view, position) {
@@ -187,15 +176,15 @@ export class WorkbenchViewManager {
 
 	// ViewManager public view open request method for components
 	// in this case the sidebar
-	onComponentOpenViewRequest(comp, viewItemId) {
+	onComponentOpenViewRequest(viewItemId, comp=null) {
 		let viewItem = this.registeredViews[viewItemId]
 
 		if (viewItem) {
 			if (viewItem.cart) {
 				this.openView(viewItem);
 			} else {
-				getViewHtml(viewItem.view.viewSource, (html) => {
-					let viewCart = this.createViewCartridge(viewItem.view.id, html);
+				viewItem.view.getViewElement((element) => {
+					let viewCart = this.createViewCartridge(viewItem.view.id, element);
 					this.workarea.prepend(viewCart);
 					this.openView(viewItem);
 				});
@@ -203,8 +192,9 @@ export class WorkbenchViewManager {
 		}
 	}
 
-	promptUserInput(text, value, cb){
+	promptUserInput(text, value, cb) {
 		this.standardDlg.openInput(text, value, cb);
 	}
 }
+
 

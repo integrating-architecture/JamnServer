@@ -32,12 +32,12 @@ function run() {
 
 	//process args if any
 	if (new ArgumentProcessor().process(args, {
-		"-h": (proc) => { echo(helpText); proc.directReturn = true; }
-	}).directReturn) {
-		//for help arg
-		//return without processing the script itself
-		return;
-	}
+		"-h": (val) => { echo(helpText); return -1; }
+	})== -1) {
+        //for help arg
+        //return without processing the script
+        return;
+    }
 
 	//setup shell commands for the current platform
 	let test = isOnUnix() ? { cmd: { pwd: "pwd", ls: "ls" }, os: "unix" } : { cmd: { pwd: "cd", ls: "dir" }, os: "windows" };

@@ -1,10 +1,7 @@
 /* Authored by iqbserve.de */
 
 import { CommandDef } from '../jsmod/data-classes.mjs';
-import { getView as getSystemInfosView } from '../jsmod/system-infos.mjs';
-import { getView as getDbConnectionsView } from '../jsmod/db-connections.mjs';
-import { getView as newCmdView } from '../jsmod/command.mjs';
-import { processSystemLogin as loginAction } from '../jsmod/login.mjs';
+import { LazyFunction } from '../jsmod/tools.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 
 
@@ -15,17 +12,19 @@ import * as Icons from '../jsmod/icons.mjs';
  * n Topics 
  *  - 1 Topic 
  *    - n Items
+ * Normally lazy functions are used to provide the functionality for an item click.
+ * That prevents the corresponding modules from being loaded at sidebar definition time.
  * </pre>
  */
 export const topicList = {
 	system: {
-		iconName: Icons.system(), title: "System",
+		iconName: Icons.gi_system(), title: "System",
 		items: [
 			//create a view item with a singleton view
-			{ title: "Infos", view: getSystemInfosView() },
+			{ title: "Infos", view: new LazyFunction('../jsmod/system-infos.mjs', "getView") },
 
 			//create a functional item with id and an action
-			{ title: "Login", id: "sidebar.system.login", action: loginAction }
+			{ title: "Login", id: "sidebar.item.login", action: new LazyFunction('../jsmod/login.mjs', "processSystemLogin").asAction() }
 		]
 	},
 
@@ -35,17 +34,17 @@ export const topicList = {
 			//create new views from the same type with identifying names and data objects 
 			{
 				title: "Sample: shell test",
-				view: newCmdView("shellSampleView"),
+				view: new LazyFunction('../jsmod/command.mjs', "getView", "shellSampleView") ,
 				data: new CommandDef("Sample: [sh command]", "runjs", "/sample/sh-test.mjs", { args: true })
 			},
 			{
 				title: "Sample: build test",
-				view: newCmdView("buildSampleView"),
+				view: new LazyFunction('../jsmod/command.mjs', "getView", "buildSampleView") ,
 				data: new CommandDef("Sample: [build script]", "runjs", "/sample/build-project-test.mjs")
 			},
 			{
 				title: "Sample: extension",
-				view: newCmdView("extensionSampleView"),
+				view: new LazyFunction('../jsmod/command.mjs', "getView", "extensionSampleView") ,
 				data: new CommandDef("Sample: [extension command]", "runext", "sample.Command", { args: true })
 			}
 		]
@@ -54,8 +53,13 @@ export const topicList = {
 	tools: {
 		iconName: Icons.tools(), title: "Tools",
 		items: [
-			{ title: "DB Connections", view: getDbConnectionsView() }
+			{ title: "DB Connections", view: new LazyFunction('../jsmod/db-connections.mjs', "getView") }
 		]
 	}
 }
 
+export const workpanelItems = {
+
+	loginIcon : { title: "Login", id: "sidebar.icon.login", iconName: Icons.login(), action: new LazyFunction('../jsmod/login.mjs', "processSystemLogin").asAction() } 
+
+}

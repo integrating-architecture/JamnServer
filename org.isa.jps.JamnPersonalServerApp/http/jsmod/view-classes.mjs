@@ -1,14 +1,17 @@
 /* Authored by iqbserve.de */
 
-import { getChildOf, setVisibility, setDisplay, typeUtil, fileUtil, fetchPlainText, mergeArrayInto } from '../jsmod/tools.mjs';
+import { findChildOf, setVisibility, setDisplay, typeUtil, fileUtil, fetchPlainText } from '../jsmod/tools.mjs';
 import { ViewSource } from '../jsmod/data-classes.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
+import { UIBuilder, onClicked, onDblClicked, DefaultCompProps, ContextId, newUIId, reworkHtmlElementIds } from '../jsmod/uibuilder.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 
-const getOrDefault = (obj, name, defaultVal = null) => {
-	if (!obj) { return defaultVal }
-	return obj[name] ? obj[name] : defaultVal;
-};
+/**
+ * Internal section
+ */
+const InternalUIBuilder = new UIBuilder()
+	.setElementCollection(null)
+	.setObjectCollection(null);
 
 /**
  * Get a view html file from the server
@@ -32,27 +35,19 @@ function createViewElementFor(view, html) {
 	let template = document.createElement("template");
 	template.innerHTML = html;
 	view.viewElement = template.content.firstElementChild;
-	view.viewElement.id = view.id;
+	if(view instanceof AbstractView){
+		view.viewElement.id = view.id;
+	}
 }
 
 /**
- * Shortcuts for addEventListener
+ * Public section
  */
 
-export function onClicked(elem, action) {
-	elem.addEventListener("click", action);
-}
-
-export function onDblClicked(elem, action) {
-	elem.addEventListener("dblclick", action);
-}
-
-export function onInput(elem, action) {
-	elem.addEventListener("input", action);
-}
-
-export function onKeyup(elem, action) {
-	elem.addEventListener("keyup", action);
+/**
+ */
+export function loadServerStyleSheet(path) {
+	UIBuilder.loadServerStyleSheet(path);
 }
 
 /**
@@ -60,15 +55,18 @@ export function onKeyup(elem, action) {
  */
 export class AbstractView {
 
+	//an automatic uid 
+	uid = new ContextId();
+	//a custom id
 	id = "";
 	viewSource = new ViewSource("");
 	viewElement = null;
+	//the obligatory flag to control the init sequence
 	isInitialized = false;
 
 	constructor(id, file = null) {
 		this.id = id;
 		this.viewSource = new ViewSource(file);
-
 		this.isInitialized = false;
 	}
 
@@ -76,8 +74,10 @@ export class AbstractView {
 	 * Get and lazy create the view dom element.
 	 */
 	getViewElement(cb = (elem) => { }) {
-		if (!this.isInitialized || this.viewElement == null) {
+		if (this.needsInitialization()) {
 			getViewHtml(this.viewSource, (html) => {
+				html = this.reworkHtml(html);
+				this.beforeCreateViewElement();
 				createViewElementFor(this, html);
 				this.initialize();
 				cb(this.viewElement);
@@ -88,7 +88,26 @@ export class AbstractView {
 	}
 
 	/**
-	 * The method is called by getViewElement.
+	 */
+	needsInitialization() {
+		//a basic, overwriteable initialization logic
+		return !this.isInitialized || !this.viewElement;
+	}
+
+	/**
+	 */
+	reworkHtml(html) {
+		//to be overwritten
+		return html;
+	}
+
+	/**
+	 */
+	beforeCreateViewElement() {
+		//to be overwritten
+	}
+
+	/**
 	 */
 	initialize() {
 		//to be overwritten
@@ -103,20 +122,9 @@ export class AbstractView {
 	}
 
 	getElement(id) {
-		return getChildOf(this.viewElement, id);
+		return findChildOf(this.viewElement, this.uid.get(id));
 	}
 
-	writeDataToView() {
-		//to be overwritten
-	}
-
-	readDataFromView() {
-		//to be overwritten
-	}
-
-	setTitle(title) {
-		//to be overwritten
-	}
 }
 
 /**
@@ -146,12 +154,17 @@ export class WorkView extends AbstractView {
 		this.state.isOpen = false;
 	}
 
+	reworkHtml(html) {
+		html = reworkHtmlElementIds(html, this.uid.get());
+		return html;
+	}
+
 	initialize() {
 		//to be overwritten
-		//called from getViewElement
+		//called from getViewElement(...)
 
-		this.viewBody = this.getElement("work.view.body");
-		this.viewWorkarea = this.getElement("work.view.workarea");
+		this.viewBody = this.getElement("work-view-body");
+		this.viewWorkarea = this.getElement("work-view-workarea");
 		this.bodyInitialDisplay = this.viewBody.style.display;
 
 		this.viewHeader = new WorkViewHeader(this, this.state);
@@ -193,10 +206,6 @@ export class WorkView extends AbstractView {
 		this.state.isOpen = true;
 	}
 
-	setVisible(flag) {
-		setVisibility(this.viewElement, flag);
-	}
-
 	close() {
 		if (this.isInitialized) {
 			this.state.isOpen = false;
@@ -216,10 +225,6 @@ export class WorkView extends AbstractView {
 
 	setTitle(title) {
 		this.viewHeader.setTitle(title);
-	}
-
-	getElement(id) {
-		return getChildOf(this.viewElement, id);
 	}
 
 	onInstallation(installKey, installData, viewManager) {
@@ -263,6 +268,7 @@ export class WorkView extends AbstractView {
 	toggleCollapsed(evt = null) {
 		this.state.isCollapsed = !this.state.isCollapsed;
 
+		this.viewHeader.container.classList.toggle("work-view-collapsed-header");
 		this.viewHeader.icons["collapse.icon"].toggle((icon) => {
 			icon.title = this.state.isCollapsed ? "Expand view" : "Collapse  view";
 			let displayVal = !this.state.isCollapsed ? this.bodyInitialDisplay : "none";
@@ -299,6 +305,7 @@ export class WorkViewHeader {
 	view;
 	viewState;
 
+	container;
 	icons = {};
 	headerMenu;
 	iconBarLeft;
@@ -313,15 +320,16 @@ export class WorkViewHeader {
 	}
 
 	#initialize() {
-		this.title = this.#getElement("view.title");
-		this.headerMenu = new WorkViewHeaderMenu(this.#getElement("header.menu"));
+		this.container = this.#getElement("work-view-header");
+		this.title = this.#getElement("view-title");
+		this.headerMenu = new WorkViewHeaderMenu(this.#getElement("header-menu"));
 
-		this.iconBarLeft = new WorkViewHeaderIconBar(this.#getElement("wkv.header.iconbar.left"), this.icons);
+		this.iconBarLeft = new WorkViewHeaderIconBar(this.#getElement("wkv-header-iconbar-left"), this.icons);
 		this.iconBarLeft.addIcon({ id: "menu.icon", title: "View Menu" }, Icons.dotmenu(), (evt) => {
 			this.#toggleHeaderMenu(evt);
 		});
-		this.iconBarRight = new WorkViewHeaderIconBar(this.#getElement("wkv.header.iconbar.right"), this.icons);
-		this.progressBar = this.#getElement("wkv.header.progressbar");
+		this.iconBarRight = new WorkViewHeaderIconBar(this.#getElement("wkv-header-iconbar-right"), this.icons);
+		this.progressBar = this.#getElement("wkv-header-progressbar");
 	}
 
 	#getElement(id) {
@@ -329,7 +337,6 @@ export class WorkViewHeader {
 	}
 
 	#toggleHeaderMenu(evt = null) {
-		if (evt) { evt.stopImmediatePropagation(); }
 		if (!this.viewState.isCollapsed) {
 			this.headerMenu.toggleVisibility(evt);
 		}
@@ -388,8 +395,8 @@ export class WorkViewSidepanel {
 
 	#initialize() {
 
-		this.splitterElem = this.view.getElement("work.view.sidepanel.splitter");
-		this.sidePanelElem = this.view.getElement("work.view.sidepanel");
+		this.splitterElem = this.view.getElement("work-view-sidepanel-splitter");
+		this.sidePanelElem = this.view.getElement("work-view-sidepanel");
 
 		if (this.splitterElem && this.sidePanelElem) {
 			this.splitHandler = new SplitBarHandler(
@@ -531,25 +538,47 @@ export class SplitBarHandler {
  */
 export class WorkViewHeaderMenu {
 
-	containerElem = null;
-	menuElem = null;
-	isVisible = false;
+	#menuElem;
+	#toggleEvent;
 
 	constructor(containerElem) {
-		this.menuElem = containerElem;
+		this.#menuElem = containerElem;
 
-		onClicked(window, (event) => {
-			this.onAnyWindowClick(event)
+		window.addEventListener("click", (event) => {
+			this.#onAnyCloseTriggerEvent(event)
 		});
+		window.addEventListener("scroll", (event) => {
+			this.#onAnyCloseTriggerEvent(event)
+		}, true);
 	}
 
-	hasItems() {
-		return this.menuElem?.children.length > 0;
+	#onAnyCloseTriggerEvent(event) {
+		if (this.#toggleEvent !== event) {
+			this.close();
+		}
+	}
+
+	#positionMenu(evt) {
+		let trigger = evt.currentTarget;
+		const rect = trigger.getBoundingClientRect();
+		this.#menuElem.style.top = `${window.scrollY + rect.top - 10}px`;
+		this.#menuElem.style.left = `${window.scrollX + rect.right + 10}px`;
+	}
+
+	toggleVisibility(evt = null) {
+		if (this.hasItems()) {
+			this.#toggleEvent = evt;
+			this.#positionMenu(evt);
+			setDisplay(this.#menuElem, this.#menuElem.style.display === "none");
+		}
 	}
 
 	close() {
-		this.isVisible = false;
-		setDisplay(this.menuElem, this.isVisible);
+		setDisplay(this.#menuElem, false);
+	}
+
+	hasItems() {
+		return this.#menuElem?.children.length > 0;
 	}
 
 	addItem(text, cb, props = {}) {
@@ -557,55 +586,41 @@ export class WorkViewHeaderMenu {
 		item.href = "view: " + text;
 		item.innerHTML = text;
 
+		onClicked(item, (evt) => {
+			//cause <a> links are used as menu items 
+			//their default behavior must be suppressed
+			evt.preventDefault();
+			cb(evt);
+		});
+
 		if (props?.separator) {
 			let clazz = props.separator === "top" ? "menu-separator-top" : "menu-separator-bottom";
 			item.classList.add(clazz);
 		}
 
-		onClicked(item, (evt) => {
-			//cause <a> links are used as menu items 
-			evt.preventDefault();
-			cb(evt);
-		});
-
 		if (props?.pos) {
-			this.menuElem.insertAdjacentElement(props.pos, item);
+			this.#menuElem.insertAdjacentElement(props.pos, item);
 		} else {
-			this.menuElem.appendChild(item);
+			this.#menuElem.appendChild(item);
 		}
-	}
-
-	toggleVisibility(evt = null) {
-		if (this.hasItems()) {
-			let trigger = evt.currentTarget;
-			this.menuElem.style.left = trigger.offsetLeft + trigger.offsetWidth + 10 + "px";
-			this.isVisible = !this.isVisible
-			setDisplay(this.menuElem, this.isVisible);
-		}
-	}
-
-	onAnyWindowClick(event) {
-		this.close();
 	}
 }
 
 /**
  */
 export class WorkViewHeaderIconBar {
-	builder;
 	iconBarComp;
 	items;
 
 	constructor(iconBarElem, items = {}) {
 		this.items = items;
-		this.builder = new ViewBuilder();
-		this.iconBarComp = new ViewComp(this.builder, iconBarElem, null);
+		this.iconBarComp = InternalUIBuilder.newUICompFor(iconBarElem);
 	}
 
 	addIcon(props, icon, action) {
-		this.iconBarComp.addActionIcon({ "iconName": icon, "title": props.title }, (target) => {
-			onClicked(target.icon, (evt) => { action(evt); });
-			this.items[props.id] = target.iconElement;
+		this.iconBarComp.addActionIcon({ "iconName": icon, "title": props.title }, (icon, iconElem) => {
+			onClicked(icon, (evt) => { action(evt); });
+			this.items[props.id] = iconElem;
 		});
 	}
 
@@ -614,37 +629,105 @@ export class WorkViewHeaderIconBar {
 	}
 }
 
+
 /**
+ * dialog specific function to set the current dialog view
+ * cause all dialogs are container shown by one dialog element
  */
-export class ModalDialog {
-	containerElem;
-	header;
-	title;
-	closeIcon;
-	viewArea;
-	commandArea;
+function exchangeDialogView(dlgElem, viewElem) {
+	let currentView = dlgElem.firstElementChild;
 
-	constructor(containerElem) {
-		this.containerElem = containerElem;
-		this.header = getChildOf(containerElem, "modal.dialog.header");
-		this.title = getChildOf(this.header, "dialog.title");
-		this.viewArea = getChildOf(containerElem, "modal.dialog.view.area");
-		this.commandArea = getChildOf(containerElem, "modal.dialog.command.area");
+	if (!currentView) {
+		dlgElem.append(viewElem);
+	} else if (currentView !== viewElem) {
+		dlgElem.removeChild(currentView);
+		dlgElem.append(viewElem);
+	}
+}
 
-		this.closeIcon = Icons.close(getChildOf(containerElem, "modal.dialog.close.icon")).init((icon) => {
-			onClicked(icon.elem, () => { this.close(); });
-		});
+/**
+ * Modaldialogs implemented as a view and based on a overlay element of the workbench. 
+ */
+export class ModalDialog extends AbstractView {
+
+	static #dialogElem = document.getElementById("app-modal-dialog");
+
+	viewContainer;
+
+	constructor(file) {
+		super("", file);
+		this.createViewContainer();
 	}
 
-	//called from viewManager 
-	setDialogViewElement(viewElement) {
-		this.viewArea.append(viewElement);
-		return this;
+	/**
+	 */
+	createViewContainer() {
+		let builder = new UIBuilder()
+			//using this as target for ui builder var collection
+			//any "varid" gets a property of this
+			.setElementCollection(this)
+			.setDefaultCompProps(new DefaultCompProps());
+
+		this.viewContainer = builder.newUIComp()
+			.addDiv({ varid: "content", clazzes: "modal-dialog-content" }, (content) => {
+				content
+					.addDiv({ varid: "header", clazzes: "modal-dialog-header" }, (header) => {
+						header
+							.addSpan({ varid: "logoIcon", clazzes: ["mdlg-header-item", "mdlg-logo-icon"] })
+							.addSpan({ varid: "title", clazzes: ["mdlg-header-item", "mdlg-title"] })
+							.addActionIcon({ varid: "closeIcon", iconName: Icons.close(), title: "Close" }, (closeIcon) => {
+								closeIcon.class(["mdlg-header-item", "mdlg-close-icon"]);
+								onClicked(closeIcon.domElem, () => { this.close(); });
+							})
+					})
+					.addDiv({ varid: "viewArea", clazzes: "modal-dialog-view-area" })
+					.addDiv({ varid: "commandArea" })
+			}).getDomElem();
+	}
+
+	#dialog() {
+		return ModalDialog.#dialogElem;
+	}
+
+	getElement(id) {
+		return findChildOf(this.viewContainer, id);
+	}
+
+	/**
+	 * make a list of element ids to properties of this
+	 */
+	elementsToProperties(elementIdList) {
+		let elem = null;
+		for (const id of elementIdList) {
+			elem = this.getElement(id);
+			if (elem) {
+				this[id] = elem;
+			}
+		}
+	}
+
+	initialize() {
+		this.viewArea.append(this.viewElement);
+		this.isInitialized = true;
+	}
+
+	beforeOpen() {
+		//to be overwritten
+	}
+
+	open(cb = null) {
+		this.getViewElement(() => {
+			exchangeDialogView(this.#dialog(), this.viewContainer);
+			this.beforeOpen();
+			if (cb) {
+				cb(this);
+			}
+			setDisplay(this.#dialog(), true);
+		})
 	}
 
 	close() {
-		setDisplay(this.containerElem, false);
-		this.viewArea.innerHTML = "";
+		setDisplay(this.#dialog(), false);
 	}
 
 	setTitle(title) {
@@ -653,86 +736,96 @@ export class ModalDialog {
 	}
 
 	setAction(id, action) {
-		onClicked(getChildOf(this.containerElem, id), action);
-		return this;
-	}
-
-	setElement(id, cb) {
-		cb(getChildOf(this.containerElem, id));
-		return this;
-	}
-
-	open() {
-		setDisplay(this.containerElem, true);
-		return this;
-	}
-
-	hideArea(area) {
-		setDisplay(area, false);
+		onClicked(this.getElement(id), action);
 		return this;
 	}
 }
 
 /**
+ * Standardialogs e.g. confirmation/message/input based on a html dialog tag 
+ * and realized as a configurabel integrated view.
  */
 export class StandardDialog {
-	dialogElem;
-	contentArea;
-	commandArea;
-	title;
-	closeIcon;
-	pbOk;
-	pbCancel;
-	tfInput;
+
+	static #dialogElem = document.getElementById("app-standard-dialog");
+
+	uid = new ContextId();
+	#viewElem;
+	inputField;
 
 	constructor() {
-		this.dialogElem = document.getElementById("standardDialog");
-		this.contentArea = getChildOf(this.dialogElem, "standard.dialog.content.area");
-		this.commandArea = getChildOf(this.dialogElem, "standard.dialog.command.area");
-		this.title = getChildOf(this.dialogElem, "standard.dialog.title");
-		this.pbOk = getChildOf(this.dialogElem, "pb.standard.dialog.ok");
-		this.pbCancel = getChildOf(this.dialogElem, "pb.standard.dialog.cancel");
+		this.createUI();
+	}
 
-		this.closeIcon = Icons.close(getChildOf(this.dialogElem, "standard.dialog.close.icon"));
+	/**
+	 */
+	createUI() {
+		let builder = new UIBuilder()
+			//using this as target for ui builder var collection
+			.setElementCollection(this)
+			.setDefaultCompProps(new DefaultCompProps());
+
+		this.#viewElem = builder.newUIComp()
+			.addDiv({ clazzes: "standard-dialog-header-area " }, (header) => {
+				header
+					.addSpan({ varid: "title" }, (title) => { title.style({ width: "100%" }) })
+					.addActionIcon({ varid: "closeIcon", iconName: Icons.close(), title: "Cancel", clazzes: "standard-dialog-close-icon" })
+			})
+			.addDiv({ varid: "contentArea", clazzes: "standard-dialog-content-area" }, (content) => { })
+			.addDiv({ clazzes: "standard-dialog-command-area" }, (commands) => {
+				commands
+					.addButton({ varid: "pbOk", text: "Ok", clazzes: "standard-dialog-button" })
+					.addButton({ varid: "pbCancel", text: "Cancel", clazzes: "standard-dialog-button" }, (cancel) => { cancel.domElem.autofocus = true; })
+			}).getDomElem();
+	}
+
+	#dialog() {
+		return StandardDialog.#dialogElem;
+	}
+
+	#exchangeDialogView() {
+		exchangeDialogView(this.#dialog(), this.#viewElem);
 	}
 
 	openConfirmation(text, cb) {
-		this.setupFor("confirm", text, null, cb);
-		this.dialogElem.showModal();
+		this.#exchangeDialogView();
+		this.#setupFor("confirm", text, null, cb);
+		this.#dialog().showModal();
 	}
 
 	openInput(text, value, cb) {
-		this.setupFor("input", text, value, cb);
-		this.dialogElem.showModal();
-		this.tfInput.focus();
-		this.tfInput.select();
+		this.#exchangeDialogView();
+		this.#setupFor("input", text, value, cb);
+		this.#dialog().showModal();
+		this.inputField.focus();
+		this.inputField.select();
 	}
 
-	setupFor(type, text, value, cb) {
+	#setupFor(type, text, value, cb) {
 
 		onClicked(this.pbOk, (evt) => {
-			this.dialogElem.close();
-			cb(type === "input" ? this.tfInput.value : true);
+			this.#dialog().close();
+			cb(type === "input" ? this.inputField.value : true);
 		});
 
 		onClicked(this.pbCancel, (evt) => {
-			this.dialogElem.close();
+			this.#dialog().close();
 			cb(null);
 		});
 
-		onClicked(this.closeIcon.elem, (evt) => {
-			this.dialogElem.close();
+		onClicked(this.closeIcon, (evt) => {
+			this.#dialog().close();
 			cb(null);
 		});
 
 		if (type === "confirm") {
-			this.setupForConfirm(text);
+			this.#setupForConfirm(text);
 		} else if (type === "input") {
-			this.setupForInput(text, value);
+			this.#setupForInput(text, value);
 		}
 	}
 
-	setupForConfirm(text) {
+	#setupForConfirm(text) {
 		this.pbOk.innerHTML = "Yes";
 		this.pbCancel.innerHTML = "No";
 		let title = "Confirmation required";
@@ -746,26 +839,26 @@ export class StandardDialog {
 		}
 	}
 
-	setupForInput(text, value) {
+	#setupForInput(text, value) {
 		this.pbOk.innerHTML = "Ok";
 		this.pbCancel.innerHTML = "Cancel";
 		let title = "Input";
+		let inputId = this.uid.get("standard-dialog-input");
 
 		if (!value) { value = "" };
 
 		if (typeof text === 'string' || text instanceof String) {
 			this.title.innerHTML = title;
 			this.contentArea.innerHTML = `<p class="std-dlg-input">${text}</p> 
-			<input type="text" id="tf.standard.dialog.input" class="standard-dialog-textfield" value=${value}>`;
+			<input type="text" id=${inputId} class="standard-dialog-textfield" value=${value}>`;
 		} else {
 			this.title.innerHTML = text.title ? text.title : title;
 			this.contentArea.innerHTML = `<p class="std-dlg-input">${text?.message}</p>
-			<input type="text" id="tf.standard.dialog.input" class="standard-dialog-textfield" value=${value}>`;
+			<input type="text" id=${inputId} class="standard-dialog-textfield" value=${value}>`;
 		}
 
-		this.tfInput = getChildOf(this.dialogElem, "tf.standard.dialog.input");
+		this.inputField = findChildOf(this.#dialog(), inputId);
 	}
-
 }
 
 /**
@@ -862,7 +955,7 @@ export class WorkViewTable {
 		} else if (props.datalist?.length > 0) {
 			let item = null;
 			let dataElem = document.createElement("datalist");
-			dataElem.id = Math.random().toString(32).slice(5);
+			dataElem.id = newUIId();
 			props.datalist.forEach(entry => {
 				item = document.createElement("option");
 				item.value = entry;
@@ -894,864 +987,5 @@ export class TableData {
 	addRow(key, columns) {
 		this.rows.set(key, columns);
 	}
-}
-
-/**
- */
-export class DataList {
-	data;
-	ctrl;
-	listElem;
-
-	constructor(ctrl) {
-		this.ctrl = ctrl;
-		this.listElem = document.createElement("datalist");
-		this.listElem.id = "data." + ctrl.id;
-		this.ctrl.setAttribute("list", this.listElem.id);
-	}
-
-	#newOption(item) {
-		let option = document.createElement("option");
-		option.id = item.id ? item.id : item;
-		option.value = item.value ? item.value : option.id;
-		return option;
-	}
-
-	setOptions(optionValues) {
-		let option = null;
-		optionValues.forEach(item => {
-			option = this.#newOption(item);
-			this.listElem.append(option);
-		});
-	}
-
-	removeOption(id) {
-		ViewBuilder.removeChildFrom(this.listElem, id);
-	}
-
-	addOption(item) {
-		let id = item.id ? item.id : item;
-		let option = ViewBuilder.getChildFrom(this.listElem, id);
-		if (option === null) {
-			option = this.#newOption(item);
-			this.listElem.prepend(option);
-		}
-	}
-
-	addDataItem(key, item) {
-		this.addOption(key);
-		this.data[key] = item;
-	}
-
-	removeDataItem(key) {
-		this.removeOption(key);
-		delete this.data[key];
-	}
-
-}
-
-/*********************************************************************************
- * UI BUILDER CLASSES
- *********************************************************************************/
-/**
- */
-class DefaultCompProps {
-
-	static makeACopyOf(source) {
-		let newProps = { ...source };
-		newProps.clazzes = mergeArrayInto(newProps.clazzes, source.clazzes);
-		newProps.attribProps = source.attribProps ? { ...source.attribProps } : {};
-		newProps.styleProps = source.styleProps ? { ...source.styleProps } : {};
-		delete newProps['clazzFilter'];
-		return newProps;
-	}
-
-	blankComp = { elemType: "div", clazzes: [], attribProps: {}, styleProps: {} };
-	comp = { elemType: "div", clazzes: ["wkv-comp", "row-comp"], attribProps: {}, styleProps: {} };
-	colComp = { elemType: "div", clazzes: ["wkv-comp", "col-comp"], attribProps: {}, styleProps: {} };
-	rowComp = { elemType: "div", clazzes: ["wkv-comp", "row-comp"], attribProps: {}, styleProps: {} };
-
-	fieldset = { clazzes: ["wkv-compset"], attribProps: {}, styleProps: {} };
-	titledFieldset = { clazzes: ["wkv-compset", "wkv-compset-border"], attribProps: {}, styleProps: {} };
-	container = { elemType: "span", clazzes: ["wkv-container"], attribProps: {}, styleProps: {} };
-	rowContainer = { elemType: "span", clazzes: ["wkv-container", "row-container"], attribProps: {}, styleProps: {} };
-	colContainer = { elemType: "span", clazzes: ["wkv-container", "col-container"], attribProps: {}, styleProps: {} };
-
-	label = { clazzes: ["wkv-label-ctrl"], attribProps: {}, styleProps: {} };
-	link = { clazzes: ["wkv-link-ctrl"], attribProps: {}, styleProps: {} };
-	list = { elemType: "ul", clazzes: ["wkv-list-ctrl"], attribProps: {}, styleProps: {} };
-	actionIcon = { clazzes: ["wkv-action-icon"], attribProps: {}, styleProps: {} };
-	button = { clazzes: ["wkv-button-ctrl"], attribProps: {}, styleProps: {} };
-	textField = { clazzes: ["wkv-value-ctrl"], attribProps: {}, styleProps: {} };
-	textArea = { clazzes: ["wkv-textarea-ctrl"], attribProps: {}, styleProps: {} };
-	hr = { clazzes: ["solid"], attribProps: {}, styleProps: {} };
-
-	inputReadOnly = { clazzes: ["input-readonly"], attribProps: {}, styleProps: {} };
-	textareaReadOnly = { clazzes: ["textarea-readonly"], attribProps: {}, styleProps: {} };
-
-	get(id) {
-		return this[id];
-	}
-
-	getClassesFor(id) {
-		return this[id]?.clazzes;
-	}
-	getStylesFor(id) {
-		return this[id]?.styleProps;
-	}
-	getAttributesFor(id) {
-		return this[id]?.attribProps;
-	}
-}
-
-export function makeACopyOfCompProps(source) {
-	return DefaultCompProps.makeACopyOf(source);
-}
-
-/**
- * <pre>
- * An experimental factory/builder to programmatically create UI components and views.
- * 
- * A ViewBuilder instance is the starting point.
- * It serves as a dataobject and as a static function provider.
- * 
- * The actual builder objects are instances of ViewComp()
- *  - vc = builder.newViewComp()
- * 
- * ViewComps are the building blocks/container for views
- * 
- * ViewComp objects offer element builder methods for e.g. label, field, button etc.
- * in a Chaining-Way and use chained closures to build nested structures.
- *  - vc.addLabelButton({ text: "Command:" })
- *      .attrib("title": "Run")
- *      .style({ "align-items": "flex-start", "text-align": "center" })
- *      ...
- *      .addColContainer( {type: "span"}, (target) => {
- *         target.comp.addXY ...
- *         ... 
- *       })
- *    ...
- * ...
- * 
- * The advantage is 
- * - the JS code structure is similar to the HTML structure
- * - html tags are reflected by functions
- * - attributes and styles are strings 
- * - all elements are directly available without the need to declare variables or perform searches
- * - builders are ad hoc extendable
- * - everything is plain js code 
- * </pre>
- */
-export class ViewBuilder {
-
-	static #setterAttributes = [];
-	static #valueClearableInputTypes = ["text", "password"];
-
-	//instance variables
-	#defaultCompProps = new DefaultCompProps();
-
-	viewCompFactory = {
-		newViewComp: (builder, element, props) => {
-			return new ViewComp(builder, element, props);
-		}
-	};
-
-	//all elements with a varid are put to the collection
-	//elem = elementCollection.<varid>
-	elementCollection = {};
-
-	//collection for any objects
-	objectCollection = {};
-	//extendable interface to collect any objects 
-	objectsToCollect = ["data-bind"];
-	objectCollector = (obj, collection, props = null) => {
-		if (!collection.bindings) { collection["bindings"] = {}; };
-		this.objectsToCollect.forEach((name) => {
-			let value;
-			if (obj.hasOwnProperty(name)) {
-				value = obj[name];
-				if (name == "data-bind") {
-					collection.bindings[value] = obj;
-				} else if (!collection.hasOwnProperty(value)) {
-					collection[value] = obj;
-				}
-			}
-		});
-	};
-
-	static clearControl(ctrl) {
-
-		let tagName = ctrl.tagName.toLowerCase();
-		if (tagName === "input") {
-			if (ViewBuilder.#valueClearableInputTypes.includes(ctrl.type)) {
-				ctrl.value = "";
-			}
-		} else if (tagName === "textarea") {
-			ctrl.value = "";
-		}
-	}
-
-	static createDomElementFrom(html, tagName = "template") {
-		let template = document.createElement(tagName);
-		if (html) {
-			template.innerHTML = html;
-		}
-		if (tagName.toLowerCase() == "template") {
-			return template.content.firstElementChild;
-		}
-		return template;
-	}
-
-	static removeChildFrom(parent, id) {
-		let node = ViewBuilder.getChildFrom(parent, id);
-		if (node) { parent.removeChild(node); }
-	}
-
-	static getChildFrom(parent, id) {
-		for (let child of parent.childNodes) {
-			if (child.id === id) { return child; }
-		}
-		return null;
-	}
-
-	static reworkId(id) {
-		if (!id || id === 'undefined' || id === "") {
-			return Math.random().toString(32).slice(5);
-		}
-		return id;
-	}
-
-	static setClassesOf(ctrl, clazzes, defaultClazzes = null) {
-		if (typeUtil.isArray(clazzes)) {
-			clazzes.forEach(clazz => ctrl.classList.add(clazz));
-		} else if (clazzes) {
-			ctrl.classList.add(clazzes);
-		} else if (defaultClazzes) {
-			ViewBuilder.setClassesOf(ctrl, defaultClazzes, null);
-		}
-	}
-
-	static setStyleOf(ctrl, styleProps) {
-		for (const name in styleProps) {
-			ctrl.style[name] = styleProps[name];
-		}
-	}
-
-	static setAttributesOf(ctrl, attributeProps) {
-		for (const name in attributeProps) {
-			if (ViewBuilder.#setterAttributes.includes(name)) {
-				ctrl.setAttribute(name, attributeProps[name]);
-			} else {
-				ctrl[name] = attributeProps[name];
-			}
-		}
-	}
-
-	static checkAndReworkCompProps(props) {
-		//ensure clazzes is an array
-		if (!props.clazzes) {
-			props.clazzes = [];
-		} else if (typeUtil.isString(props.clazzes)) {
-			props.clazzes = [props.clazzes];
-		}
-	}
-
-	setViewCompFactory(factory) {
-		this.viewCompFactory = factory;
-		return this;
-	}
-
-	setElementCollection(obj) {
-		this.elementCollection = obj;
-		return this;
-	}
-
-	setObjectCollection(collection, collector = null) {
-		this.objectCollection = collection;
-		if (collector) { this.objectCollector = collector; }
-		return this;
-	}
-
-	forEachElement(cb) {
-		let elements = this.elementCollection;
-		let names = Object.getOwnPropertyNames(elements);
-		names.forEach((name) => {
-			let ctrl = elements[name];
-			cb(name, ctrl);
-		});
-	}
-
-	forEachBinding(cb) {
-		let bindings = this.objectCollection.bindings;
-		let names = Object.getOwnPropertyNames(bindings);
-		names.forEach((name) => {
-			let ctrl = bindings[name];
-			cb(name, ctrl);
-		});
-	}
-
-	getDataListFor(name) {
-		return this.objectCollection[this.elementCollection[name].list.id];
-	}
-
-	setCompPropDefaults(cb) {
-		cb(this.#defaultCompProps);
-		return this;
-	}
-
-	getDefaultCompProps() {
-		return this.#defaultCompProps;
-	}
-
-	newViewComp(props = null) {
-		return this.viewCompFactory.newViewComp(this, null, props);
-	}
-
-	newViewCompFor(element) {
-		return this.viewCompFactory.newViewComp(this, element, null);
-	}
-}
-
-/**
- * The view component object is the wrapper to code view elements
- * in a chaining builder like style.
- */
-export class ViewComp {
-
-	static #directSupportedAttributes = ["html", "innerHTML", "disabled"];
-	static #mapDirectAttribute = (name) => {
-		if (name === "html") { name = "innerHTML" }
-		return name;
-	};
-
-	builder;
-	elem = null;
-	parent = null;
-	listener = null;
-	bag = [];
-
-	constructor(builder, element, props) {
-		this.builder = builder;
-		if (element) {
-			this.elem = element;
-		} else {
-
-			let compType = getOrDefault(props, "compType", "comp");
-			let defaultProps = this.#getDefaultCompPropsFor(compType);
-
-			if (!props) {
-				props = defaultProps;
-			} else {
-				this.#mergeClazzesIntoArgumentProps(props, defaultProps);
-			}
-
-			let elemType = getOrDefault(props, "elemType", getOrDefault(defaultProps, "elemType", "div"));
-
-			this.elem = document.createElement(elemType);
-			this.#setClassesOf(this.elem, props.clazzes, compType);
-			this.#applyDefaultStyles(this.elem, compType);
-			this.#applyProperties(this.elem, props)
-		}
-	}
-
-	/**
-	 * INTERNAL
-	 * private methods used by the ViewComp itself
-	 * to realize the actual element builder functions
-	 */
-	#newViewComp(element, parent = null) {
-		let comp = this.builder.newViewCompFor(element);
-		comp.parent = parent;
-		comp.listener = parent.listener;
-		comp.bag = parent.bag;
-		return comp;
-	}
-
-	#reworkId(id) {
-		return ViewBuilder.reworkId(id);
-	}
-
-	#setupIconFor(ctrl, props) {
-		if (props.iconName) {
-			return Icons.newIcon(props.iconName).apply(ctrl);
-		}
-	}
-
-	#setClassesOf(ctrl, clazzes, defaultId) {
-		ViewBuilder.setClassesOf(ctrl, clazzes, this.#getDefaultCompProps().getClassesFor(defaultId));
-	}
-
-	#setStyleOf(ctrl, styleProps) {
-		ViewBuilder.setStyleOf(ctrl, styleProps);
-	}
-
-	#setAttributesOf(ctrl, attribProps) {
-		ViewBuilder.setAttributesOf(ctrl, attribProps);
-	}
-
-	#applyDefaultStyles(ctrl, typeId) {
-		let styles = this.#getDefaultCompProps().getStylesFor(typeId);
-		if (styles) {
-			this.#setStyleOf(ctrl, styles);
-		}
-	}
-
-	#applyDirectAttributeProperties(ctrl, props) {
-		//comfort method
-		//apply the list of direct supported attributes if any in props
-		let attributeValues = {};
-		ViewComp.#directSupportedAttributes.forEach((name) => {
-			if (props.hasOwnProperty(name)) {
-				let attributeName = ViewComp.#mapDirectAttribute(name);
-				attributeValues[attributeName] = props[name];
-			}
-		});
-		if (Object.keys(attributeValues).length > 0) {
-			this.#setAttributesOf(ctrl, attributeValues);
-		}
-	}
-
-	#applyProperties(ctrl, props) {
-
-		this.#applyDirectAttributeProperties(ctrl, props);
-
-		// apply the dedicated props
-		if (props.attribProps) {
-			this.#setAttributesOf(ctrl, props.attribProps);
-		}
-		if (props.styleProps) {
-			this.#setStyleOf(ctrl, props.styleProps);
-		}
-	}
-
-	#registerCtrl(varid, ctrl, props) {
-		if (varid && this.builder.elementCollection) {
-			this.builder.elementCollection[varid] = ctrl;
-		}
-		this.#registerObject(ctrl, null, props);
-	}
-
-	#registerObject(obj, id, props = null) {
-		if (this.builder.objectCollection) {
-			if (id) {
-				this.builder.objectCollection[id] = obj;
-			} else if (this.builder.objectCollector) {
-				this.builder.objectCollector(obj, this.builder.objectCollection, props);
-			}
-		}
-	}
-
-	#addCtrlToTarget(props, ctrlElem) {
-		if (props.parent) {
-			if (props.parent instanceof ViewComp) {
-				this.#doCtrlAddingTo(props.parent.elem, ctrlElem, props);
-			} else {
-				this.#doCtrlAddingTo(props.parent, ctrlElem, props);
-			}
-		} else {
-			this.#doCtrlAddingTo(this.elem, ctrlElem, props);
-		}
-	}
-
-	#doCtrlAddingTo(compElem, ctrlElem, props) {
-		if (props.pos == "top" || props.pos == 0) {
-			compElem.prepend(ctrlElem);
-		} else {
-			compElem.append(ctrlElem);
-		}
-	}
-
-	#isReadOnly(props) {
-		return props.hasOwnProperty('readOnly');
-	}
-
-	#newDataList(ctrl, data) {
-		let datalist = new DataList(ctrl);
-		datalist.setOptions(data);
-		this.#registerObject(datalist, datalist.listElem.id);
-		return datalist;
-	}
-
-	/**
-	 */
-	#mergeClazzesIntoArgumentProps(argProps, defaultProps) {
-		//get all clazzes from source into target
-		argProps.clazzes = mergeArrayInto(argProps.clazzes, defaultProps.clazzes);
-		if (argProps.clazzFilter) {
-			argProps.clazzFilter(argProps.clazzes);
-		}
-	}
-
-	/**
-	 * check/rework args to [props, function]
-	 */
-	#checkAndReworkArgs(args, defaultProps, argsCb) {
-		ViewBuilder.checkAndReworkCompProps(defaultProps);
-
-		if (args.length == 0) {
-			args = [defaultProps, null];
-		} else if (typeUtil.isFunction(args[0])) {
-			//no props - expand to [props, function]
-			args.splice(1, 0, args[0]);
-			args[0] = defaultProps;
-		} else {
-			//args correct - merge the default clazzes into current
-			ViewBuilder.checkAndReworkCompProps(args[0]);
-			this.#mergeClazzesIntoArgumentProps(args[0], defaultProps);
-		}
-
-		return argsCb(args.slice(0, 2));
-	}
-
-	#getDefaultCompProps() {
-		return this.builder.getDefaultCompProps();
-	}
-
-	#getDefaultCompPropsFor(type) {
-		return this.#getDefaultCompProps().get(type);
-	}
-
-	#addCtrlImpl(elemType, typeId, props) {
-		let ctrl = document.createElement(elemType);
-
-		this.#setClassesOf(ctrl, props.clazzes, typeId);
-		this.#applyDefaultStyles(ctrl, typeId);
-		this.#applyProperties(ctrl, props)
-
-		this.#addCtrlToTarget(props, ctrl);
-		this.#registerCtrl(props.varid, ctrl, props);
-
-		return ctrl;
-	}
-
-	#addElementImpl(elemType, props, configCb = null) {
-		this.#checkAndReworkArgs([props, configCb], {}, (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl(elemType || "span", "", props);
-
-		if (configCb) {
-			this.#callConfig(configCb, { comp: this.#newViewComp(ctrl, this), elem: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	#addContainerImpl(typeId, props, configCb = null) {
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl(getOrDefault(props, "elemType", "span"), typeId, props);
-
-		if (configCb) {
-			this.#callConfig(configCb, { comp: this.#newViewComp(ctrl, this), container: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	#addFieldsetContainerImpl(typeId, props, configCb = null) {
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl("fieldset", typeId, props);
-		if (props.title && props.title.length > 0) {
-			let legend = document.createElement("legend");
-			legend.innerHTML = props.title;
-			ctrl.append(legend);
-		}
-
-		if (configCb) {
-			this.#callConfig(configCb, { comp: this.#newViewComp(ctrl, this), fieldset: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	#callConfig(configCb, args) {
-		if (!args.comp) { args.comp = this };
-		configCb(args);
-	}
-
-	#finished(ctrl, props) {
-		if (this.listener) {
-			this.listener(this, ctrl, props);
-		}
-	}
-
-	getElement() {
-		return this.elem;
-	}
-
-	setListener(cb) {
-		this.listener = cb;
-		return this;
-	}
-
-	config(cb) {
-		cb(this);
-		return this;
-	}
-
-	setForAttributeOn(label, elem) {
-		label.htmlFor = elem.id;
-		return this;
-	}
-
-	/**
-	 * PUBLIC
-	 * chainable user methods to create the view structure and elements
-	 */
-	style(styleProps) {
-		if (styleProps) {
-			this.#setStyleOf(this.elem, styleProps);
-		}
-		return this;
-	}
-
-	attrib(attribProps) {
-		if (attribProps) {
-			this.#setAttributesOf(this.elem, attribProps);
-		}
-		return this;
-	}
-
-	appendTo(parent) {
-		parent.append(this.elem);
-		return this;
-	}
-
-	prependTo(parent) {
-		parent.prepend(this.elem);
-		return this;
-	}
-
-	addElement(elemType, props, configCb = null) {
-		return this.#addElementImpl(elemType, props, configCb);
-	}
-
-	addHtml(html, props = {}) {
-		let template = document.createElement("template");
-		template.innerHTML = html;
-
-		let elements = [...template.content.childNodes].filter(n => n.nodeType === Node.ELEMENT_NODE);
-		for (const element of elements) {
-			this.#doCtrlAddingTo(this.elem, element, props);
-		}
-		return this;
-	}
-
-	addContainer(props, configCb = null) {
-		return this.#addContainerImpl("container", props, configCb);
-	}
-
-	addRowContainer(props, configCb = null) {
-		return this.#addContainerImpl("rowContainer", props, configCb);
-	}
-
-	addColContainer(props, configCb = null) {
-		return this.#addContainerImpl("colContainer", props, configCb);
-	}
-
-	addFieldset(props, configCb = null) {
-		return this.#addFieldsetContainerImpl("fieldset", props, configCb);
-	}
-
-	addTitledFieldset(props, configCb = null) {
-		return this.#addFieldsetContainerImpl("titledFieldset", props, configCb);
-	}
-
-	addLabel(props, configCb = null) {
-		let typeId = "label";
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl("label", typeId, props);
-		ctrl.innerHTML = props.text;
-
-		if (configCb) {
-			this.#callConfig(configCb, { label: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	addLink(props, configCb = null) {
-		let typeId = "link";
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl("a", typeId, props);
-		ctrl.innerHTML = props.text;
-
-		if (configCb) {
-			this.#callConfig(configCb, { link: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	addList(props, configCb = null) {
-		let typeId = "list";
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl(getOrDefault(props, "elemType", "ul"), typeId, props);
-
-		if (configCb) {
-			this.#callConfig(configCb, { list: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	addTextField(props, configCb = null) {
-		let typeId = "textField";
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl("input", typeId, props);
-		ctrl.type = "text";
-		ctrl.id = this.#reworkId(props.id);
-
-		if (this.#isReadOnly(props)) {
-			ctrl.classList.add(this.#getDefaultCompProps().getClassesFor("inputReadOnly"));
-			ctrl.disabled = true;
-		}
-
-		if (props.datalist) {
-			let datalist = this.#newDataList(ctrl, props.datalist);
-			this.elem.prepend(datalist.listElem);
-		}
-
-		if (configCb) {
-			this.#callConfig(configCb, { textfield: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	addButton(props, configCb = null) {
-		let typeId = "button";
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl("button", typeId, props);
-		ctrl.type = "button";
-		ctrl.id = this.#reworkId(props.id);
-		ctrl.title = props?.title;
-
-		if (props.iconName) {
-			let iconClasses = [...Icons.getIconClasses(props.iconName), "wkv-button-icon"];
-			this.#setClassesOf(ctrl, iconClasses);
-		}
-		ctrl.innerHTML = props.text;
-
-		if (configCb) {
-			this.#callConfig(configCb, { button: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	addActionIcon(props, configCb = null) {
-		let typeId = "actionIcon";
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl("i", typeId, props);
-		ctrl.title = props?.title;
-		let iconElement = this.#setupIconFor(ctrl, props);
-
-		if (configCb) {
-			this.#callConfig(configCb, { icon: ctrl, "iconElement": iconElement });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	addTextArea(props, configCb = null) {
-		let typeId = "textArea";
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl("textarea", typeId, props);
-		ctrl.id = this.#reworkId(props.id);
-		ctrl.rows = props.rows;
-
-		if (this.#isReadOnly(props)) {
-			ctrl.classList.add(this.#getDefaultCompProps().getClassesFor("textareaReadOnly"));
-			ctrl.disabled = true;
-		}
-
-		if (configCb) {
-			this.#callConfig(configCb, { textarea: ctrl });
-		}
-		this.#finished(ctrl, props)
-		return this;
-	}
-
-	addSeparator(props, configCb = null) {
-		let typeId = "hr";
-		this.#checkAndReworkArgs([props, configCb], this.#getDefaultCompPropsFor(typeId), (args) => {
-			[props, configCb] = args;
-		});
-
-		let ctrl = this.#addCtrlImpl("hr", typeId, props);
-
-		if (configCb) {
-			this.#callConfig(configCb, { separator: ctrl });
-		}
-		return this;
-	}
-
-	addLabelTextField(lbProps, tfProps, configCb = null) {
-		let elems = { label: null, textfield: null };
-
-		this.addLabel(lbProps, (target) => { elems.label = target.label });
-		this.addTextField(tfProps, (target) => { elems.textfield = target.textfield });
-		this.setForAttributeOn(elems.label, elems.textfield);
-
-		if (configCb) {
-			this.#callConfig(configCb, elems);
-		}
-		return this;
-	}
-
-	addLabelTextArea(lbProps, taProps, configCb = null) {
-		let elems = { label: null, textarea: null };
-
-		this.addLabel(lbProps, (target) => { elems.label = target.label });
-		this.addTextArea(taProps, (target) => { elems.textarea = target.textarea });
-		this.setForAttributeOn(elems.label, elems.textarea);
-
-		if (configCb) {
-			this.#callConfig(configCb, elems);
-		}
-		return this;
-	}
-
-	addLabelButton(lbProps, pbProps, configCb = null) {
-		let elems = { label: null, button: null };
-
-		this.addLabel(lbProps, (target) => { elems.label = target.label });
-		this.addButton(pbProps, (target) => { elems.button = target.button });
-
-		if (configCb) {
-			this.#callConfig(configCb, elems);
-		}
-		return this;
-	}
-
 }
 

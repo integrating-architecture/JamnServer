@@ -7,6 +7,45 @@
 export const NL = "\n";
 
 /**
+ * Object to define functions
+ * that get lazily resolved at the first call
+ */
+export class LazyFunction {
+	#moduleName;
+	#functionName;
+	#functionArgs;
+	#returnOnly = false;
+
+	constructor(module, fncName, fncArgs = null) {
+		this.#moduleName = module;
+		this.#functionName = fncName;
+		this.#functionArgs = fncArgs;
+	}
+
+	asAction() {
+		//do not call the function
+		//just return it
+		this.#returnOnly = true;
+		return this;
+	}
+
+	call(cb) {
+		import(this.#moduleName)
+			.then((module) => {
+				let retVal;
+				if (this.#returnOnly) {
+					retVal = module[this.#functionName]
+				} else if(this.#functionArgs){
+					retVal = module[this.#functionName](this.#functionArgs);
+				}else{
+					retVal = module[this.#functionName]();
+				}
+				cb(retVal);
+			});
+	}
+}
+
+/**
  */
 export function ServerOrigin(...path) {
 	let url = window.location.origin;
@@ -21,23 +60,9 @@ export function ServerOrigin(...path) {
 
 /**
  */
-export function getChildOf(parent, childId) {
-	if (typeof parent === 'string') {
-		parent = document.getElementById(parent);
-	}
-
-	let innerElem = null;
-	for (let elem of parent.childNodes) {
-		if (elem?.id == childId) {
-			return elem;
-		} else {
-			innerElem = getChildOf(elem, childId);
-			if (innerElem?.id == childId) {
-				return innerElem;
-			}
-		}
-	}
-	return null;
+export function findChildOf(root, childId) {
+	const selector = `#${CSS.escape(childId)}`;
+	return root.querySelector(selector);
 }
 
 /**
@@ -217,13 +242,13 @@ export const typeUtil = {
 
 }
 
+/**
+ */
 export function asDurationString(ms) {
-  const hours = String(Math.floor(ms / 3600000)).padStart(2, '0');
-  const minutes = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
-  const seconds = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
-  const milliseconds = String(ms % 1000).padStart(3, '0');
+	const hours = String(Math.floor(ms / 3600000)).padStart(2, '0');
+	const minutes = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
+	const seconds = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+	const milliseconds = String(ms % 1000).padStart(3, '0');
 
-  return `${hours}:${minutes}:${seconds}:${milliseconds}`;
+	return `${hours}:${minutes}:${seconds}:${milliseconds}`;
 }
-
-

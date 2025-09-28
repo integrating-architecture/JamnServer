@@ -929,8 +929,8 @@ public class JamnPersonalServerApp {
     /**
      */
     public static class CommonHelper {
-        public static final Pattern RexgNewLine = Pattern.compile("\\r?\\n|\\r");
-        public static final Pattern RexgWhiteSpaces = Pattern.compile("\\s+");
+        public static final Pattern RegexNewLine = Pattern.compile("\\r?\\n|\\r");
+        public static final Pattern RegexWhiteSpaces = Pattern.compile("\\s+");
 
         public static final String CDATA_START = "<![CDATA[";
         public static final String CDATA_END = "]]>";
@@ -1070,8 +1070,8 @@ public class JamnPersonalServerApp {
         /**
          */
         public String[] parseCommandLine(String pText) {
-            pText = RexgWhiteSpaces.matcher(pText).replaceAll(" ");
-            pText = RexgNewLine.matcher(pText).replaceAll("").trim();
+            pText = RegexWhiteSpaces.matcher(pText).replaceAll(" ");
+            pText = RegexNewLine.matcher(pText).replaceAll("").trim();
 
             List<String> args = new ArrayList<>();
             String startMark = CDATA_START;

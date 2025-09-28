@@ -1,33 +1,48 @@
 /* Authored by iqbserve.de */
 
-import { AbstractView, onClicked } from '../jsmod/view-classes.mjs';
-import { installSidebarHeaderWorkItem } from '../jsmod/sidebar.mjs';
+import { ModalDialog, loadServerStyleSheet } from '../jsmod/view-classes.mjs';
+import { onClicked, reworkHtmlElementIds } from '../jsmod/uibuilder.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 
 /**
  * An example LogIn module based on a html source file shown in a modal dialog.
  */
-class LoginView extends AbstractView {
+class LoginDialog extends ModalDialog {
 
-	username;
-	password;
-	message;
-	successMessage;
+	constructor() {
+		super("/jsmod/html-components/login.html");
+	}
+
+	reworkHtml(html) {
+		//make the ids of the html source local
+		html = reworkHtmlElementIds(html, this.uid.get());
+		return html;
+	}
+
+	beforeCreateViewElement() {
+		loadServerStyleSheet("/jsmod/html-components/login.css");
+	}
 
 	initialize() {
-		this.username = this.getElement("username");
-		this.password = this.getElement("password");
-		this.message = this.getElement("message");
-		this.successMessage = this.getElement("login.overlay");
+		super.initialize();
+
+		this.elementsToProperties(["username", "password", "message", "successMessage"]);
 
 		onClicked(Icons.user(this.getElement("lbUsername")).elem, () => { this.username.value = ""; });
 		Icons.password(this.getElement("lbPassword"));
-		Icons.loginAction(this.getElement("login.action.icon"));
+		Icons.loginAction(this.getElement("login-action-icon"));
 
-		this.isInitialized = true;
+		this.setTitle("Jamn System LogIn")
+		this.setAction("pbLogin", () => dialogLoginAction(this))
+			.setAction("pbLoginSuccess", () => this.close());
 	}
 
+	getElement(id) {
+		//overwritten - to switch to local context ids
+		return super.getElement(this.uid.get(id));
+	}
+	
 	showMessage(msgText, showFlag) {
 		this.message.innerHTML = showFlag ? msgText : "";
 		this.setDisplay(this.message, showFlag);
@@ -43,22 +58,23 @@ class LoginView extends AbstractView {
 		this.showMessage("", false);
 		this.setDisplay(this.successMessage, false);
 	}
+
+	beforeOpen() {
+		this.reset();
+	}
+
 }
 
 /**
  */
 let tries = 0;
 let accessToken = null;
-//create the view instance based on a html source file
-let viewInstance = new LoginView("systemLoginView", "/jsmod/html-components/login.html");
 
-//install login icon in sidebar header
-let sidebarLoginIcon = installSidebarHeaderWorkItem({
-	id: "sidebar.login.icon", iconName: Icons.login(), title: "Login",
-	action: (evt) => {
-		processSystemLogin();
-	}
-});
+//create a dialog instance based on a html source file
+let dialog = new LoginDialog();
+
+let sidebarLoginIcon = Icons.newIcon(Icons.login(), document.getElementById("sidebar.icon.login"));
+let sidebarLoginItem = document.getElementById("sidebar.item.login");
 
 /**
  */
@@ -75,14 +91,8 @@ export function processSystemLogin() {
 			message: "<b>Log Off</b><br>Do you want to Log Off from the Server System?"
 		}, (value) => value ? doLogOff() : null);
 	} else {
-		WbApp.modalDialog(viewInstance, (dialog) => {
-			viewInstance.reset();
-			tries = 0;
-			dialog.setTitle("Jamn System LogIn")
-				.setAction("pb.login", () => dialogLoginAction(dialog))
-				.setAction("pb.login.success", () => closeLogin(dialog))
-				.open();
-		});
+		tries = 0;
+		dialog.open();
 	}
 }
 
@@ -94,14 +104,14 @@ export function processSystemLogin() {
 function dialogLoginAction(dialog) {
 
 	if (doLogin()) {
-		closeLogin(dialog);
+		dialog.close();
 	} else {
 		if (tries < 2) {
 			let text = `We are sorry, unfortunately this login [${tries}] failed for demo reason.<br><b>Please click again ...`;
-			viewInstance.showMessage(text, true);
+			dialog.showMessage(text, true);
 		}
 		if (tries > 1) {
-			viewInstance.showSuccessMessage();
+			dialog.showSuccessMessage();
 			toggleStatus();
 		}
 	}
@@ -109,15 +119,8 @@ function dialogLoginAction(dialog) {
 
 /**
  */
-function closeLogin(dialog) {
-	dialog.close();
-	viewInstance.reset();
-}
-
-/**
- */
 function doLogin() {
-	console.log(`LogIn Action for - ${viewInstance.username.value}`);
+	console.log(`LogIn Action for - ${dialog.username.value}`);
 	tries++;
 	//demo always false
 	return false;
@@ -137,13 +140,13 @@ function toggleStatus() {
 		if (!isLoggedIn()) {
 			icon.style.color = "green";
 			icon.title = "Log Off";
-			document.getElementById("sidebar.system.login").innerHTML = "Log Off";
+			sidebarLoginItem.innerHTML = "Log Off";
 
 			accessToken = "jwt bearer";
 		} else {
 			icon.style.color = "";
 			icon.title = "Login";
-			document.getElementById("sidebar.system.login").innerHTML = "Login";
+			sidebarLoginItem.innerHTML = "Login";
 
 			accessToken = null;
 		}

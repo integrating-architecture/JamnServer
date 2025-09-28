@@ -1,6 +1,6 @@
 /* Authored by iqbserve.de */
 
-import { ModalDialog, StandardDialog } from './view-classes.mjs';
+import { StandardDialog } from './view-classes.mjs';
 
 /**
  * <pre>
@@ -19,24 +19,15 @@ export class WorkbenchViewManager {
 
 	//current implementation supports only ONE modal dialog at a time
 	//it is implicit a singleton
-	modalDialog;
 	standardDlg;
 
 	getAsCartridgeId = (viewId) => "view.cartridge." + viewId;
 
-	constructor(workarea, modalDialogElement) {
+	constructor(workarea) {
 		this.workarea = workarea;
 		this.registeredViews = {};
-		this.modalDialog = new ModalDialog(modalDialogElement);
 
 		this.standardDlg = new StandardDialog();
-	}
-
-	getModalDialog(view, cb) {
-		view.getViewElement((element) => {
-			this.modalDialog.setDialogViewElement(element);
-			cb(this.modalDialog);
-		});
 	}
 
 	registerView(view, viewData) {
@@ -194,6 +185,10 @@ export class WorkbenchViewManager {
 
 	promptUserInput(text, value, cb) {
 		this.standardDlg.openInput(text, value, cb);
+	}
+
+	promptConfirmation(text, cb){
+		this.standardDlg.openConfirmation(text, cb);
 	}
 }
 

@@ -2,12 +2,14 @@
 
 import { ServerOrigin, setDisplay, setVisibility } from '../jsmod/tools.mjs';
 import { WorkbenchViewManager } from '../jsmod/view-manager.mjs';
-import { StandardDialog, SplitBarHandler, ViewBuilder, onClicked } from '../jsmod/view-classes.mjs';
+import { SplitBarHandler } from '../jsmod/view-classes.mjs';
 import * as websocket from '../jsmod/websocket.mjs';
-import * as sidebar from '../jsmod/sidebar.mjs';
+import { getComponent as getSidebar } from '../jsmod/sidebar.mjs';
+import * as sidebarContent from '../jsmod/sidebar-content.mjs';
 import * as systemInfos from '../jsmod/system-infos.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 import { WbProperties } from '../jsmod/workbench-properties.mjs';
+import { UIBuilder, DefaultCompProps, onClicked } from '../jsmod/uibuilder.mjs';
 
 
 /**
@@ -45,11 +47,7 @@ export function anchorAt(rootId) {
 export const WorkbenchInterface = {
 
 	confirm: (text, cb) => {
-		standardDlg.openConfirmation(text, cb);
-	},
-
-	modalDialog: (view, cb) => {
-		viewManager.getModalDialog(view, cb);
+		viewManager.promptConfirmation(text, cb);
 	},
 
 	//public view action request
@@ -66,11 +64,11 @@ export const WorkbenchInterface = {
 	},
 
 	statusLineInfo: (info) => {
-		statusLineInfo.innerHTML = info;
+		statusline.setInfoText(info);
 	},
 
 	titleInfo: (info) => {
-		titleInfo.innerHTML = `[ ${info} ]`;
+		titlebar.setTitleText(info);
 	}
 };
 
@@ -78,17 +76,11 @@ export const WorkbenchInterface = {
  * Internals
  */
 let rootElement = null;
-let workarea = document.getElementById("workarea");
-let modalDialog = document.getElementById("modal.dialog");
-
-let standardDlg = new StandardDialog();
-
-let statusLineInfo = null;
-let titleInfo = null;
 let systemData = null;
+let viewManager = null;
 
-let viewManager = new WorkbenchViewManager(workarea, modalDialog);
-
+let titlebar = null;
+let statusline = null;
 
 /**
  * this is called after document load but before getting visible
@@ -97,6 +89,9 @@ function startApp() {
 
 	systemInfos.getInfos((data) => {
 		systemData = data;
+
+		viewManager = new WorkbenchViewManager(document.getElementById("app-workarea"));
+
 		initWebSocket();
 		initUI();
 
@@ -121,31 +116,41 @@ function initWebSocket() {
 /**
  */
 function initUI() {
+	let wbDefaults = new DefaultCompProps();
+	wbDefaults.get("actionIcon").clazzes = ["wkv-action-icon"];
 
-	initTitlebar();
+	titlebar = new Titlebar(viewManager, document.getElementById("app-titlebar"))
+		.setBuilderDefaults(wbDefaults)
+		.build();
+
+	statusline = new Statusline(systemData, document.getElementById("app-statusline"))
+		.setBuilderDefaults(wbDefaults)
+		.build();
+
 	initSidebar();
-	initStatusline();
 	initIntroBox();
 
+	WorkbenchInterface.titleInfo(`Tiny Demo - V.${systemData.version}`);
 }
 
 /**
  */
 function initSidebar() {
 
-	sidebar.initialize(viewManager);
+	let sidebar = getSidebar(document.getElementById("app-sidebar"));
+	sidebar.initializeWith(viewManager, sidebarContent);
 
 	//init splitter
 	let splitter = new SplitBarHandler(
-		document.getElementById("sidebar.splitter"),
-		document.getElementById("sidebar"),
-		document.getElementById("workarea")
+		document.getElementById("app-sidebar-splitter"),
+		document.getElementById("app-sidebar"),
+		document.getElementById("app-workarea")
 	)
 	splitter.barrierActionBefore = (splitter, val) => {
 		//sidebar width < x - collaps it
 		if (val < 100) {
 			splitter.stop();
-			sidebar.toggleCollaps();
+			sidebar.toggleCollapse();
 			return true; //barrier hit
 		}
 		return false; //barrier NOT hit
@@ -154,37 +159,9 @@ function initSidebar() {
 
 /**
  */
-function initTitlebar() {
-
-	titleInfo = document.getElementById("wtb.title.text");
-	WorkbenchInterface.titleInfo(`Tiny Demo - V.${systemData.version}`);
-
-	new ViewBuilder().newViewCompFor(document.getElementById("wtb.ctrl.panel"))
-		.addActionIcon({ iconName: Icons.caretup(), title: "Backward step through views" }, (target) => {
-			onClicked(target.icon, () => { viewManager.stepViewsUp(); });
-		})
-		.addActionIcon({ iconName: Icons.caretdown(), title: "Forward step through views" }, (target) => {
-			onClicked(target.icon, () => { viewManager.stepViewsDown(); });
-		});
-}
-
-/**
- */
-function initStatusline() {
-
-	statusLineInfo = document.getElementById("wsl.info");
-
-	Icons.github(document.getElementById("wsl.scm.link")).init((icon) => {
-		icon.elem.href = systemData.links["app.scm"];
-	});
-
-}
-
-/**
- */
 function initIntroBox() {
 
-	let intro = document.getElementById("intro.overlay");
+	let intro = document.getElementById("app-intro-overlay");
 
 	if (!WbProperties.showIntro) {
 		setDisplay(intro, false);
@@ -197,7 +174,7 @@ function initIntroBox() {
 
 	let data = systemData.buildInfos;
 
-	document.getElementById("intro.content").innerHTML = `
+	document.getElementById("app-intro-content").innerHTML = `
 		<span style="padding: 20px;">
 			<h1 style="color: var(--isa-title-grayblue)">Welcome to<br>Jamn Workbench</h1>
 			<span style="font-size: 18px;">
@@ -215,4 +192,112 @@ function initIntroBox() {
 			<img src="images/intro.jpg" alt="Intro" style="width: 350px; height: 100%;">
 		</span>
 	`;
+}
+
+/**
+ */
+class Titlebar {
+	#builder;
+	#viewMngr;
+	#titlebarElem;
+	#elem = {};
+
+	constructor(viewMngr, anchorElement) {
+		this.#viewMngr = viewMngr;
+		this.#titlebarElem = anchorElement;
+
+		this.#builder = new UIBuilder().setElementCollection(this.#elem);
+	}
+
+	#createUI() {
+		this.#builder.newUICompFor(this.#titlebarElem)
+			.style({ "user-select": "none" })
+			.add("a", (logoIcon) => {
+				logoIcon.attrib({ href: "https://iqbserve.de/", target: "_blank" }).style({ "min-width": "fit-content" })
+					.add("img", (logoIconImg) => {
+						logoIconImg.class("wtb-item")
+							.attrib({ src: "images/workbench-logo.png", title: "IQB Services", alt: "logo" })
+							.style({ width: "22px", height: "22px" });
+					})
+			})
+			.addContainer((elem) => {
+				elem.html("Jamn Workbench -").class("wtb-item").style({ "min-width": "fit-content" });
+			})
+			.addContainer({ varid: "titleText" }, (elem) => {
+				elem.html("[ ]").class("wtb-item").style({ width: "100%", "user-select": "text" });
+			})
+			.addContainer((titleIconBar) => {
+				titleIconBar.class(["wtb-item", "wtb-ctrl-panel"])
+					.addActionIcon({ iconName: Icons.caretup() }, (icon) => {
+						icon.title("Backward step through views");
+						onClicked(icon, () => { this.#viewMngr.stepViewsUp(); });
+					})
+					.addActionIcon({ iconName: Icons.caretdown() }, (icon) => {
+						icon.title("Forward step through views");
+						onClicked(icon, () => { this.#viewMngr.stepViewsDown(); });
+					});
+			});
+	}
+
+	build() {
+		this.#createUI();
+		return this;
+	}
+
+	setBuilderDefaults(defaultProps) {
+		this.#builder.setDefaultCompProps(defaultProps);
+		return this;
+	}
+
+	setTitleText(text) {
+		this.#elem.titleText.innerHTML = `[ ${text} ]`;
+	}
+}
+
+/**
+ */
+class Statusline {
+	#builder;
+	#sysData;
+	#statuslineElem;
+	#elem = {};
+
+	constructor(sysData, anchorElement) {
+		this.#sysData = sysData;
+		this.#statuslineElem = anchorElement;
+
+		this.#builder = new UIBuilder().setElementCollection(this.#elem);
+	}
+
+	#createUI() {
+		this.#builder.newUICompFor(this.#statuslineElem)
+			.style({ "user-select": "none" })
+			.addContainer((prefixText) => {
+				prefixText.html("Info:").class("wsl-item").style({ width: "30px" });
+			})
+			.addContainer({ varid: "infoText" }, (infoText) => {
+				infoText.class("wsl-item").style({ width: "100%", "user-select": "text" });
+			})
+			.addContainer((iconBar) => {
+				iconBar.class("wsl-item").style({ width: "50px", "margin-right": "5px", "text-align": "center" })
+					.add("a", (gitLink) => {
+						gitLink.class(Icons.getIconClasses(Icons.github()))
+							.attrib({ title: "Git repo", href: this.#sysData.links["app.scm"], target: "_blank" });
+					});
+			});
+	}
+
+	build() {
+		this.#createUI();
+		return this;
+	}
+
+	setBuilderDefaults(defaultProps) {
+		this.#builder.setDefaultCompProps(defaultProps);
+		return this;
+	}
+
+	setInfoText(text) {
+		this.#elem.infoText.innerHTML = text;
+	}
 }

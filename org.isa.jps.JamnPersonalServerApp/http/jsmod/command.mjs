@@ -2,9 +2,10 @@
 
 import { NL, newSimpleId, fileUtil, asDurationString } from '../jsmod/tools.mjs';
 import { WsoCommonMessage, CommandDef } from '../jsmod/data-classes.mjs';
-import { WorkView, ViewBuilder, onClicked, onInput } from '../jsmod/view-classes.mjs';
+import { WorkView } from '../jsmod/view-classes.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as Icons from '../jsmod/icons.mjs';
+import { UIBuilder, onClicked, onInput, onKeydown } from '../jsmod/uibuilder.mjs';
 
 /**
  * A general View class for commands.
@@ -41,8 +42,6 @@ class CommandView extends WorkView {
 
 	constructor(id, file) {
 		super(id, file);
-		// example of using local html view source code
-		// this.viewSource.setHtml(viewHtml);
 	}
 
 	onInstallation(installKey, installData, viewManager) {
@@ -83,14 +82,10 @@ class CommandView extends WorkView {
 	}
 
 	/**
-	 * <pre>
-	 * build the ui using
-	 * - an included viewHtml template
-	 * - and a dom element builder 
-	 * </pre>
 	 */
 	createUI() {
-		let builder = new ViewBuilder()
+
+		let builder = new UIBuilder()
 			//set the objects to hold all control dom elements with a varid
 			.setElementCollection(this.elem)
 			// and other things like e.g. datalists or "data-bind" infos
@@ -101,93 +96,97 @@ class CommandView extends WorkView {
 			});
 
 		//create a fieldset as component container in the view workarea
-		//and save it to lacal variable
 		let compSet;
-		builder.newViewCompFor(this.viewWorkarea)
-			.addFieldset({ pos: 0, styleProps: { "margin-top": "10px", "gap": "10px" } }, (target) => {
-				compSet = target.fieldset;
+		builder.newUICompFor(this.viewWorkarea)
+			.addFieldset((comp) => {
+				comp.style({ "margin-top": "10px", "gap": "10px" });
+				compSet = comp.getDomElem();
 			});
 
-		builder.newViewComp()
+		builder.newUIComp()
 			.addLabelButton({ text: "Command:" },
-				{ varid: "pbRun", iconName: Icons.run(), text: this.commandName, title: "Run command" }, (target) => {
-					onClicked(target.button, () => { this.runCommand() });
+				{ varid: "pbRun", iconName: Icons.run(), text: this.commandName, title: "Run command" }, (label, pbRun) => {
+					onClicked(pbRun, () => { this.runCommand() });
 				})
 			.appendTo(compSet);
 
 		//arguments choice + demo data
 		let namedArgsList = Object.getOwnPropertyNames(this.namedArgs);
-		builder.newViewComp()
+		let taTitle = (this.commandDef.options.args ? "Command arguments: -h for help" : "<no args>") + "\nStructured text like e.g. JSON must be wrapped in a <![CDATA[ structured text ]]> tag.";
+		let taPlaceholder = this.commandDef.options.args ? " -h + Enter for help" : "<no args>";
+		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
-			.addLabelTextArea({ text: "Args:" }, {
-				varid: "taArgs",
-				styleProps: { "width": "400px", "min-width": "400px", "height": "45px", "min-height": "45px", "text-align": "left" },
-				attribProps: {
-					title: (this.commandDef.options.args ? "Command arguments: -h for help" : "<no args>") + "\nStructured text like e.g. JSON must be wrapped in a <![CDATA[ structured text ]]> tag.",
-					placeholder: (this.commandDef.options.args ? " -h + Enter for help" : "<no args>"),
-					disabled: !this.commandDef.options.args
-				}
-			}, (target) => {
-				target.textarea.onkeydown = (evt) => {
+			.addLabelTextArea({ text: "Args:" }, { varid: "taArgs" }, (label, textarea) => {
+				textarea
+					.title(taTitle)
+					.style({ "width": "400px", "min-width": "400px", "height": "45px", "min-height": "45px", "text-align": "left" })
+					.attrib({ placeholder: taPlaceholder, disabled: !this.commandDef.options.args });
+				onKeydown(textarea, (evt) => {
 					if (this.commandDef.options.args) {
 						if (evt.keyCode == 13 && evt.currentTarget.value.trim() === "-h") {
 							this.runCommand();
 						}
 					}
-				}
+				});
 			})
-			.addColContainer({ styleProps: { "margin-left": "20px" } }, (target) => {
-				target.comp.addTextField({
-					varid: "tfNamedArgs", datalist: namedArgsList,
-					styleProps: { "width": "200px" }, attribProps: { title: "Name of the defined arguments", placeholder: "named args", "data-bind": "namedArgs" }
-				}).addRowContainer({ styleProps: { gap: "20px", "align-self": "flex-end", "margin-top": "5px" } }, (target) => {
-					target.comp
-						.addActionIcon({ varid: "icoDeleteNamedArgs", iconName: Icons.trash(), title: "Delete current named arg" })
-						.addElement("span", { styleProps: { height: "20px", "border-right": "1px solid var(--border-gray)" } })
-						.addActionIcon({ varid: "icoSaveNamedArgs", iconName: Icons.save(), title: "Save current named args" })
-						.addActionIcon({ varid: "icoClearArgChoice", iconName: Icons.eraser(), title: "Clear args and choice", styleProps: { "margin-left": "20px", "margin-right": "5px" } });
+			.addColContainer((argBox) => {
+				argBox.style({ "margin-left": "20px" });
+				argBox.addTextField({ varid: "tfNamedArgs", datalist: namedArgsList }, (argText) => {
+					argText
+						.style({ "width": "200px" })
+						.attrib({ title: "Name of the defined arguments", placeholder: "named args", "data-bind": "namedArgs" })
 				})
+					.addRowContainer((iconBar) => {
+						iconBar.style({ gap: "20px", "align-self": "flex-end", "margin-top": "5px" })
+							.addActionIcon({ varid: "icoDeleteNamedArgs", iconName: Icons.trash(), title: "Delete current named arg" })
+							.add("span", (separator) => { separator.style({ height: "20px", "border-right": "1px solid var(--border-gray)" }) })
+							.addActionIcon({ varid: "icoSaveNamedArgs", iconName: Icons.save(), title: "Save current named args" })
+							.addActionIcon({ varid: "icoClearArgChoice", iconName: Icons.eraser(), title: "Clear args and choice" }, (elem) => {
+								elem.style({ "margin-left": "20px", "margin-right": "5px" })
+							});
+					})
 			})
 			.appendTo(compSet);
 
 		//attachment list
-		builder.newViewComp()
+		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
 			.addLabel({ text: "Attachments:" })
-			.addColContainer((target) => {
-				target.comp
-					.addRowContainer({ styleProps: { gap: "20px", "align-self": "flex-start" } }, (target) => {
-						target.comp
+			.addColContainer((attachBox) => {
+				attachBox
+					.addRowContainer((iconBar) => {
+						iconBar.style({ gap: "20px", "align-self": "flex-start" })
 							.addActionIcon({ varid: "icoRemoveAllAttachments", iconName: Icons.trash(), title: "Remove all Attachments" })
 							.addActionIcon({ varid: "icoAddAttachment", iconName: Icons.plusNew(), title: "Add Attachment" });
-					}).addList({
-						varid: "lstAttachments",
-						styleProps: { "min-width": "385px", "min-height": "20px", "padding": "10px" }
+					}).addList({ varid: "lstAttachments" }, (list) => {
+						list.style({ "min-width": "385px", "min-height": "20px", "padding": "10px" })
 					});
 			})
 			.appendTo(compSet);
 
 		//a separator
-		builder.newViewComp().addSeparator({ styleProps: { width: "100%" } }).appendTo(compSet);
+		builder.newUIComp().addSeparator((elem) => { elem.style({ width: "100%" }) }).appendTo(compSet);
 
 		//the output area
-		builder.newViewComp()
+		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
-			.addColContainer({ styleProps: { "align-items": "center", "gap": "15px" } }, (target) => {
-				let comp = target.comp;
-
-				comp.addLabelTextArea(
-					{ text: "Output:", },
-					{ varid: "taOutput", parent: comp.parent, disabled: true, clazzes: "wkv-output-textarea-ctrl", styleProps: { width: "626px", "min-width": "626px" } })
-					.addActionIcon({ varid: "icoOutputSave", iconName: Icons.save(), title: "Save current output to a file" }, (target) => {
-						onClicked(target.icon, () => { this.saveOutput(); });
+			.addColContainer((iconBar) => {
+				iconBar.style({ "align-items": "center", "gap": "15px" });
+				iconBar
+					.addLabel({ text: "Output:", name:"lbOutput"})
+					.addActionIcon({ varid: "icoOutputSave", iconName: Icons.save(), title: "Save current output to a file" }, (icon) => {
+						onClicked(icon, () => { this.saveOutput(); });
 					})
-					.addActionIcon({ varid: "icoOutputToClipboard", iconName: Icons.clipboardAdd(), title: "Copy current output to clipboard" }, (target) => {
-						onClicked(target.icon, () => { this.copyOutputToClipboard(); });
+					.addActionIcon({ varid: "icoOutputToClipboard", iconName: Icons.clipboardAdd(), title: "Copy current output to clipboard" }, (icon) => {
+						onClicked(icon, () => { this.copyOutputToClipboard(); });
 					})
-					.addActionIcon({ varid: "icoOutputDelete", iconName: Icons.trash(), title: "Delete current output" }, (target) => {
-						onClicked(target.icon, () => { this.clearOutput(); });
+					.addActionIcon({ varid: "icoOutputDelete", iconName: Icons.trash(), title: "Delete current output" }, (icon) => {
+						onClicked(icon, () => { this.clearOutput(); });
 					});
+			})
+			.addTextArea({ varid: "taOutput" }, (taOutput) => {
+				taOutput.class("wkv-output-textarea-ctrl").style({ width: "626px", "min-width": "626px" }).attrib({ disabled: true })
+				.linkToLabel("lbOutput");
 			})
 			.appendTo(compSet);
 
@@ -241,10 +240,10 @@ class CommandView extends WorkView {
 	setRunning(flag) {
 		super.setRunning(flag);
 		this.elem.pbRun.disabled = flag;
-		if(flag){
+		if (flag) {
 			this.runTime = Date.now();
-		}else{
-			this.runTime = Date.now()-this.runTime;
+		} else {
+			this.runTime = Date.now() - this.runTime;
 		}
 	}
 
@@ -384,50 +383,4 @@ class Attachment {
 export function getView(id = "") {
 	return new CommandView(id, "/jsmod/html-components/work-view.html");
 }
-
-
-
-/**
- * NOT active example of using local html source code integrated as string
- * see constructor
- */
-let viewHtml = `
-<!-- js component based work view code -->
-<div class="work-view" style="visibility: hidden;">
-
-	<div class="work-view-header-container">
-
-		<div class="work-view-header">
-
-			<!-- the standard header icons left -->
-			<span id="wkv.header.iconbar.left" class="header-iconbar header-left"></span>
-
-			<!-- the view popup menu -->
-			<div id="header.menu" class="wkv-header-menu"></div>
-
-			<!-- the title -->
-			<span id="view.title" class="wkv-header-title">Unknown</span>
-
-			<!-- the standard header icons right -->
-			<span id="wkv.header.iconbar.right" class="header-iconbar header-right"></span>
-
-		</div>
-
-		<div id="wkv.header.prgrogressbar" class="wkv-header-progressbar">
-			<div class="progress-value"></div>
-		</div>
-	</div>
-
-	<div id="work.view.body" class="work-view-body">
-		<!-- the view working/content area -->
-		<div id="work.view.workarea" class="work-view-workarea flex-one"></div>
-
-		<div id="work.view.sidepanel.splitter" class="vsplitter wkv-sidepanel-splitter"></div>
-
-		<div id="work.view.sidepanel" class="work-view-sidepanel"></div>
-	</div>
-
-</div>
-<!-- work view end -->
-`;
 

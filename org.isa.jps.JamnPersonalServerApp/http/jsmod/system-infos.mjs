@@ -1,17 +1,18 @@
 /* Authored by iqbserve.de */
 
-import { callWebService, typeUtil, clearArray } from '../jsmod/tools.mjs';
-import { WorkView, WorkViewTable, TableData, ViewBuilder, onClicked, onKeyup } from '../jsmod/view-classes.mjs';
+import { callWebService, typeUtil } from '../jsmod/tools.mjs';
+import { WorkView, WorkViewTable, TableData } from '../jsmod/view-classes.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as webapi from '../jsmod/webapi.mjs';
 import * as Icons from '../jsmod/icons.mjs';
+import { UIBuilder, onClicked, onKeyup } from '../jsmod/uibuilder.mjs';
 
 let boxWidth = "720px";
-let builder = new ViewBuilder()
+
+let builder = new UIBuilder()
 	.setCompPropDefaults((props) => {
 		props.get("label").styleProps = { "min-width": "80px", "text-align": "right" };
 	});
-
 let app_scm_tab1 = "?tab=readme-ov-file#jamn---just-another-micro-node-server";
 
 /**
@@ -49,45 +50,40 @@ class SystemInfoView extends WorkView {
 	#initAppBox() {
 
 		let compSet;
-		let infoContainer = this.getElement("info.left.container");
-		builder.setElementCollection(this.appBoxElem);
+		let infoContainer = this.getElement("info-left-container");
 
-		builder.newViewCompFor(infoContainer)
-			.addTitledFieldset({ pos: 0, title: "Application", styleProps: { width: boxWidth } }, (target) => {
-				compSet = target.fieldset;
+		builder.setElementCollection(this.appBoxElem);
+		builder.newUICompFor(infoContainer)
+			.addFieldset({ pos: 0, title: "Application" }, (fieldset) => {
+				fieldset.style({ width: boxWidth });
+				compSet = fieldset.getDomElem();
 			});
 
-		builder.newViewComp()
-			.addLabelTextField({ text: "Name:" }, {
-				varid: "tfName", readOnly: true,
-				styleProps: { "font-size": "18px", color: "var(--isa-title-grayblue)" }
+		builder.newUIComp()
+			.addLabelTextField({ text: "Name:" }, { varid: "tfName", readOnly: true }, (label, textField) => {
+				textField.style({ "font-size": "18px", color: "var(--isa-title-grayblue)" });
 			})
 			.appendTo(compSet);
 
-		builder.newViewComp()
+		builder.newUIComp()
 			.addLabelTextField({ text: "Version:" }, { varid: "tfVersion", readOnly: true })
 			.appendTo(compSet);
 
-		builder.newViewComp()
-			.setListener((comp, elem) => {
-				if (elem.tagName === "LABEL") { comp.bag.push(elem); }
-			})
+		builder.newUIComp()
 			.style({ "align-items": "baseline", "padding-right": "5px", "margin-top": "20px" })
-			.addLabel({ text: "Description:" })
-			.addColContainer({ styleProps: { width: "100%" } }, (target) => {
-				target.comp
-					.addTextArea({ varid: "tfDescription", rows: 3, readOnly: true })
-					.addRowContainer({ styleProps: { "flex-direction": "row-reverse" } }, (target) => {
-						target.comp.addLink({
-							varid: "lnkReadMore", text: "Read more on GitHub ... ",
-							attribProps: { title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" },
-							styleProps: { "text-align": "right" }
-						});
+			.addLabel({ text: "Description:", name:"lbDescr"})
+			.addColContainer((descrBox) => {
+				descrBox.style({ width: "100%" })
+					.addTextArea({ varid: "tfDescription", rows: 3, readOnly: true }, (comp)=>{
+						comp.linkToLabel("lbDescr");
+					})
+					.addRowContainer((descr) => {
+						descr.style({ "flex-direction": "row-reverse" })
+							.addLink({ varid: "lnkReadMore", text: "Read more on GitHub ... " }, (link) => {
+								link.style({ "text-align": "right" })
+									.attrib({ title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" })
+							})
 					});
-			})
-			.config((comp) => {
-				comp.setForAttributeOn(comp.bag[0], this.appBoxElem.tfDescription);
-				clearArray(comp.bag);
 			})
 			.appendTo(compSet);
 	}
@@ -99,15 +95,14 @@ class SystemInfoView extends WorkView {
 		builder.setElementCollection(this.configBoxElem);
 
 		//get the html coded configSet element
-		let compSet = this.getElement("server.config.set");
-		ViewBuilder.setStyleOf(compSet, { "padding-top": "10px", width: boxWidth });
+		let compSet = this.getElement("server-config-set");
+		UIBuilder.setStyleOf(compSet, { "padding-top": "10px", width: boxWidth });
 
-		builder.newViewComp()
+		builder.newUIComp()
 			.prependTo(compSet)
 			.style({ "flex-direction": "row-reverse", "margin-bottom": "10px", "gap": "15px" })
-			//create action icon
-			.addActionIcon({ varid: "icoSave", iconName: Icons.save(), title: "Save current changes" }, (target) => {
-				onClicked(target.icon, () => {
+			.addActionIcon({ varid: "icoSave", iconName: Icons.save(), title: "Save current changes" }, (saveIcon) => {
+				onClicked(saveIcon, () => {
 					updateInfos(getUpdateRequest(), (response) => {
 						if (response?.status === "ok") {
 							clearConfigChanges()
@@ -117,9 +112,8 @@ class SystemInfoView extends WorkView {
 				});
 
 			})
-			//create action icon
-			.addActionIcon({ varid: "icoRedo", iconName: Icons.redo(), title: "Undo changes" }, (target) => {
-				onClicked(target.icon, () => {
+			.addActionIcon({ varid: "icoRedo", iconName: Icons.redo(), title: "Undo changes" }, (redoIcon) => {
+				onClicked(redoIcon, () => {
 					//open confirmation dialog
 					WbApp.confirm({
 						message: "<b>Undo all changes</b><br>Do you want to discard all changes?"
@@ -130,7 +124,7 @@ class SystemInfoView extends WorkView {
 		this.setActionsEnabled(false);
 
 		//create a table
-		this.configTable = new WorkViewTable(this.getElement("server.config"));
+		this.configTable = new WorkViewTable(this.getElement("server-config"));
 	}
 
 	/**
@@ -139,7 +133,7 @@ class SystemInfoView extends WorkView {
 		let ctrls = [this.configBoxElem.icoSave, this.configBoxElem.icoRedo];
 		let styleProps = flag ? { "pointer-events": "all", color: "" } : { "pointer-events": "none", color: "var(--border-gray)" };
 
-		ctrls.forEach((ctrl) => ViewBuilder.setStyleOf(ctrl, styleProps));
+		ctrls.forEach((ctrl) => UIBuilder.setStyleOf(ctrl, styleProps));
 	}
 
 	/**

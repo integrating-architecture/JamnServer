@@ -2,6 +2,7 @@
 
 /**
  * A module to centralize font icon usage.
+ * Experimental providing icons from different providers (boostrap/google)
  */
 
 /**
@@ -32,6 +33,7 @@ export const clipboardAdd = newConstantFunction("clipboardAdd");
 export const close = newConstantFunction("close");
 export const collapse = newConstantFunction("collapse");
 export const command = newConstantFunction("command");
+export const dashCollapse = newConstantFunction("dashCollapse");
 export const dotmenu = newConstantFunction("dotmenu");
 export const eraser = newConstantFunction("eraser");
 export const eye = newConstantFunction("eye");
@@ -44,6 +46,7 @@ export const minusRemove = newConstantFunction("minusRemove");
 export const password = newConstantFunction("password");
 export const pin = newConstantFunction("pin");
 export const plusNew = newConstantFunction("plusNew");
+export const toggleExpand = newConstantFunction("toggleExpand");
 export const question = newConstantFunction("question");
 export const redo = newConstantFunction("redo");
 export const run = newConstantFunction("run");
@@ -55,6 +58,9 @@ export const trash = newConstantFunction("trash");
 export const user = newConstantFunction("user");
 export const wkvSidePanel = newConstantFunction("wkvSidePanel");
 export const xRemove = newConstantFunction("xRemove");
+
+//google material icons
+export const gi_system = newConstantFunction("gi_system");
 
 /**
  * INTERNAL
@@ -103,6 +109,10 @@ class IconElement {
 		return this;
 	}
 
+	hasInitialShape(){
+		return this.elem.classList.contains(this.#getShapeClass(0));
+	}
+
 	toggle(cb = null) {
 		if (this.elem) {
 			this.elem.classList.toggle(this.#getShapeClass(0));
@@ -133,11 +143,12 @@ class IconElement {
  * <name> = [[iconClasses], [shapeClasses]]
  * e.g. [["bi", "bi-person"], ["bi-person", "bi-person-check"]]
  */
-function createClassDef(shapes) {
-	return Object.freeze([[Object.freeze(...typeClasses), shapes[0]], Object.freeze(shapes)]);
+function createClassDef(shapes, typeClasses=BI_TypeClasses) {
+	return Object.freeze([[...typeClasses, shapes[0]], Object.freeze(shapes)]);
 }
 
-const typeClasses = Object.freeze(["bi"]);
+const BI_TypeClasses = Object.freeze(["bi"]);
+const GI_TypeClasses = Object.freeze(["gi", "material-symbols-outlined"]);
 
 const iconClasses = Object.freeze({
 	caretdown: createClassDef(["bi-caret-down", ""]),
@@ -146,6 +157,7 @@ const iconClasses = Object.freeze({
 	close: createClassDef(["bi-x-lg", ""]),
 	collapse: createClassDef(["bi-chevron-bar-contract", "bi-chevron-bar-expand"]),
 	command: createClassDef(["bi-command", ""]),
+	dashCollapse: createClassDef(["bi-dash-square", ""]),
 	dotmenu: createClassDef(["bi-three-dots-vertical", ""]),
 	eraser: createClassDef(["bi-eraser", ""]),
 	eye: createClassDef(["bi-eye", "bi-eye-slash"]),
@@ -158,6 +170,7 @@ const iconClasses = Object.freeze({
 	password: createClassDef(["bi-key", ""]),
 	pin: createClassDef(["bi-pin", "bi-pin-angle"]),
 	plusNew: createClassDef(["bi-plus-square", ""]),
+	toggleExpand: createClassDef(["bi-plus-square", "bi-dash-square"]),
 	question: createClassDef(["bi-question-square", "bi-question-square-fill"]),
 	redo: createClassDef(["bi-arrow-counterclockwise", ""]),
 	run: createClassDef(["bi-caret-right-square", ""]),
@@ -168,5 +181,8 @@ const iconClasses = Object.freeze({
 	trash: createClassDef(["bi-trash", ""]),
 	user: createClassDef(["bi-person", ""]),
 	wkvSidePanel: createClassDef(["bi-arrow-bar-left", "bi-arrow-bar-right"]),
-	xRemove: createClassDef(["bi-x-square", ""])
+	xRemove: createClassDef(["bi-x-square", ""]),
+
+	//google material icons
+	gi_system: createClassDef(["gi-computer", ""], GI_TypeClasses)
 });

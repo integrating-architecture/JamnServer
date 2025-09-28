@@ -5,11 +5,14 @@
   <meta charset="UTF-8">
   <title>Jamn Workbench</title>
 
-  <!-- external Icon-Font CDN link -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
- 
+  <!-- external Icon-Font CDN links -->
+  <!-- bootstrap - main -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <!-- google material - experimental -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+
   <!-- app main StyleSheet -->
-  <link rel="stylesheet" href="css/workbench.css">
+  <link rel="stylesheet" href="css/workbench.css" />
 
   <script type="importmap">
     {
@@ -21,7 +24,7 @@
 
   <!-- app js module initialization -->
   <script type="module">
-    import {anchorAt as installWorkbenchAt} from 'workbench';
+    import { anchorAt as installWorkbenchAt } from 'workbench';
     installWorkbenchAt("approot").build();
   </script>
 
@@ -33,56 +36,32 @@
   <div id="approot" class="site-container">
 
     <!-- titlebar -->
-    <div id="titlebar" style="user-select: none;">
-      <a href="https://iqbserve.de/" target="_blank" style="min-width: fit-content;">
-        <img class="wtb-item" src="images/workbench-logo.png" title="IQB Services" alt="logo" width="22px"
-          height="22px" /></a>
-      <span id="wtb.title" class="wtb-item" style="min-width: fit-content;">Jamn Workbench -</span>
-      <span id="wtb.title.text" class="wtb-item" style="width: 100%; user-select: text;">[ ]</span>
-      <span id="wtb.ctrl.panel" class="wtb-item wtb-ctrl-panel"></span>
-    </div>
+    <div id="app-titlebar"></div>
     <!-- titlebar end -->
 
     <!-- main container -->
-    <div id="mainContainer">
+    <div id="app-main-container">
 
       <!-- sidebar -->
-      <div id="sidebar" style="border-right: none;">
-        <div class="sidebar-header">
-          <i id="sidebar.menu.icon" class="sidebar-header-icon"></i>
-          <!-- work icon bar section -->
-          <div id="sidebar.header.workicons" class="sidebar-header-workicons"></div>
-        </div>
-
-        <!-- topic list -->
-        <ul class="sbar-topic-list" id="sidebar.topic.list">
-        </ul>
-        <!-- topic list end -->
-      </div>
+      <div id="app-sidebar"></div>
       <!-- sidebar end -->
 
-      <div id="sidebar.splitter" class="vsplitter" style="height: 100%; border-left: 1px solid var(--border-gray);"></div>
+      <div id="app-sidebar-splitter" class="vsplitter" style="height: 100%; border-left: 1px solid var(--border-gray);"></div>
 
       <!-- workarea -->
-      <div id="workarea"></div>
+      <div id="app-workarea"></div>
       <!-- workarea end -->
 
     </div>
     <!-- main container end -->
 
     <!-- statusline -->
-    <div id="statusline" style="user-select: none;">
-      <span class="wsl-item" style="width: 30px;">Info:</span>
-      <span id="wsl.info" class="wsl-item" style="width: 100%; user-select: text;"></span>
-      <span id="wsl.icons" class="wsl-item" style="width: 50px; margin-right: 5px; text-align: center;">
-        <a id="wsl.scm.link" title="Git repo" href="" target="_blank" style="color: var(--text-light-gray);"></a>
-      </span>
-    </div>
+    <div id="app-statusline"></div>
     <!-- statusline end -->
 
     <!-- intro text box -->
-    <div id="intro.overlay" class="overlay-container intro-container">
-      <div id="intro.content" class="intro-content">
+    <div id="app-intro-overlay" class="overlay-container intro-container">
+      <div id="app-intro-content" class="intro-content">
       </div>
     </div>
     <!-- intro text box end -->
@@ -90,37 +69,11 @@
   </div>
 
   <!-- modal dialog overlay container -->
-  <div id="modal.dialog" class="modal-dialog-container">
-    <div id="modal.dialog.content" class="modal-dialog-content">
-      <div id="modal.dialog.header" class="modal-dialog-header">
-
-        <div id="dialog.icon" class="mdlg-header-item mdlg-logo-icon">
-        </div>
-        <div id="dialog.title" class="mdlg-header-item mdlg-title"></div>
-        <i id="modal.dialog.close.icon" class="mdlg-header-item mdlg-close-icon" title="Close"></i>
-
-      </div>
-      <div id="modal.dialog.view.area" class="modal-dialog-view-area">
-      </div>
-      <div id="modal.dialog.command.area">
-      </div>
-    </div>
-  </div>
+  <div id="app-modal-dialog" class="modal-dialog-container"></div>
   <!-- modal dialog overlay container end -->
 
   <!-- standard dialog -->
-  <dialog id="standardDialog" class="standard-dialog-container">
-    <div id="standard.dialog.header.area" class="standard-dialog-header-area ">
-      <div id="standard.dialog.title" style="width: 100%;"></div>
-      <i id="standard.dialog.close.icon" class="standard-dialog-close-icon" title="Cancel"></i>
-    </div>
-    <div id="standard.dialog.content.area" class="standard-dialog-content-area">
-    </div>
-    <div id="standard.dialog.command.area" class="standard-dialog-command-area">
-      <button id="pb.standard.dialog.ok" class="standard-dialog-button">Ok</button>
-      <button id="pb.standard.dialog.cancel" class="standard-dialog-button" autofocus>Cancel</button>
-    </div>
-  </dialog>
+  <dialog id="app-standard-dialog" class="standard-dialog-container"></dialog>
   <!-- standard dialog end -->
 
 </body>

@@ -1,10 +1,11 @@
 /* Authored by iqbserve.de */
 
-import { WorkView, ViewBuilder, ViewComp, onClicked, onInput } from './view-classes.mjs';
+import { WorkView } from './view-classes.mjs';
 import { callWebService } from '../jsmod/tools.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as webapi from '../jsmod/webapi.mjs';
 import * as Icons from '../jsmod/icons.mjs';
+import { UIBuilder, UIComp, onClicked, onInput } from '../jsmod/uibuilder.mjs';
 
 /**
  * A Database connection WorkView created in javascript using a builder.
@@ -57,13 +58,12 @@ class DbConnectionsView extends WorkView {
 	}
 
 	createUI() {
+
 		//create and initalize a view builder
-		this.builder = new ViewBuilder()
-			//example of using a local extended viewComp class
-			.setViewCompFactory({
-				newViewComp: (builder, element, props) => {
-					return new LocalViewComp(builder, element, props);
-				}
+		this.builder = new UIBuilder()
+			//example of using a local extended UIComp class
+			.setUICompFactory((builder, parentComp, domElem)=>{
+				return new LocalUIComp(builder, parentComp, domElem);
 			})
 			//the mirror collection variable
 			.setElementCollection(this.elem)
@@ -74,81 +74,89 @@ class DbConnectionsView extends WorkView {
 				props.get("textField").styleProps = { "width": "150px" };
 			});
 
+
 		//local shortcut to avoid this.
 		let builder = this.builder;
 		let hgap = "20px";
 
-		//setup the workarea as a default column layout
-		let compSet = builder.newViewCompFor(this.viewWorkarea)
+		//get a ui comp object for the workarea for styling
+		//and adding a title
+		let compSet = builder.newUICompFor(this.viewWorkarea)
 			.style({ "gap": "10px" })
-			.addElement("h2", {
-				html: "Define and edit database connection properties", styleProps: { "font-weight": "normal", "user-select": "none" }
-			}).getElement();
+			.add("h2", (title) => {
+				title.style({ "font-weight": "normal", "user-select": "none" })
+					.html("Define and edit database connection properties")
+			}).getDomElem();
 
-		//using builder and viewComps
-		builder.newViewComp()
+		builder.newUIComp()
 			.style({ "margin-bottom": "10px" })
 			.addLabelTextField(
-				{ text: "Name:" },
-				{
-					varid: "tfConnectionName", datalist: Object.getOwnPropertyNames(this.connections),
-					attribProps: { placeholder: "connection name" }
-				},
-				(target) => {
-					target.textfield.style.width = "250px";
-					onInput(target.textfield, (evt) => {
+				{ text: "Name:" }, { varid: "tfConnectionName", datalist: Object.getOwnPropertyNames(this.connections) }, (label, connectionName) => {
+					connectionName.style({ placeholder: "connection name", width: "250px" });
+					onInput(connectionName, (evt) => {
 						this.switchCurrentConnection(evt.currentTarget.value);
 					});
 				})
-			.addActionIcon({ varid: "icoErase", iconName: Icons.eraser(), title: "Clear current selection", styleProps: { "margin-left": "10px" } }, (target) => {
-				onClicked(target.icon, () => { this.clearViewData(); });
+			.addActionIcon({ varid: "icoErase", iconName: Icons.eraser(), title: "Clear current selection" }, (icon) => {
+				icon.style({ "margin-left": "10px" });
+				onClicked(icon, () => { this.clearViewData(); });
 			})
-			.addActionIcon({ varid: "icoSave", iconName: Icons.save(), title: "Save current connection", styleProps: { "margin-left": "20px" } }, (target) => {
-				onClicked(target.icon, () => { this.saveConnection(); });
+			.addActionIcon({ varid: "icoSave", iconName: Icons.save(), title: "Save current connection" }, (icon) => {
+				icon.style({ "margin-left": "20px" });
+				onClicked(icon, () => { this.saveConnection(); });
 			})
-			.addElement("span", { styleProps: { width: "20px", height: "20px", "margin-right": "20px", "border-right": "1px solid var(--border-gray)" } })
-			.addActionIcon({ varid: "icoDelete", iconName: Icons.trash(), title: "Delete current connection" }, (target) => {
-				onClicked(target.icon, () => { this.deleteConnection(); });
+			.add("span", (separator) => {
+				separator.style({ width: "20px", height: "20px", "margin-right": "20px", "border-right": "1px solid var(--border-gray)" })
+			})
+			.addActionIcon({ varid: "icoDelete", iconName: Icons.trash(), title: "Delete current connection" }, (icon) => {
+				onClicked(icon, () => { this.deleteConnection(); });
 			})
 			.appendTo(compSet);
 
 		//fieldset with title and border 	
 		let propertiesCompSet;
-		builder.newViewComp()
-			.addTitledFieldset({ title: "Properties", styleProps: { width: "700px", "row-gap": "10px" } }, (target) => {
-				propertiesCompSet = target.fieldset;
+		builder.newUIComp()
+			.addFieldset({ title: "Properties" }, (fieldset) => {
+				fieldset.style({ width: "700px", "row-gap": "10px" });
+				propertiesCompSet = fieldset.getDomElem();
 			});
 		compSet.append(propertiesCompSet);
 
-		builder.newViewComp()
+		builder.newUIComp()
 			.addLabelTextField(
-				{ text: "DB Url:" },
-				{ varid: "tfDbUrl", styleProps: { width: "600px" }, attribProps: { placeholder: "url like e.g. - jdbc:oracle:thin:@localhost:1521/XEPDB1", "data-bind": "url" } })
+				{ text: "DB Url:" }, { varid: "tfDbUrl" }, (label, tfDbUrl) => {
+					tfDbUrl.style({ width: "600px" })
+						.attrib({ placeholder: "url like e.g. - jdbc:oracle:thin:@localhost:1521/XEPDB1", "data-bind": "url" })
+				})
 			.appendTo(propertiesCompSet);
 
-		builder.newViewComp()
+		builder.newUIComp()
 			.addLabelTextField(
-				{ text: "User:" },
-				{ varid: "tfUser", attribProps: { placeholder: "name", "data-bind": "user" } })
+				{ text: "User:" }, { varid: "tfUser" }, (label, tfUser) => {
+					tfUser.attrib({ placeholder: "name", "data-bind": "user" })
+				})
 			.addTextField(
-				{ varid: "tfOwner", attribProps: { placeholder: "optional owner", "data-bind": "owner" }, styleProps: { "margin-left": hgap } })
+				{ varid: "tfOwner" }, (tfOwner) => {
+					tfOwner.style({ "margin-left": hgap })
+						.attrib({ placeholder: "optional owner", "data-bind": "owner" })
+				})
 			.appendTo(propertiesCompSet);
 
-		builder.newViewComp()
+		builder.newUIComp()
 			.style({ "align-items": "baseline" })
 			.addLabelTextField(
-				{ text: "Password:" },
-				{ varid: "tfPwd", attribProps: { type: "password", placeholder: "********" } })
+				{ text: "Password:" }, { varid: "tfPwd" }, (label, tfPwd) => {
+					tfPwd.attrib({ type: "password", placeholder: "********" })
+				})
 			.addButton(
-				{ text: "Test", title: "Test connection", varid: "pbTest", styleProps: { "margin-left": hgap } },
-				(target) => {
-					onClicked(target.button, () => { this.runTestDbConnection(); });
+				{ text: "Test", title: "Test connection", varid: "pbTest" }, (pbTest) => {
+					pbTest.style({ "margin-left": hgap });
+					onClicked(pbTest, () => { this.runTestDbConnection(); });
 				})
 			.addTextArea(
-				{
-					varid: "tfTestResult", rows: "1", readOnly: true,
-					attribProps: { placeholder: "<result>", title: "Test Result" },
-					styleProps: { "overflow": "hidden", "margin-left": hgap, "text-align": "left", "align-self": "center", "min-width": "80px", "width": "80px" }
+				{ varid: "tfTestResult", rows: "1", readOnly: true }, (tfTestResult) => {
+					tfTestResult.style({ "overflow": "hidden", "margin-left": hgap, "text-align": "left", "align-self": "center", "min-width": "80px", "width": "80px" })
+						.attrib({ placeholder: "<result>", title: "Test Result" })
 				})
 			.appendTo(propertiesCompSet);
 
@@ -164,11 +172,13 @@ class DbConnectionsView extends WorkView {
 		//using plain elements and html
 
 		let makeLI = (name, text) => { return `<li style='margin-block-end: 5px;'><span class="${Icons.getIconClasses(name, true)}"></span> ${text}</li>` };
-		let sidePanelComp = builder.newViewComp({ "compType": "blankComp" })
+		let sidePanelComp = builder.newUIComp("blankComp")
 			.style({ "padding": "20px" })
-			.addElement("h3", {
-				html: "DB Connection View Info", styleProps: { "font-weight": "normal", "user-select": "none" }
-			}).addHtml(
+			.add("h3", (title) => {
+				title.style({ "font-weight": "normal", "user-select": "none" })
+					.html("DB Connection View Info");
+			})
+			.addFromHtml(
 				`<p>This view is used to manage and edit database connection information.</p>
 				<p>Each connection can be created and edited under a unique name.<br>After entering or selecting a saved connection, the connection data is loaded and displayed.</p>
 				<ul>
@@ -179,7 +189,7 @@ class DbConnectionsView extends WorkView {
 				<a href="https://www.google.com/search?q=jdbc+database+url" target="_blank">Search Google for jdbc database url<a>`
 			);
 
-		this.installSidePanel(sidePanelComp.getElement()).setWidth("350px");
+		this.installSidePanel(sidePanelComp.getDomElem()).setWidth("350px");
 
 	}
 
@@ -201,7 +211,7 @@ class DbConnectionsView extends WorkView {
 	clearViewData(excludes = []) {
 		this.builder.forEachElement((name, ctrl) => {
 			if (!excludes.includes(ctrl)) {
-				ViewBuilder.clearControl(ctrl);
+				UIBuilder.clearControl(ctrl);
 			}
 		});
 
@@ -291,14 +301,14 @@ class DbConnectionsView extends WorkView {
 
 		if (status === false) {
 			ctrl.value = "FAILURE - " + text + "\n\n" + new Error().stack;
-			ViewBuilder.setStyleOf(ctrl, { color: "red", resize: "auto", width: "550px" });
+			UIBuilder.setStyleOf(ctrl, { color: "red", resize: "auto", width: "550px" });
 		} else if (status === true) {
 			ctrl.value = "Success";
-			ViewBuilder.setStyleOf(ctrl, okProps);
+			UIBuilder.setStyleOf(ctrl, okProps);
 		} else {
 			ctrl.value = "";
 			okProps.color = "";
-			ViewBuilder.setStyleOf(ctrl, okProps);
+			UIBuilder.setStyleOf(ctrl, okProps);
 		}
 	}
 
@@ -311,16 +321,11 @@ export function getView() {
 }
 
 /**
- * Experimental local example ViewComp class.
+ * Experimental local example UIComp class.
  */
-class LocalViewComp extends ViewComp {
-	constructor(builder, element, props) {
-		super(builder, element, props);
-	}
-
-	addFieldset(props, configCb = null) {
+class LocalUIComp extends UIComp {
+	addFieldset(def, cb) {
 		console.log("Example: call local addFieldset");
-		return super.addFieldset(props, configCb);
+		return super.addFieldset(def, cb);
 	}
-
 }

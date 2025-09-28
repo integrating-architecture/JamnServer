@@ -17,6 +17,8 @@
     --header-bg: #292828;
     --sidebar-bg: #292828;
     --sidebar-bg: #292828;
+    --sidebar-hover-bg: #373737;
+    --menu-hover-bg: #373737;
     --workarea-bg: #1e1e1e;
     --statusline-bg: #292828;
     --text-gray: #c3c3c3;
@@ -92,7 +94,7 @@ body {
 /**
  * Title bar
  */
-div#titlebar {
+div#app-titlebar {
     height: 40px;
     display: flex;
     justify-content: left;
@@ -101,11 +103,11 @@ div#titlebar {
     border-bottom: 1px solid var(--border-gray);
 }
 
-div#titlebar .wtb-item {
+div#app-titlebar .wtb-item {
     margin-left: 10px;
 }
 
-div#titlebar .wtb-ctrl-panel {
+div#app-titlebar .wtb-ctrl-panel {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -117,7 +119,7 @@ div#titlebar .wtb-ctrl-panel {
 /**
  * App container between titlebar and statusline
  */
-div#mainContainer {
+div#app-main-container {
     flex: 1;
     display: flex;
     flex-direction: row;
@@ -127,14 +129,14 @@ div#mainContainer {
 /**
  * Status line
  */
-div#statusline {
+div#app-statusline {
     height: 30px;
     display: flex;
     background-color: var(--statusline-bg);
     border-top: 1px solid var(--border-gray);
 }
 
-div#statusline .wsl-item {
+div#app-statusline .wsl-item {
     display: inline-block;
     border: 0px solid var(--border-gray);
     width: 30%;
@@ -147,66 +149,104 @@ div#statusline .wsl-item {
 /**
  * Side bar 
  */
-div#sidebar {
-    width: 225px;
+div#app-sidebar {
     flex: none;
+    width: 225px;
     background: var(--sidebar-bg);
-    border-right: 1px solid var(--border-gray);
     white-space: nowrap;
     user-select: none;
 }
 
-div#sidebar .sbar-topic-list {
+div#app-sidebar .sbar-topic-head {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 10px;
+    align-items: center;
+    padding: 4px;
+    padding-right: 10px;
+    opacity: 0;
+}
+
+div#app-sidebar .sbar-topic-head:hover {
+    opacity: 1;
+    background-color: var(--sidebar-hover-bg);
+}
+
+div#app-sidebar .topic-head-freez{
+    opacity: 1;
+    background-color: var(--sidebar-hover-bg);
+}
+
+
+div#app-sidebar .sbar-topic-list {
     list-style: none;
-    line-height: 30px;
-    padding: 20px;
-    margin: 0;
+    line-height: 26px;
     font-size: 1.1em;
     color: var(--text-gray);
     overflow-x: auto;
+    padding-inline-start: 0px;
+    margin-block-start: 0px;
+    margin-block-end: 0px;
+    padding-top: 0px;
 }
 
-div#sidebar .sbar-item-list {
+div#app-sidebar .sbar-item-list {
     list-style: none;
     line-height: 20px;
-    margin-left: -15px;
     display: none;
+    cursor: auto !important;
+    padding-inline-start: 0px;
 }
 
-div#sidebar .sbar-topic {
-    padding-left: 0px;
+div#app-sidebar .sbar-topic {
     font-size: 1em;
     color: var(--text-gray);
 }
 
-div#sidebar .sbar-topic-text {
-    margin-left: 6px;
+div#app-sidebar .sbar-topic-header {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    padding-left: 20px;
 }
 
-div#sidebar .sbar-item {
+div#app-sidebar .sbar-topic-text {
+    font-size: 1em;
+}
+
+div#app-sidebar .sbar-topic-icon {
+    font-size: 18px;
+    align-content: center;
+}
+
+div#app-sidebar .sbar-item {
     font-size: 1em;
     color: var(--text-gray);
-    margin-left: -5px;
-    padding-left: 5px;
+    height: 22px;
+    align-content: center;
+    padding-left: 45px;
 }
 
-div#sidebar li a:hover {
+div#app-sidebar .sbar-item-list .sbar-item:hover {
     color: var(--text-light-gray);
     cursor: pointer;
+    background-color: var(--sidebar-hover-bg);
 }
 
-div#sidebar li :hover {
+div#app-sidebar .sbar-topic-header:hover {
     color: var(--text-light-gray);
     cursor: pointer;
+    background-color: var(--sidebar-hover-bg);
 }
 
-div#sidebar li a {
+/**
+ * Sidebar body, header panel
+ */
+div#app-sidebar .sidebar-body{
     display: block;
-    color: inherit;
-    text-decoration: none;
 }
 
-div#sidebar .sidebar-header {
+div#app-sidebar .sidebar-header {
     background: var(--sidebar-bg);
     padding-left: 10px;
     height: 50px;
@@ -233,18 +273,17 @@ div#sidebar .sidebar-header {
     cursor: pointer;
 }
 
-
 /**
  * Workarea 
  */
-div#workarea {
+div#app-workarea {
     flex: 1;
     background-color: var(--workarea-bg);
     overflow: auto;
     padding: 15px;
 }
 
-div#workarea .work-view {
+div#app-workarea .work-view {
     overflow-y: auto;
     overflow-x: hidden;
     border: 1px solid var(--border-gray);
@@ -268,7 +307,7 @@ div#workarea .work-view {
 .work-view-sidepanel {
     display: none;
     width: 0;
-    z-index: 10;
+    z-index: 5;
     background: var(--work-view-header-bg);
     white-space: nowrap;
     overflow: auto;
@@ -278,6 +317,10 @@ div#workarea .work-view {
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid var(--border-gray);
+}
+
+.work-view-collapsed-header {
+    border-bottom: none;
 }
 
 .work-view-header {
@@ -318,6 +361,7 @@ div#workarea .work-view {
     height: 2px;
     width: 100%;
     overflow: hidden;
+    background-color: var(--work-view-header-bg);
 }
 
 .wkv-header-progressbar .header-progress-value {
@@ -331,15 +375,17 @@ div#workarea .work-view {
 .progress-showWorking {
     animation: indeterminateAnimation 1.2s infinite linear;
     visibility: visible !important;
-} 
+}
 
 @keyframes indeterminateAnimation {
     0% {
         transform: translateX(0) scaleX(0);
     }
+
     40% {
         transform: translateX(0) scaleX(0.4);
     }
+
     100% {
         transform: translateX(100%) scaleX(0.5);
     }
@@ -363,7 +409,7 @@ i.wkv-action-icon:hover {
     align-self: self-start;
     min-width: 100px;
     background-color: var(--work-view-menu-bg);
-    z-index: 1;
+    z-index: 10;
     border: 1px solid var(--border-gray);
     padding: 5px;
     margin-top: 10px;
@@ -391,6 +437,7 @@ i.wkv-action-icon:hover {
 
 .wkv-header-menu a:hover {
     color: var(--text-light-gray);
+    background-color: var(--menu-hover-bg);
 }
 
 .menu-separator-top {
@@ -424,7 +471,7 @@ div.wkv-fix-tblhead-container {
 .wkv-fix-tblhead-container th {
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 5;
 }
 
 th.wkv {
@@ -588,7 +635,7 @@ p.std-dlg-input {
 .modal-dialog-container {
     display: none;
     position: fixed;
-    z-index: 1;
+    z-index: 10;
     left: 0;
     top: 0;
     width: 100%;
@@ -629,7 +676,7 @@ p.std-dlg-input {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 1;
+    z-index: 10;
     background: var(--modal-dlg-content-bg);
     display: none;
     font-size: 18px;
@@ -817,6 +864,18 @@ p.std-dlg-input {
 
 /**
  */
+.flex-colcomp {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-rowcomp {
+    display: flex;
+    flex-direction: row;
+}
+
+/**
+ */
 .wkv-comp {
     display: flex;
 }
@@ -887,7 +946,7 @@ p.std-dlg-input {
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.4);
-    z-index: 1;
+    z-index: 10;
     cursor: default;
     overflow: hidden;
 }
@@ -919,7 +978,7 @@ p.std-dlg-input {
     width: 2px;
     cursor: col-resize;
     user-select: none;
-    z-index: 10;
+    z-index: 5;
 }
 
 .vsplitter:hover {
@@ -944,6 +1003,18 @@ p.std-dlg-input {
 /**
  * Helper and others 
  */
+.embedded-search-tf {
+    margin-left: 10px;
+    margin-right: 0px;
+    background: var(--tbl-header-bg);
+    border: 1px solid var(--border-gray);
+    color: var(--text-gray);
+    outline: none;
+    background-image: url('/images/search-16.png');
+    background-repeat: no-repeat;
+    background-position: left center;
+    padding-left: 20px;
+}
 
 hr.solid {
     border-top: 1px solid var(--work-view-separator);
@@ -962,4 +1033,18 @@ a:visited {
 
 a:active {
     color: var(--link-light-blue)
+}
+
+/**
+ * EXPERIMENTAL integrating google material icon fonts via class
+ */
+
+.gi::before,
+[class*=" gi-"]::before,
+[class^=gi-]::before {
+    font-size: 19px !important;
+}
+
+.gi-computer::before {
+    content: "computer";
 }

@@ -193,7 +193,7 @@ public class DocumentStoreAdapter {
          */
         protected void saveDocument(PersistentDocument pDoc) throws IOException{
             Path dataFile = getDataFilePathFor(pDoc.name());
-            Files.writeString(dataFile, pDoc.getContent(), encoding, StandardOpenOption.CREATE);
+            Files.writeString(dataFile, pDoc.getContent(), encoding, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         }
 
         /**

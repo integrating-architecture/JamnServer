@@ -30,11 +30,11 @@
     --cmd-button-border: var(--border-gray);
     --ctrl-border-focus: #0054a8;
 
-    --modal-dlg-content-bg: #c3c3c3;
-    --modal-dlg-content-fg: #1e1e1e;
-    --modal-dlg-header-bg: #536a7d;
-    --modal-dlg-header-fg: #c3c3c3;
-    --modal-dlg-border: #6c6c6c;
+    --view-dlg-content-bg: #c3c3c3;
+    --view-dlg-content-fg: #1e1e1e;
+    --view-dlg-header-bg: #536a7d;
+    --view-dlg-header-fg: #c3c3c3;
+    --view-dlg-border: #6c6c6c;
 
     --standard-dlg-content-bg: #f5f5f5;
     --standard-dlg-content-fg: #1e1e1e;
@@ -172,7 +172,7 @@ div#app-sidebar .sbar-topic-head:hover {
     background-color: var(--sidebar-hover-bg);
 }
 
-div#app-sidebar .topic-head-freez{
+div#app-sidebar .topic-head-freez {
     opacity: 1;
     background-color: var(--sidebar-hover-bg);
 }
@@ -242,7 +242,7 @@ div#app-sidebar .sbar-topic-header:hover {
 /**
  * Sidebar body, header panel
  */
-div#app-sidebar .sidebar-body{
+div#app-sidebar .sidebar-body {
     display: block;
 }
 
@@ -535,23 +535,106 @@ tr.wkv:hover td {
 }
 
 /** 
- * Standard  Dialog 
+ * View Dialog 
  */
-
-.standard-dialog-container {
-    border: solid 1px var(--standard-dlg-border);
-    margin: 0;
-    transform: translateX(-50%);
-    top: 20%;
-    left: 50%;
-    min-width: 400px;
-    width: fit-content;
-    background: var(--standard-dlg-content-bg);
-    color: var(--standard-dlg-content-fg);
+.view-dialog-container {
+    border: 1px solid var(--view-dlg-border);
     padding: 0px;
+    overflow: hidden;
 }
 
-.standard-dialog-header-area {
+.view-dialog-container::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.view-dialog-cartridge {
+    background-color: var(--view-dlg-content-bg);
+    color: var(--view-dlg-content-fg);
+    position: relative;
+    display: inline-block;
+}
+
+.view-dialog-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--view-dlg-header-bg);
+    color: var(--view-dlg-header-fg);
+    min-height: 40px;
+    width: 100%;
+    user-select: none;
+}
+
+.view-dialog-view-area {
+    display: inline-block;
+}
+
+.view-dialog-view-area-overlay {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    background: var(--view-dlg-content-bg);
+    display: none;
+    font-size: 18px;
+    color: black;
+    align-content: top;
+    text-align: center;
+}
+
+/** 
+ * Comman Dialog styles
+ */
+
+.dlg-header-item {
+    text-align: center;
+}
+
+.dlg-logo-icon {
+    margin-left: 10px;
+}
+
+.dlg-title {
+    font-size: 18px;
+    width: 100%;
+}
+
+.dlg-close-icon {
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+.dlg-close-icon:hover {
+    cursor: pointer;
+    color: #f8f8f8;
+}
+
+.draggable-dialog {
+    margin: 0px !important;
+    touch-action: none;
+}
+
+/** 
+ * Standard  Dialog 
+ */
+.standard-dialog-container {
+    border: 1px solid var(--standard-dlg-border);
+    padding: 0px;
+    overflow: hidden;
+    width: max-content;
+}
+
+.standard-dialog-container::backdrop {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+
+.standard-dialog-header {
+    background: var(--standard-dlg-header-bg);
+    color: var(--standard-dlg-header-fg);
     display: flex;
     flex-direction: row;
     justify-content: center;
@@ -559,37 +642,40 @@ tr.wkv:hover td {
     text-align: left;
     font-size: 1.2em;
     padding: 10px;
-    background: var(--standard-dlg-header-bg);
-    color: var(--standard-dlg-header-fg);
     user-select: none;
 }
 
 .standard-dialog-content-area {
+    background: var(--standard-dlg-content-bg);
+    color: var(--standard-dlg-content-fg);
     display: block;
     font-size: 1.2em;
+    padding-top: 15px;
     padding-left: 15px;
     padding-right: 15px;
+    min-width: 370px;
+    overflow: hidden;
 }
 
 .standard-dialog-command-area {
+    background: var(--standard-dlg-command-bg);
     display: flex;
     flex-direction: row;
     justify-content: right;
     padding: 15px;
-    background: var(--standard-dlg-command-bg);
     user-select: none;
 }
 
-.standard-dialog-close-icon {
+.std-dlg-close-icon {
     font-size: 16px;
 }
 
-.standard-dialog-close-icon:hover {
+.std-dlg-close-icon:hover {
     cursor: pointer;
     color: #f8f8f8;
 }
 
-.standard-dialog-button {
+.std-dlg-button {
     text-align: center;
     border: 1px solid var(--standard-button-border);
     color: var(--standard-button-fg);
@@ -602,115 +688,32 @@ tr.wkv:hover td {
     border-radius: 0;
 }
 
-.standard-dialog-button:hover {
+.std-dlg-button:hover {
     cursor: pointer;
     color: var(--standard-button-hlfg);
     border-color: var(--cmd-button-hover-border);
 }
 
-.standard-dialog-button:active {
+.std-dlg-button:active {
     transform: translateY(1px);
 }
 
-.standard-dialog-button:focus {
+.std-dlg-button:focus {
     outline: 0;
     color: var(--standard-button-hlfg);
 }
 
-.standard-dialog-textfield {
+.std-dlg-textfield {
     box-sizing: border-box;
     width: 100%;
     margin-bottom: 20px;
     font-size: 1em;
 }
 
-p.std-dlg-input {
+p.std-inputdlg-text {
+    margin-top: 0px;
     margin-bottom: 5px;
 }
-
-/** 
- * Modal Dialog 
- */
-
-.modal-dialog-container {
-    display: none;
-    position: fixed;
-    z-index: 10;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.4);
-    text-align: center;
-}
-
-.modal-dialog-content {
-    background-color: var(--modal-dlg-content-bg);
-    color: var(--modal-dlg-content-fg);
-    margin-top: 100px;
-    border: 1px solid var(--modal-dlg-border);
-    position: relative;
-    display: inline-block;
-}
-
-.modal-dialog-header {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    background-color: var(--modal-dlg-header-bg);
-    color: var(--modal-dlg-header-fg);
-    min-height: 40px;
-    width: 100%;
-    user-select: none;
-}
-
-.modal-dialog-view-area {
-    display: inline-block;
-}
-
-.modal-dialog-view-area-overlay {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 10;
-    background: var(--modal-dlg-content-bg);
-    display: none;
-    font-size: 18px;
-    color: black;
-    align-content: top;
-    text-align: center;
-}
-
-.mdlg-header-item {
-    text-align: center;
-}
-
-.mdlg-logo-icon {
-    margin-left: 10px;
-}
-
-.mdlg-title {
-    font-size: 18px;
-    width: 100%;
-}
-
-.mdlg-close-icon {
-    font-size: 18px;
-    margin-right: 10px;
-}
-
-.mdlg-close-icon:hover {
-    cursor: pointer;
-    color: #f8f8f8;
-}
-
-/** 
- * End Modal Dialog 
- */
 
 
 /**
@@ -1047,4 +1050,11 @@ a:active {
 
 .gi-computer::before {
     content: "computer";
+}
+
+.gi-collapse-all::before {
+    content: "collapse_all";
+}
+.gi-expand-all::before {
+    content: "expand_all";
 }

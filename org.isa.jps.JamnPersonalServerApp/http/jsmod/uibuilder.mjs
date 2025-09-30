@@ -87,7 +87,7 @@ export class UIBuilder {
     //collection for any objects
     objectCollection = {};
     collectableAttributes = ["data-bind"];
-
+   
     #UICompFactory = {
         newComp: (builder, parentComp, domElem) => {
             return new UIComp(builder, parentComp, domElem);

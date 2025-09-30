@@ -48,11 +48,11 @@
     color: var(--login-input-fg);
     font-size: 1em;
     height: 10px;
+}
 
-    &:focus {
-        outline: none;
-        border-left: 2px solid var(--login-input-focus);
-    }
+.login-input:focus {
+    outline: none;
+    border-left: 2px solid var(--login-input-focus);
 }
 
 .login-view-button-row {

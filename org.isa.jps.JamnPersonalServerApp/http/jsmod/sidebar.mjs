@@ -30,8 +30,8 @@ class Sidebar {
 			})
 			.addContainer({ varid: "body", clazzes: "sidebar-body" }, (body) => {
 				body.addContainer({ varid: "topicHead", clazzes: "sbar-topic-head" }, (topicHead) => {
-					topicHead.addActionIcon({ iconName: Icons.toggleExpand() }, (expandToggle, expandIconElem) => {
-						expandToggle.title("Expand/Collapse Topics").class("sidebar-header-icon").style({ "font-size": "14px" });
+					topicHead.addActionIcon({ iconName: Icons.gi_toggleExpand() }, (expandToggle, expandIconElem) => {
+						expandToggle.title("Expand/Collapse Topics").class("sidebar-header-icon").style({ "font-size": "14px", "margin-left":"10px" });
 						onClicked(expandToggle, (evt) => {
 							this.#expandTopics(expandIconElem);
 						});

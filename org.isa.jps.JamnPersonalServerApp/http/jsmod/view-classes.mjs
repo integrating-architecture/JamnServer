@@ -35,7 +35,7 @@ function createViewElementFor(view, html) {
 	let template = document.createElement("template");
 	template.innerHTML = html;
 	view.viewElement = template.content.firstElementChild;
-	if(view instanceof AbstractView){
+	if (view instanceof AbstractView) {
 		view.viewElement.id = view.id;
 	}
 }
@@ -102,6 +102,13 @@ export class AbstractView {
 	}
 
 	/**
+	 * has to be overwritten when working with the uid
+	 */
+	getElement(id) {
+		return findChildOf(this.viewElement, id);
+	}
+
+	/**
 	 */
 	beforeCreateViewElement() {
 		//to be overwritten
@@ -120,11 +127,6 @@ export class AbstractView {
 	setDisplay(elem, flag) {
 		setDisplay(elem, flag);
 	}
-
-	getElement(id) {
-		return findChildOf(this.viewElement, this.uid.get(id));
-	}
-
 }
 
 /**
@@ -157,6 +159,11 @@ export class WorkView extends AbstractView {
 	reworkHtml(html) {
 		html = reworkHtmlElementIds(html, this.uid.get());
 		return html;
+	}
+
+	//overwritten cause html id rework
+	getElement(id) {
+		return findChildOf(this.viewElement, this.uid.get(id));
 	}
 
 	initialize() {
@@ -452,90 +459,6 @@ export class WorkViewSidepanel {
 
 /**
  */
-export class SplitBarHandler {
-
-	splitter;
-	compBefore;
-	compAfter;
-	orientation = "v";
-	moveSplitter = false;
-
-	clickPoint;
-
-	barrierActionBefore = (handler, value) => { };
-	barrierActionAfter = (handler, value) => { };
-
-	constructor(splitter, compbefore, compafter) {
-		this.splitter = splitter;
-		this.compBefore = compbefore;
-		this.compAfter = compafter;
-
-		this.splitter.onmousedown = (evt) => {
-			this.#onDragStart(evt);
-		}
-	}
-
-	#onDragStart(evt) {
-
-		this.splitter.classList.toggle("vsplitter-working");
-
-		this.clickPoint = {
-			evt,
-			offsetLeft: this.splitter.offsetLeft,
-			offsetTop: this.splitter.offsetTop,
-			beforeWidth: this.compBefore.offsetWidth,
-			afterWidth: this.compAfter.offsetWidth
-		};
-
-		//avoid cursor flicker
-		let cursor = window.getComputedStyle(this.splitter)["cursor"];
-		this.compBefore.style.cursor = cursor;
-		this.compAfter.style.cursor = cursor;
-
-		document.onmousemove = (evt) => {
-			this.#doDrag(evt);
-		};
-
-		document.onmouseup = () => {
-			document.onmousemove = document.onmouseup = null;
-			this.compBefore.style.cursor = "default";
-			this.compAfter.style.cursor = "default";
-			this.splitter.classList.toggle("vsplitter-working");
-		}
-	}
-
-	#doDrag(evt) {
-		let delta = {
-			x: evt.clientX - this.clickPoint.evt.clientX,
-			y: evt.clientY - this.clickPoint.evt.clientY
-		};
-
-		if (this.orientation === "v") {
-			this.#doVDrag(delta, evt);
-		}
-	}
-
-	#doVDrag(delta, evt) {
-		delta.x = Math.min(Math.max(delta.x, -this.clickPoint.beforeWidth),
-			this.clickPoint.afterWidth);
-
-		let val = this.clickPoint.offsetLeft + delta.x;
-		if (this.barrierActionBefore(this, val)) { return; }
-
-		if (this.moveSplitter) {
-			this.splitter.style.left = val + "px";
-		}
-		this.compBefore.style.width = (this.clickPoint.beforeWidth + delta.x) + "px";
-		this.compAfter.style.width = (this.clickPoint.afterWidth - delta.x) + "px";
-	}
-
-	stop() {
-		document.dispatchEvent(new Event("mouseup", { bubbles: true, cancelable: true }));
-	}
-}
-
-/**
- */
 export class WorkViewHeaderMenu {
 
 	#menuElem;
@@ -629,10 +552,8 @@ export class WorkViewHeaderIconBar {
 	}
 }
 
-
 /**
- * dialog specific function to set the current dialog view
- * cause all dialogs are container shown by one dialog element
+ * dialog specific function to exchange the current view
  */
 function exchangeDialogView(dlgElem, viewElem) {
 	let currentView = dlgElem.firstElementChild;
@@ -646,51 +567,70 @@ function exchangeDialogView(dlgElem, viewElem) {
 }
 
 /**
- * Modaldialogs implemented as a view and based on a overlay element of the workbench. 
+ * View Dialog 
  */
-export class ModalDialog extends AbstractView {
+export class ViewDialog extends AbstractView {
 
-	static #dialogElem = document.getElementById("app-modal-dialog");
-
-	viewContainer;
+	static #dialogElem = document.getElementById("app-view-dialog");
+	static default = { clazzes: [], attribProps: {}, styleProps: { "margin-top": "150px" } };
 
 	constructor(file) {
 		super("", file);
-		this.createViewContainer();
+		this.createDialogContentContainer();
 	}
 
 	/**
+	 * the dialog standard layout
 	 */
-	createViewContainer() {
+	createDialogContentContainer() {
 		let builder = new UIBuilder()
 			//using this as target for ui builder var collection
 			//any "varid" gets a property of this
 			.setElementCollection(this)
 			.setDefaultCompProps(new DefaultCompProps());
 
-		this.viewContainer = builder.newUIComp()
-			.addDiv({ varid: "content", clazzes: "modal-dialog-content" }, (content) => {
+		builder.newUICompFor(this.dialog())
+			.addDiv({ varid: "content", clazzes: "view-dialog-cartridge" }, (content) => {
 				content
-					.addDiv({ varid: "header", clazzes: "modal-dialog-header" }, (header) => {
+					.addDiv({ varid: "header", clazzes: "view-dialog-header" }, (header) => {
 						header
-							.addSpan({ varid: "logoIcon", clazzes: ["mdlg-header-item", "mdlg-logo-icon"] })
-							.addSpan({ varid: "title", clazzes: ["mdlg-header-item", "mdlg-title"] })
+							.addSpan({ varid: "logoIcon", clazzes: ["dlg-header-item", "dlg-logo-icon"] })
+							.addSpan({ varid: "title", clazzes: ["dlg-header-item", "dlg-title"] })
 							.addActionIcon({ varid: "closeIcon", iconName: Icons.close(), title: "Close" }, (closeIcon) => {
-								closeIcon.class(["mdlg-header-item", "mdlg-close-icon"]);
+								closeIcon.class(["dlg-header-item", "dlg-close-icon"]);
 								onClicked(closeIcon.domElem, () => { this.close(); });
 							})
 					})
-					.addDiv({ varid: "viewArea", clazzes: "modal-dialog-view-area" })
+					.addDiv({ varid: "viewArea", clazzes: "view-dialog-view-area" })
 					.addDiv({ varid: "commandArea" })
-			}).getDomElem();
+			});
 	}
 
-	#dialog() {
-		return ModalDialog.#dialogElem;
+	dialog() {
+		return ViewDialog.#dialogElem;
+	}
+
+	beforeOpen() {
+		//to be overwritten
+	}
+
+	open(cb = null) {
+		this.getViewElement(() => {
+			exchangeDialogView(this.dialog(), this.content);
+			this.beforeOpen();
+			if (cb) {
+				cb(this);
+			}
+			this.dialog().showModal();
+		})
+	}
+
+	close() {
+		this.dialog().close();
 	}
 
 	getElement(id) {
-		return findChildOf(this.viewContainer, id);
+		return findChildOf(this.dialog(), id);
 	}
 
 	/**
@@ -711,25 +651,6 @@ export class ModalDialog extends AbstractView {
 		this.isInitialized = true;
 	}
 
-	beforeOpen() {
-		//to be overwritten
-	}
-
-	open(cb = null) {
-		this.getViewElement(() => {
-			exchangeDialogView(this.#dialog(), this.viewContainer);
-			this.beforeOpen();
-			if (cb) {
-				cb(this);
-			}
-			setDisplay(this.#dialog(), true);
-		})
-	}
-
-	close() {
-		setDisplay(this.#dialog(), false);
-	}
-
 	setTitle(title) {
 		this.title.innerHTML = title;
 		return this;
@@ -742,19 +663,18 @@ export class ModalDialog extends AbstractView {
 }
 
 /**
- * Standardialogs e.g. confirmation/message/input based on a html dialog tag 
- * and realized as a configurabel integrated view.
+ * Standardialogs e.g. confirmation/message/input
  */
 export class StandardDialog {
 
 	static #dialogElem = document.getElementById("app-standard-dialog");
 
-	uid = new ContextId();
-	#viewElem;
 	inputField;
+	#dragHandler;
 
 	constructor() {
 		this.createUI();
+		this.initialize();
 	}
 
 	/**
@@ -765,38 +685,54 @@ export class StandardDialog {
 			.setElementCollection(this)
 			.setDefaultCompProps(new DefaultCompProps());
 
-		this.#viewElem = builder.newUIComp()
-			.addDiv({ clazzes: "standard-dialog-header-area " }, (header) => {
+		builder.newUICompFor(this.#dialog())
+			.addDiv({ varid: "header", clazzes: "standard-dialog-header" }, (header) => {
 				header
 					.addSpan({ varid: "title" }, (title) => { title.style({ width: "100%" }) })
-					.addActionIcon({ varid: "closeIcon", iconName: Icons.close(), title: "Cancel", clazzes: "standard-dialog-close-icon" })
+					.addActionIcon({ varid: "closeIcon", iconName: Icons.close(), title: "Cancel", clazzes: "std-dlg-close-icon" })
 			})
 			.addDiv({ varid: "contentArea", clazzes: "standard-dialog-content-area" }, (content) => { })
 			.addDiv({ clazzes: "standard-dialog-command-area" }, (commands) => {
 				commands
-					.addButton({ varid: "pbOk", text: "Ok", clazzes: "standard-dialog-button" })
-					.addButton({ varid: "pbCancel", text: "Cancel", clazzes: "standard-dialog-button" }, (cancel) => { cancel.domElem.autofocus = true; })
-			}).getDomElem();
+					.addButton({ varid: "pbOk", text: "Ok", clazzes: "std-dlg-button" })
+					.addButton({ varid: "pbCancel", text: "Cancel", clazzes: "std-dlg-button" }, (cancel) => { cancel.domElem.autofocus = true; })
+			});
+
+		this.#dialog().style["margin-top"] = ViewDialog.default.styleProps["margin-top"];
 	}
 
 	#dialog() {
 		return StandardDialog.#dialogElem;
 	}
 
-	#exchangeDialogView() {
-		exchangeDialogView(this.#dialog(), this.#viewElem);
+	#open(){
+		this.#dialog().showModal();
+		this.#dragHandler.setStartPosition(0, this.#dialog().style["margin-top"])
+			.startWorking();
+	}
+
+	#close(){
+		this.#dragHandler.stop();
+		this.#dialog().close();
+	}
+
+	initialize(){
+		this.#dragHandler = new DialogDragHandler(this.#dialog(), this.header);
+		this.#dragHandler.setTriggerFilter((evt)=>{
+			if(evt.target === this.closeIcon){return true;}
+		});
+		this.#dialog().classList.add("draggable-dialog");
+		this.#dragHandler.enabled = true;
 	}
 
 	openConfirmation(text, cb) {
-		this.#exchangeDialogView();
 		this.#setupFor("confirm", text, null, cb);
-		this.#dialog().showModal();
+		this.#open();
 	}
 
 	openInput(text, value, cb) {
-		this.#exchangeDialogView();
 		this.#setupFor("input", text, value, cb);
-		this.#dialog().showModal();
+		this.#open();
 		this.inputField.focus();
 		this.inputField.select();
 	}
@@ -804,17 +740,17 @@ export class StandardDialog {
 	#setupFor(type, text, value, cb) {
 
 		onClicked(this.pbOk, (evt) => {
-			this.#dialog().close();
+			this.#close();
 			cb(type === "input" ? this.inputField.value : true);
 		});
 
 		onClicked(this.pbCancel, (evt) => {
-			this.#dialog().close();
+			this.#close();
 			cb(null);
 		});
 
 		onClicked(this.closeIcon, (evt) => {
-			this.#dialog().close();
+			this.#close();
 			cb(null);
 		});
 
@@ -843,18 +779,18 @@ export class StandardDialog {
 		this.pbOk.innerHTML = "Ok";
 		this.pbCancel.innerHTML = "Cancel";
 		let title = "Input";
-		let inputId = this.uid.get("standard-dialog-input");
+		let inputId = "standard-dialog-input";
 
 		if (!value) { value = "" };
 
 		if (typeof text === 'string' || text instanceof String) {
 			this.title.innerHTML = title;
-			this.contentArea.innerHTML = `<p class="std-dlg-input">${text}</p> 
-			<input type="text" id=${inputId} class="standard-dialog-textfield" value=${value}>`;
+			this.contentArea.innerHTML = `<p class="std-inputdlg-text">${text}</p> 
+			<input type="text" id="${inputId}" class="std-dlg-textfield" value="${value}">`;
 		} else {
 			this.title.innerHTML = text.title ? text.title : title;
-			this.contentArea.innerHTML = `<p class="std-dlg-input">${text?.message}</p>
-			<input type="text" id=${inputId} class="standard-dialog-textfield" value=${value}>`;
+			this.contentArea.innerHTML = `<p class="std-inputdlg-text">${text?.message}</p>
+			<input type="text" id="${inputId}" class="std-dlg-textfield" value="${value}">`;
 		}
 
 		this.inputField = findChildOf(this.#dialog(), inputId);
@@ -987,5 +923,194 @@ export class TableData {
 	addRow(key, columns) {
 		this.rows.set(key, columns);
 	}
+}
+
+/*********************************************
+ * UI Handler
+ *********************************************/
+/**
+ */
+export class SplitBarHandler {
+
+	splitter;
+	compBefore;
+	compAfter;
+	orientation = "v";
+	moveSplitter = false;
+
+	clickPoint;
+
+	barrierActionBefore = (handler, value) => { };
+	barrierActionAfter = (handler, value) => { };
+
+	constructor(splitter, compbefore, compafter) {
+		this.splitter = splitter;
+		this.compBefore = compbefore;
+		this.compAfter = compafter;
+
+		this.splitter.onmousedown = (evt) => {
+			this.#onDragStart(evt);
+		}
+	}
+
+	#onDragStart(evt) {
+
+		this.splitter.classList.toggle("vsplitter-working");
+
+		this.clickPoint = {
+			evt,
+			offsetLeft: this.splitter.offsetLeft,
+			offsetTop: this.splitter.offsetTop,
+			beforeWidth: this.compBefore.offsetWidth,
+			afterWidth: this.compAfter.offsetWidth
+		};
+
+		//avoid cursor flicker
+		let cursor = window.getComputedStyle(this.splitter)["cursor"];
+		this.compBefore.style.cursor = cursor;
+		this.compAfter.style.cursor = cursor;
+
+		document.onmousemove = (evt) => {
+			this.#doDrag(evt);
+		};
+
+		document.onmouseup = () => {
+			document.onmousemove = document.onmouseup = null;
+			this.compBefore.style.cursor = "default";
+			this.compAfter.style.cursor = "default";
+			this.splitter.classList.toggle("vsplitter-working");
+		}
+	}
+
+	#doDrag(evt) {
+		let delta = {
+			x: evt.clientX - this.clickPoint.evt.clientX,
+			y: evt.clientY - this.clickPoint.evt.clientY
+		};
+
+		if (this.orientation === "v") {
+			this.#doVDrag(delta, evt);
+		}
+	}
+
+	#doVDrag(delta, evt) {
+		delta.x = Math.min(Math.max(delta.x, -this.clickPoint.beforeWidth),
+			this.clickPoint.afterWidth);
+
+		let val = this.clickPoint.offsetLeft + delta.x;
+		if (this.barrierActionBefore(this, val)) { return; }
+
+		if (this.moveSplitter) {
+			this.splitter.style.left = val + "px";
+		}
+		this.compBefore.style.width = (this.clickPoint.beforeWidth + delta.x) + "px";
+		this.compAfter.style.width = (this.clickPoint.afterWidth - delta.x) + "px";
+	}
+
+	stop() {
+		document.dispatchEvent(new Event("mouseup", { bubbles: true, cancelable: true }));
+	}
+}
+
+/**
+ */
+export class DialogDragHandler {
+	#dlg;
+	#handleElem;
+	#active = false;
+	#start = { x: 0, y: 0 };
+	#startPos = { left: 0, top: 0 };
+
+	#triggerFilter = (evt) => { };
+	enabled = false;
+
+	constructor(dialog, handleElem) {
+		this.#dlg = dialog;
+		this.#handleElem = handleElem;
+	}
+
+	startWorking() {
+		if (!this.enabled) { return this; }
+		this.#handleElem.addEventListener('pointerdown', this.#onPointerDown);
+		window.addEventListener('resize', this.#onWindowResize);
+		return this;
+	}
+
+	stop() {
+		if (!this.enabled) { return; }
+		this.#stopDragging();
+		this.#handleElem.removeEventListener('pointerdown', this.#onPointerDown);
+		window.removeEventListener('resize', this.#onWindowResize);
+	}
+
+	#stopDragging() {
+		if (!this.enabled) { return; }
+		this.#active = false;
+		try { this.#handleElem.releasePointerCapture(evt.pointerId); } catch (e) { }
+		document.removeEventListener('pointermove', this.#onPointerMove);
+		document.removeEventListener('pointerup', this.#onPointerUp);
+		document.removeEventListener('pointercancel', this.#onPointerUp);
+	}
+
+	setStartPosition(leftVal, topVal) {
+		leftVal = typeUtil.isString(leftVal) ? parseInt(leftVal, 10) : leftVal;
+		topVal = typeUtil.isString(topVal) ? parseInt(topVal, 10) : topVal;
+
+		//center by default
+		let left = leftVal != 0 ? leftVal : Math.max(0, (window.innerWidth - this.#dlg.offsetWidth) / 2);
+		let top = topVal != 0 ? topVal : Math.max(0, (window.innerHeight - this.#dlg.offsetHeight) / 2);
+
+		this.#dlg.style.left = Math.round(left) + 'px';
+		this.#dlg.style.top = Math.round(top) + 'px';
+		return this;
+	}
+
+	setTriggerFilter(cb) {
+		this.#triggerFilter = cb;
+		return this;
+	}
+
+	#onPointerDown = (evt) => {
+		if (this.#triggerFilter(evt)) return;
+		this.#handleElem.setPointerCapture(evt.pointerId);
+		this.#active = true;
+		this.#start.x = evt.clientX;
+		this.#start.y = evt.clientY;
+		this.#startPos.left = parseFloat(this.#dlg.style.left) || 0;
+		this.#startPos.top = parseFloat(this.#dlg.style.top) || 0;
+		document.addEventListener('pointermove', this.#onPointerMove);
+		document.addEventListener('pointerup', this.#onPointerUp);
+		document.addEventListener('pointercancel', this.#onPointerUp);
+	};
+
+	#onPointerUp = (evt) => {
+		this.#stopDragging();
+	};
+
+	#onPointerMove = (evt) => {
+		if (!this.#active) return;
+		evt.preventDefault();
+		const dx = evt.clientX - this.#start.x;
+		const dy = evt.clientY - this.#start.y;
+		let newLeft = this.#startPos.left + dx;
+		let newTop = this.#startPos.top + dy;
+
+		const maxLeft = window.innerWidth - this.#dlg.offsetWidth;
+		const maxTop = window.innerHeight - this.#dlg.offsetHeight;
+		newLeft = Math.min(Math.max(0, newLeft), maxLeft);
+		newTop = Math.min(Math.max(0, newTop), maxTop);
+
+		this.#dlg.style.left = Math.round(newLeft) + 'px';
+		this.#dlg.style.top = Math.round(newTop) + 'px';
+	};
+
+	#onWindowResize = (evt) => {
+		let left = parseFloat(this.#dlg.style.left) || 0;
+		let top = parseFloat(this.#dlg.style.top) || 0;
+		const maxLeft = Math.max(0, window.innerWidth - this.#dlg.offsetWidth);
+		const maxTop = Math.max(0, window.innerHeight - this.#dlg.offsetHeight);
+		if (left > maxLeft) this.#dlg.style.left = Math.round(maxLeft) + 'px';
+		if (top > maxTop) this.#dlg.style.top = Math.round(maxTop) + 'px';
+	};
 }
 

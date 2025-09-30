@@ -61,6 +61,7 @@ export const xRemove = newConstantFunction("xRemove");
 
 //google material icons
 export const gi_system = newConstantFunction("gi_system");
+export const gi_toggleExpand = newConstantFunction("gi_toggleExpand");
 
 /**
  * INTERNAL
@@ -184,5 +185,6 @@ const iconClasses = Object.freeze({
 	xRemove: createClassDef(["bi-x-square", ""]),
 
 	//google material icons
-	gi_system: createClassDef(["gi-computer", ""], GI_TypeClasses)
+	gi_system: createClassDef(["gi-computer", ""], GI_TypeClasses),
+	gi_toggleExpand: createClassDef(["gi-expand-all", "gi-collapse-all"], GI_TypeClasses)
 });

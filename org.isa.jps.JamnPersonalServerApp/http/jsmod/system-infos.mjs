@@ -7,14 +7,6 @@ import * as webapi from '../jsmod/webapi.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 import { UIBuilder, onClicked, onKeyup } from '../jsmod/uibuilder.mjs';
 
-let boxWidth = "720px";
-
-let builder = new UIBuilder()
-	.setCompPropDefaults((props) => {
-		props.get("label").styleProps = { "min-width": "80px", "text-align": "right" };
-	});
-let app_scm_tab1 = "?tab=readme-ov-file#jamn---just-another-micro-node-server";
-
 /**
  * Concrete view class for the info component
  */
@@ -31,8 +23,16 @@ class SystemInfoView extends WorkView {
 		super.initialize();
 		this.setTitle("System Infos");
 
-		this.#initAppBox();
-		this.#initConfigBox();
+		let builder = new UIBuilder()
+			.setCompPropDefaults((props) => {
+				props.get("label").styleProps = { "min-width": "80px", "text-align": "right" };
+			});
+
+		this.boxWidth = "720px";
+		this.app_scm_tab1 = "?tab=readme-ov-file#jamn---just-another-micro-node-server";
+
+		this.#initAppBox(builder);
+		this.#initConfigBox(builder);
 
 		this.isInitialized = true;
 	}
@@ -47,7 +47,7 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
-	#initAppBox() {
+	#initAppBox(builder) {
 
 		let compSet;
 		let infoContainer = this.getElement("info-left-container");
@@ -55,7 +55,7 @@ class SystemInfoView extends WorkView {
 		builder.setElementCollection(this.appBoxElem);
 		builder.newUICompFor(infoContainer)
 			.addFieldset({ pos: 0, title: "Application" }, (fieldset) => {
-				fieldset.style({ width: boxWidth });
+				fieldset.style({ width: this.boxWidth });
 				compSet = fieldset.getDomElem();
 			});
 
@@ -71,10 +71,10 @@ class SystemInfoView extends WorkView {
 
 		builder.newUIComp()
 			.style({ "align-items": "baseline", "padding-right": "5px", "margin-top": "20px" })
-			.addLabel({ text: "Description:", name:"lbDescr"})
+			.addLabel({ text: "Description:", name: "lbDescr" })
 			.addColContainer((descrBox) => {
 				descrBox.style({ width: "100%" })
-					.addTextArea({ varid: "tfDescription", rows: 3, readOnly: true }, (comp)=>{
+					.addTextArea({ varid: "tfDescription", rows: 3, readOnly: true }, (comp) => {
 						comp.linkToLabel("lbDescr");
 					})
 					.addRowContainer((descr) => {
@@ -90,13 +90,13 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
-	#initConfigBox() {
+	#initConfigBox(builder) {
 
 		builder.setElementCollection(this.configBoxElem);
 
 		//get the html coded configSet element
 		let compSet = this.getElement("server-config-set");
-		UIBuilder.setStyleOf(compSet, { "padding-top": "10px", width: boxWidth });
+		UIBuilder.setStyleOf(compSet, { "padding-top": "10px", width: this.boxWidth });
 
 		builder.newUIComp()
 			.prependTo(compSet)
@@ -145,7 +145,7 @@ class SystemInfoView extends WorkView {
 			this.appBoxElem.tfName.value = data.name;
 			this.appBoxElem.tfVersion.value = `${data.version} - Build [${data.buildDate} UTC]`;
 			this.appBoxElem.tfDescription.value = data.description;
-			this.appBoxElem.lnkReadMore.href = data.links["app.scm"] + app_scm_tab1;
+			this.appBoxElem.lnkReadMore.href = data.links["app.scm"] + this.app_scm_tab1;
 
 			//create+build a table data object
 			let tableData = new TableData();

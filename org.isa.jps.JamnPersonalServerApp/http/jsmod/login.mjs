@@ -1,14 +1,14 @@
 /* Authored by iqbserve.de */
 
-import { ModalDialog, loadServerStyleSheet } from '../jsmod/view-classes.mjs';
+import { ViewDialog, loadServerStyleSheet } from '../jsmod/view-classes.mjs';
 import { onClicked, reworkHtmlElementIds } from '../jsmod/uibuilder.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 
 /**
- * An example LogIn module based on a html source file shown in a modal dialog.
+ * LogIn module based on a html source file shown in a modal dialog.
  */
-class LoginDialog extends ModalDialog {
+class LoginDialog extends ViewDialog {
 
 	constructor() {
 		super("/jsmod/html-components/login.html");
@@ -36,6 +36,8 @@ class LoginDialog extends ModalDialog {
 		this.setTitle("Jamn System LogIn")
 		this.setAction("pbLogin", () => dialogLoginAction(this))
 			.setAction("pbLoginSuccess", () => this.close());
+
+		this.dialog().style["margin-top"] = ViewDialog.default.styleProps["margin-top"];
 	}
 
 	getElement(id) {

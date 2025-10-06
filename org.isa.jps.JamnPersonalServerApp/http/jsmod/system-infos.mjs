@@ -1,7 +1,7 @@
 /* Authored by iqbserve.de */
 
 import { callWebService, typeUtil } from '../jsmod/tools.mjs';
-import { WorkView, WorkViewTable, TableData } from '../jsmod/view-classes.mjs';
+import { WorkView, WorkViewTableHandler, TableData } from '../jsmod/view-classes.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as webapi from '../jsmod/webapi.mjs';
 import * as Icons from '../jsmod/icons.mjs';
@@ -31,6 +31,7 @@ class SystemInfoView extends WorkView {
 		this.boxWidth = "720px";
 		this.app_scm_tab1 = "?tab=readme-ov-file#jamn---just-another-micro-node-server";
 
+		this.#initWorkarea(builder);
 		this.#initAppBox(builder);
 		this.#initConfigBox(builder);
 
@@ -47,14 +48,30 @@ class SystemInfoView extends WorkView {
 
 	/**
 	 */
+	#initWorkarea(builder) {
+
+		builder.setElementCollection(this);
+		builder.newUICompFor(this.viewWorkarea)
+			.style({ "display": "flex", "flex-direction": "row" })
+			.addColContainer({ varid: "leftContainer" })
+			.addColContainer({ varid: "rightContainer" }, (comp) => {
+				comp.style({ width: "100%", "justify-content": "center", "align-items": "center", "margin-left": "40px", "margin-right": "20px" })
+					.add("img", (image) => {
+						image.attrib({ src: "images/intro.png", alt: "App Info", title: "Jamn Workbench" })
+							.style({ width: "350px", border: "1px solid var(--border-gray)" });
+					});
+			});
+	}
+
+	/**
+	 */
 	#initAppBox(builder) {
 
 		let compSet;
-		let infoContainer = this.getElement("info-left-container");
-
 		builder.setElementCollection(this.appBoxElem);
-		builder.newUICompFor(infoContainer)
-			.addFieldset({ pos: 0, title: "Application" }, (fieldset) => {
+
+		builder.newUICompFor(this.leftContainer)
+			.addFieldset({ title: "Application" }, (fieldset) => {
 				fieldset.style({ width: this.boxWidth });
 				compSet = fieldset.getDomElem();
 			});
@@ -71,19 +88,14 @@ class SystemInfoView extends WorkView {
 
 		builder.newUIComp()
 			.style({ "align-items": "baseline", "padding-right": "5px", "margin-top": "20px" })
-			.addLabel({ text: "Description:", name: "lbDescr" })
-			.addColContainer((descrBox) => {
-				descrBox.style({ width: "100%" })
-					.addTextArea({ varid: "tfDescription", rows: 3, readOnly: true }, (comp) => {
-						comp.linkToLabel("lbDescr");
-					})
-					.addRowContainer((descr) => {
-						descr.style({ "flex-direction": "row-reverse" })
-							.addLink({ varid: "lnkReadMore", text: "Read more on GitHub ... " }, (link) => {
-								link.style({ "text-align": "right" })
-									.attrib({ title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" })
-							})
-					});
+			.addLabelTextArea({ text: "Description:", name: "lbDescr" }, { varid: "tfDescription", rows: 3, readOnly: true })
+			.appendTo(compSet);
+
+		builder.newUIComp()
+			.style({ "flex-direction": "row-reverse" })
+			.addLink({ varid: "lnkReadMore", text: "Read more on GitHub ... " }, (link) => {
+				link.style({ "text-align": "right" })
+					.attrib({ title: "Jamn Personal Server - All-In-One MicroService App", target: "_blank" })
 			})
 			.appendTo(compSet);
 	}
@@ -92,39 +104,43 @@ class SystemInfoView extends WorkView {
 	 */
 	#initConfigBox(builder) {
 
+		let fieldset;
 		builder.setElementCollection(this.configBoxElem);
 
-		//get the html coded configSet element
-		let compSet = this.getElement("server-config-set");
-		UIBuilder.setStyleOf(compSet, { "padding-top": "10px", width: this.boxWidth });
-
-		builder.newUIComp()
-			.prependTo(compSet)
-			.style({ "flex-direction": "row-reverse", "margin-bottom": "10px", "gap": "15px" })
-			.addActionIcon({ varid: "icoSave", iconName: Icons.save(), title: "Save current changes" }, (saveIcon) => {
-				onClicked(saveIcon, () => {
-					updateInfos(getUpdateRequest(), (response) => {
-						if (response?.status === "ok") {
-							clearConfigChanges()
-							console.log("App-Info update done");
-						}
-					});
-				});
-
-			})
-			.addActionIcon({ varid: "icoRedo", iconName: Icons.redo(), title: "Undo changes" }, (redoIcon) => {
-				onClicked(redoIcon, () => {
-					//open confirmation dialog
-					WbApp.confirm({
-						message: "<b>Undo all changes</b><br>Do you want to discard all changes?"
-					}, (value) => value ? clearConfigChanges(true) : null);
-				});
+		builder.newUICompFor(this.leftContainer)
+			.addFieldset({ title: "Configuration" }, (comp) => {
+				comp.style({ "padding-top": "10px", width: this.boxWidth });
+				fieldset = comp;
 			});
 
-		this.setActionsEnabled(false);
+		fieldset.addRowContainer((comp) => {
+			comp.style({ "flex-direction": "row-reverse", "margin-bottom": "10px", "gap": "15px" })
+				.addActionIcon({ varid: "icoSave", iconName: Icons.save(), title: "Save current changes" }, (saveIcon) => {
+					onClicked(saveIcon, () => {
+						updateInfos(getUpdateRequest(), (response) => {
+							if (response?.status === "ok") {
+								clearConfigChanges()
+								console.log("App-Info update done");
+							}
+						});
+					});
+				})
+				.addActionIcon({ varid: "icoRedo", iconName: Icons.redo(), title: "Undo changes" }, (redoIcon) => {
+					onClicked(redoIcon, () => {
+						//open confirmation dialog
+						WbApp.confirm({
+							message: "<b>Undo all changes</b><br>Do you want to discard all changes?"
+						}, (value) => value ? clearConfigChanges(true) : null);
+					});
+				});
+		});
 
-		//create a table
-		this.configTable = new WorkViewTable(this.getElement("server-config"));
+		fieldset.addFromHtml(this.reworkHtml(tableHtml), (elems) => {
+			let tableElem = elems[0].firstElementChild;
+			this.configTable = new WorkViewTableHandler(tableElem);
+		});
+
+		this.setActionsEnabled(false);
 	}
 
 	/**
@@ -224,7 +240,7 @@ class SystemInfoView extends WorkView {
 }
 
 //export this view component as singleton instance
-const viewInstance = new SystemInfoView("systemInfoView", "/jsmod/html-components/system-infos.html");
+const viewInstance = new SystemInfoView("systemInfoView", "/jsmod/html-components/work-view.html");
 export function getView() {
 	return viewInstance;
 }
@@ -289,3 +305,26 @@ function getUpdateRequest() {
 	});
 	return request;
 }
+
+
+let tableHtml = `
+<div class="wkv-fix-tblhead-container">
+	<table class="wkv" style="table-layout:fixed;">
+		<thead>
+			<tr>
+				<th class="wkv" style="width: 250px;">
+					<span style="display: flex; align-items: center;">
+						<span>Key:</span>
+						<input type="text" id="config.filter.tf" placeholder="Filter ..."
+							class="embedded-search-field" style="min-width: 60%;">
+						<span style="width: 100%;"></span>
+						<i class="wkv-tblheader-ctrl" title="Sort"></i>
+					</span>
+				</th>
+				<th class="wkv">Value:</th>
+			</tr>
+		</thead>
+		<tbody></tbody>
+	</table>
+</div>
+`

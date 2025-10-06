@@ -61,10 +61,6 @@ class DbConnectionsView extends WorkView {
 
 		//create and initalize a view builder
 		this.builder = new UIBuilder()
-			//example of using a local extended UIComp class
-			.setUICompFactory((builder, parentComp, domElem)=>{
-				return new LocalUIComp(builder, parentComp, domElem);
-			})
 			//the mirror collection variable
 			.setElementCollection(this.elem)
 			//define some style defaults
@@ -318,14 +314,4 @@ class DbConnectionsView extends WorkView {
 const viewInstance = new DbConnectionsView("dbConnectionsView", "/jsmod/html-components/work-view.html");
 export function getView() {
 	return viewInstance;
-}
-
-/**
- * Experimental local example UIComp class.
- */
-class LocalUIComp extends UIComp {
-	addFieldset(def, cb) {
-		console.log("Example: call local addFieldset");
-		return super.addFieldset(def, cb);
-	}
 }

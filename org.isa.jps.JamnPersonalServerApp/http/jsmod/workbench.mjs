@@ -98,7 +98,7 @@ function startApp() {
 		setVisibility(rootElement, true);
 
 		if (WbProperties.autoStartView) {
-			viewManager.onComponentOpenViewRequest(WbProperties.autoStartView);
+			getSidebar().clickItem(WbProperties.autoStartView);
 		}
 	});
 }
@@ -189,7 +189,7 @@ function initIntroBox() {
 		</span>
 		<!---->
 		<span>
-			<img src="images/intro.jpg" alt="Intro" style="width: 350px; height: 100%;">
+			<img src="images/intro.png" alt="Intro" style="width: 350px; height: 100%;">
 		</span>
 	`;
 }

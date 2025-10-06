@@ -1031,6 +1031,7 @@ public class JamnServer {
             public static final String IMAGE = "image/";
             public static final String IMAGE_PNG = "image/png";
             public static final String IMAGE_X_ICON = "image/x-icon";
+            public static final String IMAGE_SVG_XML = "image/svg+xml";
             public static final String ACCESS_CONTROL_ALLOW_ORIGIN_ALL = "*";
             public static final String ACCESS_CONTROL_ALLOW_METHODS_ALL = "GET, POST, PATCH, PUT, DELETE, OPTIONS";
             public static final String ACCESS_CONTROL_ALLOW_HEADERS_ALL = "Origin, Content-Type, X-Auth-Token";

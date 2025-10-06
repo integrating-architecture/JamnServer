@@ -10,15 +10,15 @@ export function newUIId(prefix = null) {
     return prefix ? prefix + "-" + id : id;
 }
 
-export function reworkHtmlElementIds(html, contextIdVal, ignoreList=[]) {
+export function reworkHtmlElementIds(html, contextIdVal, ignoreList = []) {
     html = html.replace(/id\s*=\s*"([^"]*)"/g, (expr, val) => {
-        if(!ignoreList.includes(val)){
+        if (!ignoreList.includes(val)) {
             return `id="${val + "-" + contextIdVal}"`
         }
         return `id="${val}"`
     });
-    html = html.replace(/for\s*=\s*"([^"]*)"/g, (expr, val) => {        
-        if(!ignoreList.includes(val)){
+    html = html.replace(/for\s*=\s*"([^"]*)"/g, (expr, val) => {
+        if (!ignoreList.includes(val)) {
             return `for="${val + "-" + contextIdVal}"`
         }
         return `for="${val}"`
@@ -32,7 +32,7 @@ export class ContextId {
     #uid = newUIId();
 
     get(prefix = null) {
-        return prefix ? prefix + "-" + this.#uid : this.#uid;		
+        return prefix ? prefix + "-" + this.#uid : this.#uid;
     }
 }
 
@@ -87,7 +87,7 @@ export class UIBuilder {
     //collection for any objects
     objectCollection = {};
     collectableAttributes = ["data-bind"];
-   
+
     #UICompFactory = {
         newComp: (builder, parentComp, domElem) => {
             return new UIComp(builder, parentComp, domElem);
@@ -267,6 +267,10 @@ export class UIBuilder {
         return this.#defaultCompProps;
     }
 
+    getUICompFactory() {
+        return this.#UICompFactory;
+    }
+
     setUICompFactory(factoryMethod) {
         this.#UICompFactory.newComp = factoryMethod;
         return this;
@@ -302,7 +306,7 @@ export class UIComp {
      * (def=dataobject, cb=callback function)
      * is retained
      */
-    static resolveArgs(argDef, argCb, resultCb) {
+    resolveArgs(argDef, argCb, resultCb) {
         if (typeUtil.isFunction(argDef)) {
             argCb = argDef;
             argDef = {};
@@ -315,11 +319,11 @@ export class UIComp {
         resultCb(argDef, argCb);
     }
 
-    #createDomElement(def) {
+    createDomElement(def) {
         this.domElem = document.createElement(def.elemType);
     }
 
-    #applyDefProperties(def) {
+    applyDefProperties(def) {
         if (def.clazzes) {
             this.class(def.clazzes);
         }
@@ -335,7 +339,7 @@ export class UIComp {
         UIBuilder.setAttributesOf(this.domElem, attributes);
     }
 
-    #applyDefaulClasses(def) {
+    applyDefaulClasses(def) {
         if (!def.nodefaults) {
             let defaultClasses = this.getDefaultCompProps().getClassesFor(def.typeId);
             if (defaultClasses) {
@@ -344,7 +348,7 @@ export class UIComp {
         }
     }
 
-    #applyDefaultStyle(def) {
+    applyDefaultStyle(def) {
         if (!def.nodefaults) {
             let defaultStyle = this.getDefaultCompProps().getStylesFor(def.typeId);
             if (defaultStyle) {
@@ -353,7 +357,7 @@ export class UIComp {
         }
     }
 
-    #addElementToTarget(targetElem, elem, def) {
+    addElementToTarget(targetElem, elem, def) {
         if (def.pos == "top" || def.pos == 0) {
             targetElem.prepend(elem);
         } else if (def.pos > 0) {
@@ -363,80 +367,85 @@ export class UIComp {
         }
     }
 
-    #registerElement(def, elem) {
+    registerElement(def, elem) {
         if (def.varid) {
             this.getBuilder().registerElement(def.varid, elem);
         }
     }
 
-    #registerObject(key, obj, context = null) {
+    registerObject(key, obj, context = null) {
         this.getBuilder().registerObject(key, obj, context);
     }
 
-    #collectAttributesFrom(domElem) {
+    collectAttributesFrom(domElem) {
         let names = this.getBuilder().collectableAttributes;
         let value = null;
         for (const name of names) {
             value = domElem.getAttribute(name);
             if (value && name === "data-bind") {
-                this.#registerObject(value, domElem, "bindings");
+                this.registerObject(value, domElem, "bindings");
             }
         }
     }
 
-    #setupIconFor(domElem, def) {
+    setupIconFor(domElem, def) {
         if (def.iconName) {
             return Icons.newIcon(def.iconName).apply(domElem);
         }
     }
 
-    #linkLabelToElement(label, elem) {
+    linkLabelToElement(label, elem) {
         label = label instanceof UIComp ? label.domElem : label;
         elem = elem instanceof UIComp ? elem.domElem : elem;
         UIBuilder.linkLabelToElement(label, elem);
     }
 
-    #isReadOnly(def) {
+    isReadOnly(def) {
         return def.hasOwnProperty('readOnly');
     }
 
-    #newDataList(domElem, data) {
+    newDataList(domElem, data) {
         let datalist = new DataList(domElem);
         datalist.setOptions(data);
-        this.#registerObject(datalist.listElem.id, datalist);
+        this.registerObject(datalist.listElem.id, datalist);
         return datalist;
     }
 
     /**
      * central method
      */
-    #addCompImpl(def) {
-        let comp = new UIComp(null, this, null)
+    addNewCompImpl(def) {
+        let comp = this.getBuilder().getUICompFactory().newComp(null, this, null)
             .initialize(def);
 
-        this.#registerElement(def, comp.domElem);
-        this.#addElementToTarget(this.domElem, comp.domElem, def);
+        this.addCompObjImpl(def, comp);
         return comp;
     }
 
-    #finishAdd(def, comp) {
+    addCompObjImpl(def, compObj) {
+        compObj.parent = this;
+        this.registerElement(def, compObj.domElem);
+        this.addElementToTarget(this.domElem, compObj.domElem, def);
+    }
+
+    finishAdd(def, comp) {
         return this;
     }
 
-    #addContainerImpl(typeId, def, cb) {
+    addContainerImpl(typeId, def, cb) {
         def.elemType = def.elemType || this.getDefaultCompProps().get(typeId)?.elemType || "span";
         def.typeId = typeId;
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     initialize(def) {
-        this.#createDomElement(def);
-        this.#applyDefaulClasses(def);
-        this.#applyDefaultStyle(def);
-        this.#applyDefProperties(def);
+        this.createDomElement(def);
+        this.applyDefaulClasses(def);
+        this.applyDefaultStyle(def);
+        this.applyDefProperties(def);
         return this;
     }
 
@@ -447,7 +456,7 @@ export class UIComp {
 
     attrib(attribProps) {
         UIBuilder.setAttributesOf(this.domElem, attribProps);
-        this.#collectAttributesFrom(this.domElem);
+        this.collectAttributesFrom(this.domElem);
         return this;
     }
 
@@ -468,7 +477,7 @@ export class UIComp {
 
     linkToLabel(labelName) {
         let labelElem = UIBuilder.queries.findLabelByName(this.getRootComp().domElem, labelName);
-        this.#linkLabelToElement(labelElem, this.domElem);
+        this.linkLabelToElement(labelElem, this.domElem);
         return this;
     }
 
@@ -504,11 +513,11 @@ export class UIComp {
     }
 
     add(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addFromHtml(html, cb = null) {
@@ -524,90 +533,90 @@ export class UIComp {
     }
 
     addContainer(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
-        return this.#addContainerImpl("container", def, cb);
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        return this.addContainerImpl("container", def, cb);
     }
 
     addColContainer(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
-        return this.#addContainerImpl("colContainer", def, cb);
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        return this.addContainerImpl("colContainer", def, cb);
     }
 
     addRowContainer(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
-        return this.#addContainerImpl("rowContainer", def, cb);
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        return this.addContainerImpl("rowContainer", def, cb);
     }
 
     addDiv(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "div";
         def.typeId = "div";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addSpan(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "span";
         def.typeId = "span";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addSeparator(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "hr";
         def.typeId = "hr";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addList(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = def.elemType || "ul";
         def.typeId = "list";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addLink(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "a";
         def.typeId = "link";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         if (def.text) { comp.html(def.text); }
 
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addActionIcon(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "i";
         def.typeId = "actionIcon";
 
-        let comp = this.#addCompImpl(def);
-        let iconElem = this.#setupIconFor(comp.domElem, def);
+        let comp = this.addNewCompImpl(def);
+        let iconElem = this.setupIconFor(comp.domElem, def);
 
         cb(comp, iconElem);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addFieldset(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "fieldset";
         def.typeId = def.title ? "titledFieldset" : "fieldset";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         if (def.title) {
             let legend = document.createElement("legend");
             legend.innerHTML = def.title;
@@ -615,50 +624,53 @@ export class UIComp {
         }
 
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addLabel(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
-        def.elemType = "label";
-        def.typeId = "label";
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        def.elemType = def.typeId === "simplelabel" ? this.getDefaultCompProps().get(def.typeId).elemType : "label";
+        def.typeId = def.typeId || "label";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         if (def.text) { comp.html(def.text); }
+        if (def.active === false) {
+            comp.style({ "pointer-events": "none" });
+        }
 
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addTextField(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "input";
         def.typeId = "textField";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         comp.domElem.type = "text";
         comp.domElem.id = UIBuilder.reworkId(def.id);
 
-        if (this.#isReadOnly(def)) {
+        if (this.isReadOnly(def)) {
             comp.domElem.classList.add(this.getDefaultCompProps().getClassesFor("inputReadOnly"));
             comp.domElem.disabled = true;
         }
 
         if (def.datalist) {
-            let datalist = this.#newDataList(comp.domElem, def.datalist);
+            let datalist = this.newDataList(comp.domElem, def.datalist);
             this.domElem.prepend(datalist.listElem);
         }
 
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addButton(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "button";
         def.typeId = "button";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         comp.domElem.type = "button";
         comp.domElem.id = UIBuilder.reworkId(def.id);
 
@@ -671,67 +683,72 @@ export class UIComp {
         }
 
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addTextArea(def, cb) {
-        UIComp.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
+        this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "textarea";
         def.typeId = "textArea";
 
-        let comp = this.#addCompImpl(def);
+        let comp = this.addNewCompImpl(def);
         comp.domElem.rows = def.rows;
         comp.domElem.id = UIBuilder.reworkId(def.id);
 
-        if (this.#isReadOnly(def)) {
+        if (this.isReadOnly(def)) {
             comp.domElem.classList.add(this.getDefaultCompProps().getClassesFor("textareaReadOnly"));
             comp.domElem.disabled = true;
         }
 
         cb(comp);
-        return this.#finishAdd(def, comp);
+        return this.finishAdd(def, comp);
     }
 
     addLabelTextField(labelDef, fieldDef, cb) {
-        UIComp.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
-        UIComp.resolveArgs(fieldDef, cb, (resDef, resCb) => { fieldDef = resDef; cb = resCb; });
+        this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
+        this.resolveArgs(fieldDef, cb, (resDef, resCb) => { fieldDef = resDef; cb = resCb; });
 
         let newComp = {};
         this.addLabel(labelDef, (comp) => { newComp.label = comp; });
         this.addTextField(fieldDef, (comp) => { newComp.textField = comp; });
 
-        this.#linkLabelToElement(newComp.label, newComp.textField);
+        this.linkLabelToElement(newComp.label, newComp.textField);
 
         cb(newComp.label, newComp.textField);
         return this;
     }
 
     addLabelTextArea(labelDef, areaDef, cb) {
-        UIComp.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
-        UIComp.resolveArgs(areaDef, cb, (resDef, resCb) => { areaDef = resDef; cb = resCb; });
+        this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
+        this.resolveArgs(areaDef, cb, (resDef, resCb) => { areaDef = resDef; cb = resCb; });
 
         let newComp = {};
         this.addLabel(labelDef, (comp) => { newComp.label = comp });
         this.addTextArea(areaDef, (comp) => { newComp.textArea = comp });
 
-        this.#linkLabelToElement(newComp.label, newComp.textArea);
+        this.linkLabelToElement(newComp.label, newComp.textArea);
 
         cb(newComp.label, newComp.textArea);
         return this;
     }
 
     addLabelButton(labelDef, buttonDef, cb) {
-        UIComp.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
-        UIComp.resolveArgs(buttonDef, cb, (resDef, resCb) => { buttonDef = resDef; cb = resCb; });
+        this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
+        this.resolveArgs(buttonDef, cb, (resDef, resCb) => { buttonDef = resDef; cb = resCb; });
 
         let newComp = {};
+        //by default deactivate label for buttons
+        if (!labelDef.hasOwnProperty("active")) {
+            labelDef.active = false;
+        }
         this.addLabel(labelDef, (comp) => { newComp.label = comp });
         this.addButton(buttonDef, (comp) => { newComp.button = comp });
+
+        this.linkLabelToElement(newComp.label, newComp.button);
 
         cb(newComp.label, newComp.button);
         return this;
     }
-
 }
 
 /**
@@ -846,6 +863,7 @@ export class DefaultCompProps {
     colContainer = { elemType: "span", clazzes: ["flex-colcomp"], attribProps: {}, styleProps: {} };
 
     label = { clazzes: [], attribProps: {}, styleProps: {} };
+    simplelabel = { elemType: "span", clazzes: ["simplelabel"], attribProps: {}, styleProps: {} };
     link = { clazzes: [], attribProps: {}, styleProps: {} };
     list = { elemType: "ul", clazzes: [], attribProps: {}, styleProps: {} };
     actionIcon = { clazzes: [], attribProps: {}, styleProps: {} };
@@ -859,6 +877,20 @@ export class DefaultCompProps {
 
     get(id) {
         return this[id];
+    }
+
+    apply(ids, srcProps, cb) {
+        let targetProps;
+        for (const id of ids) {
+            targetProps = this[id];
+            for (const key in srcProps) {
+                if (Object.hasOwn(srcProps, key)) {
+                    if (key !== "clazzes") {
+                        targetProps[key] = { ...srcProps[key], ...targetProps[key] };
+                    }
+                }
+            }
+        }
     }
 
     getClassesFor(id) {
@@ -888,6 +920,7 @@ export class DefaultViewCompProps extends DefaultCompProps {
     colContainer = { elemType: "span", clazzes: ["wkv-container", "col-container"], attribProps: {}, styleProps: {} };
 
     label = { clazzes: ["wkv-label-ctrl"], attribProps: {}, styleProps: {} };
+    simplelabel = { elemType: "span", clazzes: ["simplelabel"], attribProps: {}, styleProps: {} };
     link = { clazzes: ["wkv-link-ctrl"], attribProps: {}, styleProps: {} };
     list = { elemType: "ul", clazzes: ["wkv-list-ctrl"], attribProps: {}, styleProps: {} };
     actionIcon = { clazzes: ["wkv-action-icon"], attribProps: {}, styleProps: {} };

@@ -2,6 +2,7 @@
 package org.isa.ipc;
 
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.IMAGE;
+import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.IMAGE_SVG_XML;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.IMAGE_X_ICON;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.TEXT_CSS;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.TEXT_HTML;
@@ -299,8 +300,15 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         /**
          */
         public String getImageTypeFrom(String pPath) {
-            return pPath.endsWith("/favicon.ico") ? IMAGE_X_ICON
-                    : IMAGE + pPath.substring(pPath.lastIndexOf(".") + 1, pPath.length());
+            String lType = "";
+            if (pPath.endsWith("/favicon.ico")) {
+                lType = IMAGE_X_ICON;
+            }else if(pPath.endsWith(".svg")){
+                lType = IMAGE_SVG_XML;
+            }else{
+                lType = IMAGE + pPath.substring(pPath.lastIndexOf(".") + 1, pPath.length());
+            }
+            return lType;
         }
 
         /**
@@ -326,7 +334,8 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
         public boolean isImage(String pPath) {
             return pPath.endsWith(".png") || pPath.endsWith(".jpg")
                     || pPath.endsWith(".gif")
-                    || pPath.endsWith(".ico");
+                    || pPath.endsWith(".ico")
+                    || pPath.endsWith(".svg");
         }
     }
 

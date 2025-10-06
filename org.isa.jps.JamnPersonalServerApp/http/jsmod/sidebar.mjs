@@ -31,12 +31,12 @@ class Sidebar {
 			.addContainer({ varid: "body", clazzes: "sidebar-body" }, (body) => {
 				body.addContainer({ varid: "topicHead", clazzes: "sbar-topic-head" }, (topicHead) => {
 					topicHead.addActionIcon({ iconName: Icons.gi_toggleExpand() }, (expandToggle, expandIconElem) => {
-						expandToggle.title("Expand/Collapse Topics").class("sidebar-header-icon").style({ "font-size": "14px", "margin-left":"10px" });
+						expandToggle.title("Expand/Collapse Topics").class("sidebar-header-icon").style({ "font-size": "14px", "margin-left": "10px" });
 						onClicked(expandToggle, (evt) => {
 							this.#expandTopics(expandIconElem);
 						});
 					})
-						.addTextField({ clazzes: "embedded-search-tf" }, (searchField) => {
+						.addTextField({ clazzes: "embedded-search-field" }, (searchField) => {
 							searchField.style({ width: "50%", "max-width": "150px" }).attrib({ placeholder: "Filter ..." });
 							onKeyup(searchField, (evt) => {
 								this.#filterItems(evt.target.value);
@@ -271,6 +271,15 @@ class Sidebar {
 		}
 		return icon;
 	}
+
+	clickItem(itemText) {
+		let item = Array.from(this.sidebarElem.querySelectorAll('li'))
+			.find(li => li.textContent.trim() === itemText.trim());
+		if (item) {
+			item.click();
+		}
+	}
+
 }
 
 let sidebarComp = null;

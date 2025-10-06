@@ -799,7 +799,7 @@ export class StandardDialog {
 
 /**
  */
-export class WorkViewTable {
+export class WorkViewTableHandler {
 	tableElem;
 	tableBody;
 	tableData = null;

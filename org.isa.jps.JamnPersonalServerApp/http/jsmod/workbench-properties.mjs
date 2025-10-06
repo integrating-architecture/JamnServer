@@ -1,5 +1,5 @@
 
 export const WbProperties = {
 	showIntro: false,
-    autoStartView: ""
+    autoStartView: "Infos"
 };

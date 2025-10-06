@@ -7,7 +7,8 @@
     --link-light-blue: #4493f8;
     --progress-blue: #0054a8;
     --progress-green: #8A9A5B;
-
+    --placeholder-gray: #808080;
+    
     --site-bg: #1e1e1e;
     --border-gray: #6c6c6c;
     --work-view-header-bg: #292828;
@@ -509,19 +510,6 @@ tr.wkv:hover td {
     cursor: pointer;
 }
 
-.wkv-tblheader-search-tf {
-    margin-left: 10px;
-    margin-right: 0px;
-    background: var(--tbl-header-bg);
-    border: 1px solid var(--tbl-border);
-    color: var(--text-gray);
-    outline: none;
-    background-image: url('/images/search-16.png');
-    background-repeat: no-repeat;
-    background-position: left center;
-    padding-left: 20px;
-}
-
 .wkv-tblcell-edit-tf {
     background: var(--tbl-header-bg);
     border: 1px solid var(--tbl-border);
@@ -726,6 +714,16 @@ p.std-inputdlg-text {
     margin-right: 10px;
     color: var(--text-gray);
 }
+
+.simplelabel {
+    display: inline-block;
+    font-size: 1.0em;
+    font-weight: 300;
+    margin-right: 10px;
+    color: var(--text-gray);
+    cursor: default;
+}
+
 
 .wkv-link-ctrl {
     display: inline-block;
@@ -1006,17 +1004,22 @@ p.std-inputdlg-text {
 /**
  * Helper and others 
  */
-.embedded-search-tf {
+.embedded-search-field {
     margin-left: 10px;
     margin-right: 0px;
     background: var(--tbl-header-bg);
     border: 1px solid var(--border-gray);
     color: var(--text-gray);
     outline: none;
-    background-image: url('/images/search-16.png');
+    background-image: url('/images/search-bgi.svg');
+    background-size: 12px 12px;
     background-repeat: no-repeat;
-    background-position: left center;
+    background-position: 5px center;
     padding-left: 20px;
+}
+
+.embedded-search-field::placeholder {
+  color: var(--placeholder-gray);
 }
 
 hr.solid {
@@ -1055,6 +1058,7 @@ a:active {
 .gi-collapse-all::before {
     content: "collapse_all";
 }
+
 .gi-expand-all::before {
     content: "expand_all";
 }

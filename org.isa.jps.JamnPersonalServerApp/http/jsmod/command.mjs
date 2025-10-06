@@ -92,7 +92,7 @@ class CommandView extends WorkView {
 			.setObjectCollection(this.uiobj)
 			//set default styles
 			.setCompPropDefaults((props) => {
-				props.get("label").styleProps = { "width": "80px" };
+				props.apply(["label", "simplelabel"], {styleProps: { "width": "80px" }});
 			});
 
 		//create a fieldset as component container in the view workarea
@@ -151,7 +151,7 @@ class CommandView extends WorkView {
 		//attachment list
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
-			.addLabel({ text: "Attachments:" })
+			.addLabel({ text: "Attachments:", typeId: "simplelabel" })
 			.addColContainer((attachBox) => {
 				attachBox
 					.addRowContainer((iconBar) => {
@@ -173,7 +173,7 @@ class CommandView extends WorkView {
 			.addColContainer((iconBar) => {
 				iconBar.style({ "align-items": "center", "gap": "15px" });
 				iconBar
-					.addLabel({ text: "Output:", name:"lbOutput"})
+					.addLabel({ text: "Output:", name: "lbOutput" })
 					.addActionIcon({ varid: "icoOutputSave", iconName: Icons.save(), title: "Save current output to a file" }, (icon) => {
 						onClicked(icon, () => { this.saveOutput(); });
 					})
@@ -186,7 +186,7 @@ class CommandView extends WorkView {
 			})
 			.addTextArea({ varid: "taOutput" }, (taOutput) => {
 				taOutput.class("wkv-output-textarea-ctrl").style({ width: "626px", "min-width": "626px" }).attrib({ disabled: true })
-				.linkToLabel("lbOutput");
+					.linkToLabel("lbOutput");
 			})
 			.appendTo(compSet);
 
@@ -351,8 +351,9 @@ class CommandView extends WorkView {
 		item.innerHTML = html;
 
 		this.elem.lstAttachments.appendChild(item);
-		onClicked(item.firstChild, (evt) => {
-			let name = evt.target.parentElement.lastChild.textContent;
+		//TODO firstChild ?
+		onClicked(item.firstElementChild, (evt) => {
+			let name = evt.target.parentElement.lastElementChild.textContent;
 			this.removeAttachmentFromList(name, item);
 		});
 	}

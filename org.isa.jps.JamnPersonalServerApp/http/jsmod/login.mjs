@@ -75,8 +75,8 @@ let accessToken = null;
 //create a dialog instance based on a html source file
 let dialog = new LoginDialog();
 
-let sidebarLoginIcon = Icons.newIcon(Icons.login(), document.getElementById("sidebar.icon.login"));
-let sidebarLoginItem = document.getElementById("sidebar.item.login");
+let sidebarLoginIcon = Icons.newIcon(Icons.login(), document.getElementById("sidebar-icon-login"));
+let sidebarLoginItem = document.getElementById("sidebar-item-login");
 
 /**
  */

@@ -6,6 +6,7 @@ import { WorkView } from '../jsmod/view-classes.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 import { UIBuilder, onClicked, onInput, onKeydown } from '../jsmod/uibuilder.mjs';
+import { html as WorkViewHtml } from '/jsmod/html-components/work-view.html.mjs';
 
 /**
  * A general View class for commands.
@@ -40,8 +41,9 @@ class CommandView extends WorkView {
 	elem = {};
 	uiobj = {};
 
-	constructor(id, file) {
-		super(id, file);
+	constructor(id) {
+		super(id, null);
+		this.viewSource.setHtml(WorkViewHtml);
 	}
 
 	onInstallation(installKey, installData, viewManager) {
@@ -92,7 +94,7 @@ class CommandView extends WorkView {
 			.setObjectCollection(this.uiobj)
 			//set default styles
 			.setCompPropDefaults((props) => {
-				props.apply(["label", "simplelabel"], {styleProps: { "width": "80px" }});
+				props.apply(["label", "simplelabel"], { styleProps: { "width": "80px" } });
 			});
 
 		//create a fieldset as component container in the view workarea
@@ -382,6 +384,6 @@ class Attachment {
 //export this view component as individual instances
 //the view will get specified by a CommandDef data object
 export function getView(id = "") {
-	return new CommandView(id, "/jsmod/html-components/work-view.html");
+	return new CommandView(id);
 }
 

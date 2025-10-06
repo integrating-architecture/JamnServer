@@ -24,7 +24,7 @@ export const topicList = {
 			{ title: "Infos", view: new LazyFunction('../jsmod/system-infos.mjs', "getView") },
 
 			//create a functional item with id and an action
-			{ title: "Login", id: "sidebar.item.login", action: new LazyFunction('../jsmod/login.mjs', "processSystemLogin").asAction() }
+			{ title: "Login", id: "sidebar-item-login", action: new LazyFunction('../jsmod/login.mjs', "processSystemLogin").asAction() }
 		]
 	},
 
@@ -60,6 +60,6 @@ export const topicList = {
 
 export const workpanelItems = {
 
-	loginIcon : { title: "Login", id: "sidebar.icon.login", iconName: Icons.login(), action: new LazyFunction('../jsmod/login.mjs', "processSystemLogin").asAction() } 
+	loginIcon : { title: "Login", id: "sidebar-icon-login", iconName: Icons.login(), action: new LazyFunction('../jsmod/login.mjs', "processSystemLogin").asAction() } 
 
 }

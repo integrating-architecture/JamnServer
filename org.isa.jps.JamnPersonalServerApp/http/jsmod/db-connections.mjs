@@ -6,6 +6,7 @@ import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as webapi from '../jsmod/webapi.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 import { UIBuilder, UIComp, onClicked, onInput } from '../jsmod/uibuilder.mjs';
+import { html as WorkViewHtml } from '/jsmod/html-components/work-view.html.mjs';
 
 /**
  * A Database connection WorkView created in javascript using a builder.
@@ -22,6 +23,11 @@ class DbConnectionsView extends WorkView {
 	//object that encapsulates the connection ui datalist
 	//and the connections data for adding/removing items at once
 	conList;
+
+	constructor(id) {
+		super(id, null);
+		this.viewSource.setHtml(WorkViewHtml);
+	}
 
 	initialize() {
 		super.initialize();
@@ -311,7 +317,7 @@ class DbConnectionsView extends WorkView {
 }
 
 //export this view component as singleton instance
-const viewInstance = new DbConnectionsView("dbConnectionsView", "/jsmod/html-components/work-view.html");
+const viewInstance = new DbConnectionsView("dbConnectionsView");
 export function getView() {
 	return viewInstance;
 }

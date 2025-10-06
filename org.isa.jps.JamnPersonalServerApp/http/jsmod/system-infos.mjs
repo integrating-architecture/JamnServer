@@ -6,6 +6,7 @@ import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as webapi from '../jsmod/webapi.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 import { UIBuilder, onClicked, onKeyup } from '../jsmod/uibuilder.mjs';
+import { html as WorkViewHtml } from '/jsmod/html-components/work-view.html.mjs';
 
 /**
  * Concrete view class for the info component
@@ -18,6 +19,11 @@ class SystemInfoView extends WorkView {
 	configTable;
 
 	needsViewDataRefresh = true;
+
+	constructor(id) {
+		super(id, null);
+		this.viewSource.setHtml(WorkViewHtml);
+	}
 
 	initialize() {
 		super.initialize();
@@ -240,7 +246,7 @@ class SystemInfoView extends WorkView {
 }
 
 //export this view component as singleton instance
-const viewInstance = new SystemInfoView("systemInfoView", "/jsmod/html-components/work-view.html");
+const viewInstance = new SystemInfoView("systemInfoView");
 export function getView() {
 	return viewInstance;
 }

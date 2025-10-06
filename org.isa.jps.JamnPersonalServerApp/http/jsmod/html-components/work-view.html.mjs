@@ -1,4 +1,4 @@
-
+export const html = `
 <div class="work-view" style="visibility: hidden;">
 
 	<div id="work-view-header" class="work-view-header-container">
@@ -34,3 +34,4 @@
 	</div>
 
 </div>
+`;

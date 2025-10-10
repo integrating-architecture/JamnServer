@@ -5,7 +5,7 @@ import { WorkView, WorkViewTableHandler, TableData } from '../jsmod/view-classes
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as webapi from '../jsmod/webapi.mjs';
 import * as Icons from '../jsmod/icons.mjs';
-import { UIBuilder, onClicked, onKeyup } from '../jsmod/uibuilder.mjs';
+import { UIBuilder, onClicked, onKeyup, KEY } from '../jsmod/uibuilder.mjs';
 import { html as WorkViewHtml } from '/jsmod/html-components/work-view.html.mjs';
 
 /**
@@ -215,9 +215,9 @@ class SystemInfoView extends WorkView {
 					};
 
 					cellInput.onkeydown = (evt) => {
-						if (evt.keyCode == 13) {
+						if (KEY.isEnter(evt)) {
 							cellInput.blur();
-						} else if (evt.keyCode == 27) {
+						} else if (KEY.isEscape(evt)) {
 							cellInput.blur();
 							cellElem.innerHTML = orgCellValue;
 							ckeckConfigChange(colKey, dataValue, cellElem);

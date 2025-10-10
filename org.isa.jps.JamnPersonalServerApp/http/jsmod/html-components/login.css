@@ -1,11 +1,11 @@
 /**
- * the css for the login.html component
+ * the css for the login.mjs component
  */
 :root {
     --login-site-bg: #c3c3c3;
     --login-input-fg: #1f1f1f;
     --login-input-bg: #f8f8f8;
-    --login-input-focus: #0054a8;
+    --login-input-focus: #4493f8;
     --login-label-fg: #1f1f1f;
     --login-label-bg: #f8f8f8d8;
 
@@ -45,6 +45,7 @@
     flex: 1;
     padding: 15px;
     border: 0;
+    border-bottom: 2px solid var(--login-input-bg);
     color: var(--login-input-fg);
     font-size: 1em;
     height: 10px;
@@ -52,7 +53,7 @@
 
 .login-input:focus {
     outline: none;
-    border-left: 2px solid var(--login-input-focus);
+    border-bottom: 2px solid var(--login-input-focus);
 }
 
 .login-view-button-row {

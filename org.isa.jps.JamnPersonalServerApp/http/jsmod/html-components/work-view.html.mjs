@@ -1,3 +1,6 @@
+/**
+ * Html layout source for a standard work view.
+ */
 export const html = `
 <div class="work-view" style="visibility: hidden;">
 

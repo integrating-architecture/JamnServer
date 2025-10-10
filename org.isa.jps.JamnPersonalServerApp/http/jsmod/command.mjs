@@ -5,7 +5,7 @@ import { WsoCommonMessage, CommandDef } from '../jsmod/data-classes.mjs';
 import { WorkView } from '../jsmod/view-classes.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as Icons from '../jsmod/icons.mjs';
-import { UIBuilder, onClicked, onInput, onKeydown } from '../jsmod/uibuilder.mjs';
+import { UIBuilder, onClicked, onInput, onKeydown, KEY} from '../jsmod/uibuilder.mjs';
 import { html as WorkViewHtml } from '/jsmod/html-components/work-view.html.mjs';
 
 /**
@@ -94,7 +94,7 @@ class CommandView extends WorkView {
 			.setObjectCollection(this.uiobj)
 			//set default styles
 			.setCompPropDefaults((props) => {
-				props.apply(["label", "simplelabel"], { styleProps: { "width": "80px" } });
+				props.apply(["label"], { styleProps: { "width": "80px" } });
 			});
 
 		//create a fieldset as component container in the view workarea
@@ -125,7 +125,7 @@ class CommandView extends WorkView {
 					.attrib({ placeholder: taPlaceholder, disabled: !this.commandDef.options.args });
 				onKeydown(textarea, (evt) => {
 					if (this.commandDef.options.args) {
-						if (evt.keyCode == 13 && evt.currentTarget.value.trim() === "-h") {
+						if (KEY.isEnter(evt) && evt.currentTarget.value.trim() === "-h") {
 							this.runCommand();
 						}
 					}
@@ -153,7 +153,7 @@ class CommandView extends WorkView {
 		//attachment list
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
-			.addLabel({ text: "Attachments:", typeId: "simplelabel" })
+			.addLabel({ text: "Attachments:", elemType: "label-text" })
 			.addColContainer((attachBox) => {
 				attachBox
 					.addRowContainer((iconBar) => {

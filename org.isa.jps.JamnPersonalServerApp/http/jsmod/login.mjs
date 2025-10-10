@@ -1,17 +1,18 @@
 /* Authored by iqbserve.de */
 
 import { ViewDialog, loadServerStyleSheet } from '../jsmod/view-classes.mjs';
-import { onClicked, reworkHtmlElementIds } from '../jsmod/uibuilder.mjs';
+import { onClicked, onKeydown, reworkHtmlElementIds, KEY} from '../jsmod/uibuilder.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 
 /**
- * LogIn module based on a html source file shown in a modal dialog.
+ * LogIn module based on a internal html source shown in a modal dialog.
  */
 class LoginDialog extends ViewDialog {
 
-	constructor() {
-		super("/jsmod/html-components/login.html");
+	constructor(html) {
+		super("");
+		this.viewSource.setHtml(html);
 	}
 
 	reworkHtml(html) {
@@ -27,11 +28,18 @@ class LoginDialog extends ViewDialog {
 	initialize() {
 		super.initialize();
 
-		this.elementsToProperties(["username", "password", "message", "successMessage"]);
+		this.elementsToProperties(["username", "password", "message", "successMessage", "pbLoginSuccess"]);
 
 		onClicked(Icons.user(this.getElement("lbUsername")).elem, () => { this.username.value = ""; });
 		Icons.password(this.getElement("lbPassword"));
 		Icons.loginAction(this.getElement("login-action-icon"));
+
+		onKeydown(this.password, (evt) => {
+			if (KEY.isEnter(evt) && this.username.value.length > 0 && this.password.value.length > 0) {
+				evt.preventDefault();
+				dialogLoginAction(this);
+			}
+		});
 
 		this.setTitle("Jamn System LogIn")
 		this.setAction("pbLogin", () => dialogLoginAction(this))
@@ -44,7 +52,7 @@ class LoginDialog extends ViewDialog {
 		//overwritten - to switch to local context ids
 		return super.getElement(this.uid.get(id));
 	}
-	
+
 	showMessage(msgText, showFlag) {
 		this.message.innerHTML = showFlag ? msgText : "";
 		this.setDisplay(this.message, showFlag);
@@ -52,6 +60,7 @@ class LoginDialog extends ViewDialog {
 
 	showSuccessMessage() {
 		this.setDisplay(this.successMessage, "inline-block");
+		this.pbLoginSuccess.focus();
 	}
 
 	reset() {
@@ -64,7 +73,6 @@ class LoginDialog extends ViewDialog {
 	beforeOpen() {
 		this.reset();
 	}
-
 }
 
 /**
@@ -72,11 +80,11 @@ class LoginDialog extends ViewDialog {
 let tries = 0;
 let accessToken = null;
 
-//create a dialog instance based on a html source file
-let dialog = new LoginDialog();
-
 let sidebarLoginIcon = Icons.newIcon(Icons.login(), document.getElementById("sidebar-icon-login"));
 let sidebarLoginItem = document.getElementById("sidebar-item-login");
+
+//create the dialog instance
+let dialog = new LoginDialog(loginViewHtml());
 
 /**
  */
@@ -154,3 +162,34 @@ function toggleStatus() {
 		}
 	});
 }
+
+function loginViewHtml(){ return `
+<div class="login-view">
+    <div class="login-view-row">
+        <label id="lbUsername" class="login-label" for="username"></label>
+        <input id="username" class="login-input" placeholder="Username" type="text">
+    </div>
+    <div class="login-view-row">
+        <label id="lbPassword" class="login-label" for="password"></label>
+        <input id="password" class="login-input" placeholder="Password" type="password" onfocus="this.value=''">
+    </div>
+    <hr class="solid">
+    <div class="login-view-button-row">
+        <button id="pbLogin" class="login-button" style="width: 100%">
+            <i id="login-action-icon"></i>
+            <span style="margin-left: 10px;">Login</span>
+        </button>
+    </div>
+    <div id="message" class="login-view-message-row"></div>
+    <div id="successMessage" class="view-dialog-view-area-overlay">
+        <h2>Welcome</h2>
+        <img src="images/handshake.png" alt="Login success" style="width: 120px; height: 120px;">
+        <p style="margin-top: 0px;">you got successfully logged in</p>
+        <button id="pbLoginSuccess" class='login-button'
+            style="display: inline; font-size: 18px; width: 250px; margin-top: 5px;">
+            have a nice day ...
+        </button>
+    </div>
+</div>
+`}
+

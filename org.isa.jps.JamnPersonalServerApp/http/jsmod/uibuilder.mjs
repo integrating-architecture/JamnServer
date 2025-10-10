@@ -629,7 +629,7 @@ export class UIComp {
 
     addLabel(def, cb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
-        def.elemType = def.typeId === "simplelabel" ? this.getDefaultCompProps().get(def.typeId).elemType : "label";
+        def.elemType = def.elemType || "label";
         def.typeId = def.typeId || "label";
 
         let comp = this.addNewCompImpl(def);
@@ -863,7 +863,7 @@ export class DefaultCompProps {
     colContainer = { elemType: "span", clazzes: ["flex-colcomp"], attribProps: {}, styleProps: {} };
 
     label = { clazzes: [], attribProps: {}, styleProps: {} };
-    simplelabel = { elemType: "span", clazzes: ["simplelabel"], attribProps: {}, styleProps: {} };
+    labelText = { elemType: "label-text", clazzes: [], attribProps: {}, styleProps: {} };
     link = { clazzes: [], attribProps: {}, styleProps: {} };
     list = { elemType: "ul", clazzes: [], attribProps: {}, styleProps: {} };
     actionIcon = { clazzes: [], attribProps: {}, styleProps: {} };
@@ -920,7 +920,7 @@ export class DefaultViewCompProps extends DefaultCompProps {
     colContainer = { elemType: "span", clazzes: ["wkv-container", "col-container"], attribProps: {}, styleProps: {} };
 
     label = { clazzes: ["wkv-label-ctrl"], attribProps: {}, styleProps: {} };
-    simplelabel = { elemType: "span", clazzes: ["simplelabel"], attribProps: {}, styleProps: {} };
+    labelText = { elemType: "label-text", clazzes: [], attribProps: {}, styleProps: {} };
     link = { clazzes: ["wkv-link-ctrl"], attribProps: {}, styleProps: {} };
     list = { elemType: "ul", clazzes: ["wkv-list-ctrl"], attribProps: {}, styleProps: {} };
     actionIcon = { clazzes: ["wkv-action-icon"], attribProps: {}, styleProps: {} };
@@ -932,3 +932,10 @@ export class DefaultViewCompProps extends DefaultCompProps {
     inputReadOnly = { clazzes: ["input-readonly"], attribProps: {}, styleProps: {} };
     textareaReadOnly = { clazzes: ["textarea-readonly"], attribProps: {}, styleProps: {} };
 }
+
+/**
+ */
+export const KEY = Object.freeze({
+    enter: 13, isEnter: (evt) => evt.keyCode == KEY.enter,
+    escape: 27, isEscape: (evt) => evt.keyCode == KEY.escape
+});

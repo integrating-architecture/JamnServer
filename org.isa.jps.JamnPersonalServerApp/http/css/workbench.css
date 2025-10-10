@@ -1,14 +1,17 @@
 /**
- *
+ * menu hovver blue #0054a8
  */
 :root {
     --isa-title-blue: #1E90FF;
     --isa-title-grayblue: #779ab7;
-    --link-light-blue: #4493f8;
     --progress-blue: #0054a8;
     --progress-green: #8A9A5B;
     --placeholder-gray: #808080;
-    
+    --accent-dark-blue: #0054a8; 
+    --accent-light-blue: #1f6feb; 
+    --accent-blue: var(--accent-light-blue);
+    --link-light-blue: #4493f8;
+
     --site-bg: #1e1e1e;
     --border-gray: #6c6c6c;
     --work-view-header-bg: #292828;
@@ -20,6 +23,8 @@
     --sidebar-bg: #292828;
     --sidebar-hover-bg: #373737;
     --menu-hover-bg: #373737;
+    --menu-hover-bg-blue: var(--accent-blue); 
+
     --workarea-bg: #1e1e1e;
     --statusline-bg: #292828;
     --text-gray: #c3c3c3;
@@ -231,7 +236,8 @@ div#app-sidebar .sbar-item {
 div#app-sidebar .sbar-item-list .sbar-item:hover {
     color: var(--text-light-gray);
     cursor: pointer;
-    background-color: var(--sidebar-hover-bg);
+    background-color: var(--menu-hover-bg-blue);
+    border-radius: 0px;
 }
 
 div#app-sidebar .sbar-topic-header:hover {
@@ -350,6 +356,7 @@ div#app-workarea .work-view {
 
 .work-view-header .header-right {
     flex-direction: row-reverse;
+    width: 150px;
 }
 
 .wkv-header-title {
@@ -438,7 +445,7 @@ i.wkv-action-icon:hover {
 
 .wkv-header-menu a:hover {
     color: var(--text-light-gray);
-    background-color: var(--menu-hover-bg);
+    background-color: var(--menu-hover-bg-blue);
 }
 
 .menu-separator-top {
@@ -703,6 +710,10 @@ p.std-inputdlg-text {
     margin-bottom: 5px;
 }
 
+label-text {
+    cursor: default;
+}
+
 
 /**
  * Work View controls
@@ -714,16 +725,6 @@ p.std-inputdlg-text {
     margin-right: 10px;
     color: var(--text-gray);
 }
-
-.simplelabel {
-    display: inline-block;
-    font-size: 1.0em;
-    font-weight: 300;
-    margin-right: 10px;
-    color: var(--text-gray);
-    cursor: default;
-}
-
 
 .wkv-link-ctrl {
     display: inline-block;

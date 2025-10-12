@@ -6,7 +6,7 @@ import { WorkView } from '../jsmod/view-classes.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 import { UIBuilder, onClicked, onInput, onKeydown, KEY} from '../jsmod/uibuilder.mjs';
-import { html as WorkViewHtml } from '/jsmod/html-components/work-view.html.mjs';
+import { html as WorkViewHtml } from '../jsmod/html-components/work-view.html.mjs';
 
 /**
  * A general View class for commands.

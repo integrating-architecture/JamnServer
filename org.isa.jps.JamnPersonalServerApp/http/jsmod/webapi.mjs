@@ -1,13 +1,11 @@
-/* jamn.web.template */
+import { WbProperties } from '../jsmod/workbench-properties.mjs';
 
 /**
  * The module provides web service url name constants
- * like: [root]/[endpoint] e.g. [webapi]/[system/get-infos]
- * where the root part template value gets injected by the server.
+ * like: [root]/[endpoint] e.g. "webapi/system/get-infos"
  */
 
-//root part template
-export const urlRoot = "${webservice.url.root}";
+const urlRoot = WbProperties.getOrDefault("webServiceUrlRoot", "/webapi");
 
 function get(endpoint) {
     return urlRoot + endpoint;

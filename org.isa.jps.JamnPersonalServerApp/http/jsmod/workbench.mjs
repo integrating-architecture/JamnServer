@@ -1,6 +1,6 @@
 /* Authored by iqbserve.de */
 
-import { ServerOrigin, setDisplay, setVisibility } from '../jsmod/tools.mjs';
+import { BackendServerUrl, setDisplay, setVisibility } from '../jsmod/tools.mjs';
 import { WorkbenchViewManager } from '../jsmod/view-manager.mjs';
 import { SplitBarHandler } from '../jsmod/view-classes.mjs';
 import * as websocket from '../jsmod/websocket.mjs';
@@ -107,7 +107,7 @@ function startApp() {
  */
 function initWebSocket() {
 	let wsodata = {};
-	wsodata.hostUrl = ServerOrigin("wsoapi");
+	wsodata.hostUrl = BackendServerUrl(WbProperties.getOrDefault("webSocketUrlRoot", "wsoapi"));
 
 	websocket.initialize(wsodata);
 	websocket.connect();
@@ -189,7 +189,7 @@ function initIntroBox() {
 		</span>
 		<!---->
 		<span>
-			<img src="images/intro.png" alt="Intro" style="width: 350px; height: 100%;">
+			<img src="images/intro.png" alt="Intro" style="width: 100%; height: 100%;">
 		</span>
 	`;
 }

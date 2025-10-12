@@ -1,5 +1,7 @@
 /* Authored by iqbserve.de */
 
+import { WbProperties } from '../jsmod/workbench-properties.mjs';
+
 /**
  * Some simple helper constants and functions
  */
@@ -47,8 +49,9 @@ export class LazyFunction {
 
 /**
  */
-export function ServerOrigin(...path) {
-	let url = window.location.origin;
+export function BackendServerUrl(...path) {
+	let url = WbProperties.getOrDefault("webBackendServerUrl", window.location.origin);
+
 	let urlPath = path.join("/");
 	if (urlPath.startsWith("/")) {
 		url = url + urlPath;
@@ -84,7 +87,7 @@ export function setDisplay(elem, flag) {
 /**
  */
 export async function fetchPlainText(path) {
-	const url = ServerOrigin(path);
+	const url = BackendServerUrl(path);
 	let data = "";
 
 	const response = await fetch(url, {
@@ -102,7 +105,7 @@ export async function fetchPlainText(path) {
 /**
  */
 export async function callWebService(path, requestData = "{}") {
-	const url = ServerOrigin(path);
+	const url = BackendServerUrl(path);
 	let data = "";
 
 	const response = await fetch(url, {

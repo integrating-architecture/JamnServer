@@ -597,8 +597,15 @@ public class JamnPersonalServerApp {
     /**
      */
     protected void initContentProvider() throws IOException {
-        // ensure the web file root folder
-        String lRootPath = Tool.ensureSubDir(config.getWebFileRoot(), AppHome).toString();
+        String lRootPath;
+
+        if (config.getWebFileRoot().startsWith("/")) {
+            // assume that a configured absolute path exists.
+            lRootPath = config.getWebFileRoot();
+        } else {
+            // ensure a relative web file root folder
+            lRootPath = Tool.ensureSubDir(config.getWebFileRoot(), AppHome).toString();
+        }
 
         // create the provider with a webroot
         JamnWebContentProvider lWebContentProvider = new JamnWebContentProvider(lRootPath)

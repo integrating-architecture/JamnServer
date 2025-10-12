@@ -1,12 +1,12 @@
 /* Authored by iqbserve.de */
 
 import { ViewDialog, loadServerStyleSheet } from '../jsmod/view-classes.mjs';
-import { onClicked, onKeydown, reworkHtmlElementIds, KEY} from '../jsmod/uibuilder.mjs';
+import { onClicked, onKeydown, reworkHtmlElementIds, KEY } from '../jsmod/uibuilder.mjs';
 import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 
 /**
- * LogIn module based on a internal html source shown in a modal dialog.
+ * Demo LogIn module based on a internal html source shown in a modal dialog.
  */
 class LoginDialog extends ViewDialog {
 
@@ -28,7 +28,7 @@ class LoginDialog extends ViewDialog {
 	initialize() {
 		super.initialize();
 
-		this.elementsToProperties(["username", "password", "message", "successMessage", "pbLoginSuccess"]);
+		this.elementsToProperties(["pbLogin", "username", "password", "message", "successMessage", "pbLoginSuccess"]);
 
 		onClicked(Icons.user(this.getElement("lbUsername")).elem, () => { this.username.value = ""; });
 		Icons.password(this.getElement("lbPassword"));
@@ -53,12 +53,19 @@ class LoginDialog extends ViewDialog {
 		return super.getElement(this.uid.get(id));
 	}
 
+	showRunning(flag) {
+		super.showRunning(flag);
+		this.setDisabled(flag, flag ? "wait" : "default");
+	}
+
 	showMessage(msgText, showFlag) {
+		this.showRunning(false);
 		this.message.innerHTML = showFlag ? msgText : "";
 		this.setDisplay(this.message, showFlag);
 	}
 
 	showSuccessMessage() {
+		this.showRunning(false);
 		this.setDisplay(this.successMessage, "inline-block");
 		this.pbLoginSuccess.focus();
 	}
@@ -113,27 +120,26 @@ export function processSystemLogin() {
  */
 function dialogLoginAction(dialog) {
 
-	if (doLogin()) {
-		dialog.close();
-	} else {
+	dialog.showRunning(true);
+	//simulate a time consuming login
+	simulateLoginTime(tries == 0 ? 1500 : 500).then(() => {
+		tries++;
+
 		if (tries < 2) {
-			let text = `We are sorry, unfortunately this login [${tries}] failed for demo reason.<br><b>Please click again ...`;
+			let text = `We are sorry, unfortunately the first login attempt failed for demo reason.<br><b>Please click again ...`;
 			dialog.showMessage(text, true);
 		}
 		if (tries > 1) {
 			dialog.showSuccessMessage();
 			toggleStatus();
 		}
-	}
+	});
 }
 
-/**
- */
-function doLogin() {
-	console.log(`LogIn Action for - ${dialog.username.value}`);
-	tries++;
-	//demo always false
-	return false;
+function simulateLoginTime(ms) {
+	return new Promise(resolve => {
+		setTimeout(() => resolve(), ms);
+	});
 }
 
 /**
@@ -163,7 +169,8 @@ function toggleStatus() {
 	});
 }
 
-function loginViewHtml(){ return `
+function loginViewHtml() {
+	return `
 <div class="login-view">
     <div class="login-view-row">
         <label id="lbUsername" class="login-label" for="username"></label>

@@ -592,18 +592,39 @@ export class ViewDialog extends AbstractView {
 		builder.newUICompFor(this.dialog())
 			.addDiv({ varid: "content", clazzes: "view-dialog-cartridge" }, (content) => {
 				content
-					.addDiv({ varid: "header", clazzes: "view-dialog-header" }, (header) => {
-						header
-							.addSpan({ varid: "logoIcon", clazzes: ["dlg-header-item", "dlg-logo-icon"] })
-							.addSpan({ varid: "title", clazzes: ["dlg-header-item", "dlg-title"] })
-							.addActionIcon({ varid: "closeIcon", iconName: Icons.close(), title: "Close" }, (closeIcon) => {
-								closeIcon.class(["dlg-header-item", "dlg-close-icon"]);
-								onClicked(closeIcon.domElem, () => { this.close(); });
-							})
+					.addDiv({ clazzes: "view-dialog-head-area" }, (headarea) => {
+						headarea.addDiv({ varid: "header", clazzes: "view-dialog-header" }, (header) => {
+							header
+								.addSpan({ varid: "logoIcon", clazzes: ["dlg-header-item", "dlg-logo-icon"] })
+								.addSpan({ varid: "title", clazzes: ["dlg-header-item", "dlg-title"] })
+								.addActionIcon({ varid: "closeIcon", iconName: Icons.close(), title: "Close" }, (closeIcon) => {
+									closeIcon.class(["dlg-header-item", "dlg-close-icon"]);
+									onClicked(closeIcon.domElem, () => { this.close(); });
+								})
+						})
+						headarea.addDiv({ varid: "progressBar", clazzes: "vdlg-header-progressbar" }, (progressbar) => {
+							progressbar.addDiv({ clazzes: "header-progress-value" })
+						});
 					})
 					.addDiv({ varid: "viewArea", clazzes: "view-dialog-view-area" })
 					.addDiv({ varid: "commandArea" })
+					.addDiv({ varid: "disableOverlay", clazzes: "view-dialog-disable-overlay" });
 			});
+	}
+
+	showRunning(flag = null) {
+		let classList = this.progressBar.firstElementChild.classList;
+		let clazz = "progress-showWorking";
+		if (flag && !classList.contains(clazz)) {
+			classList.add(clazz);
+		} else if (!flag) {
+			classList.remove(clazz);
+		}
+	}
+
+	setDisabled(flag, cursor = null) {
+		this.setDisplay(this.disableOverlay, flag);
+		if (cursor) { this.disableOverlay.style.cursor = cursor; }
 	}
 
 	dialog() {
@@ -705,21 +726,21 @@ export class StandardDialog {
 		return StandardDialog.#dialogElem;
 	}
 
-	#open(){
+	#open() {
 		this.#dialog().showModal();
 		this.#dragHandler.setStartPosition(0, this.#dialog().style["margin-top"])
 			.startWorking();
 	}
 
-	#close(){
+	#close() {
 		this.#dragHandler.stop();
 		this.#dialog().close();
 	}
 
-	initialize(){
+	initialize() {
 		this.#dragHandler = new DialogDragHandler(this.#dialog(), this.header);
-		this.#dragHandler.setTriggerFilter((evt)=>{
-			if(evt.target === this.closeIcon){return true;}
+		this.#dragHandler.setTriggerFilter((evt) => {
+			if (evt.target === this.closeIcon) { return true; }
 		});
 		this.#dialog().classList.add("draggable-dialog");
 		this.#dragHandler.enabled = true;

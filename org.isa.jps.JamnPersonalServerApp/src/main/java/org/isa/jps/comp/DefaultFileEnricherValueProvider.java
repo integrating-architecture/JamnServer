@@ -31,8 +31,15 @@ public class DefaultFileEnricherValueProvider implements ValueProvider {
     public DefaultFileEnricherValueProvider(Path pAppHome, Config pConfig) {
         appHome = pAppHome;
         config = pConfig;
-        componentsRootPath = Path.of(appHome.toString(), config.getWebFileEnricherRoot())
-                .toString();
+
+        if (config.getWebFileEnricherRoot().startsWith("/")) {
+            // assume that a configured absolute path exists
+            componentsRootPath = config.getWebFileEnricherRoot();
+        } else {
+            // ensure a relative web file root folder
+            componentsRootPath = Path.of(appHome.toString(), config.getWebFileEnricherRoot())
+                    .toString();
+        }
     }
 
     /**
@@ -48,7 +55,7 @@ public class DefaultFileEnricherValueProvider implements ValueProvider {
         if (pKey.endsWith(".html")) {
             lFilePath = getComponentFilePathFor(pKey, lWebFile);
             lValue = getFileContent(lFilePath);
-        }else if(values.containsKey(pKey)){
+        } else if (values.containsKey(pKey)) {
             lValue = values.getProperty(pKey);
         }
 
@@ -57,7 +64,7 @@ public class DefaultFileEnricherValueProvider implements ValueProvider {
 
     /**
      */
-    public DefaultFileEnricherValueProvider addValue(String pKey, String pValue){
+    public DefaultFileEnricherValueProvider addValue(String pKey, String pValue) {
         values.setProperty(pKey, pValue);
         return this;
     }

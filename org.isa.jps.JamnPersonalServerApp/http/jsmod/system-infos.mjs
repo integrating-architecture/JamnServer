@@ -6,7 +6,7 @@ import { WorkbenchInterface as WbApp } from '../jsmod/workbench.mjs';
 import * as webapi from '../jsmod/webapi.mjs';
 import * as Icons from '../jsmod/icons.mjs';
 import { UIBuilder, onClicked, onKeyup, KEY } from '../jsmod/uibuilder.mjs';
-import { html as WorkViewHtml } from '/jsmod/html-components/work-view.html.mjs';
+import { html as WorkViewHtml } from '../jsmod/html-components/work-view.html.mjs';
 
 /**
  * Concrete view class for the info component

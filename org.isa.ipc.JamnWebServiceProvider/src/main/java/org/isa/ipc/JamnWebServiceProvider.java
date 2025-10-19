@@ -5,11 +5,11 @@ package org.isa.ipc;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.APPLICATION_JSON;
 import static org.isa.ipc.JamnServer.HttpHeader.FieldValue.TEXT_PLAIN;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_200_OK;
+import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_204_NO_CONTENT;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_400_BAD_REQUEST;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_404_NOT_FOUND;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_405_METHOD_NOT_ALLOWED;
 import static org.isa.ipc.JamnServer.HttpHeader.Status.SC_500_INTERNAL_ERROR;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
-import org.isa.ipc.JamnServer.Config;
 import org.isa.ipc.JamnServer.JsonToolWrapper;
 import org.isa.ipc.JamnServer.RequestMessage;
 import org.isa.ipc.JamnServer.ResponseMessage;
@@ -41,7 +40,6 @@ import org.isa.ipc.JamnServer.ResponseMessage;
  * 
  *  // create the WebService provider
  *  JamnWebServiceProvider lWebServiceProvider = new JamnWebServiceProvider()
- *      .setConfig(lServer.getConfig())
  *      // register the Web-API Services
  *      .registerServices(SampleWebApiServices.class);
  *
@@ -73,8 +71,6 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     protected static Logger LOG = Logger.getLogger(JamnWebServiceProvider.class.getName());
 
     protected JsonToolWrapper jsonTool;
-    protected Config config = new Config();
-
     protected String urlRoot = "";
 
     /**
@@ -86,13 +82,6 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
      */
     public JamnWebServiceProvider setJsonTool(JsonToolWrapper pTool) {
         jsonTool = pTool;
-        return this;
-    }
-
-    /**
-     */
-    public JamnWebServiceProvider setConfig(Config pConfig) {
-        config = pConfig;
         return this;
     }
 
@@ -143,7 +132,7 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
                 lServiceObj = new ServiceObject(lServiceAnno, lInstance, lRequestClass, lReponseClass, serviceMethod,
                         () -> jsonTool);
 
-                if(!urlRoot.isEmpty()){
+                if (!urlRoot.isEmpty()) {
                     lServiceObj.path = new StringBuilder(urlRoot).append(lServiceObj.path).toString();
                 }
 
@@ -183,21 +172,21 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     public String doDirectCall(String pPath, String pRequestBody) throws WebServiceException {
         ServiceObject lService = null;
         if (serviceRegistry.containsKey(pPath)) {
-            try{
+            try {
                 lService = serviceRegistry.get(pPath);
                 Object lResult = lService.callWith(pRequestBody);
                 if (lResult instanceof String result) {
                     return result;
                 }
-            }catch(Exception e){
+            } catch (Exception e) {
                 throw new WebServiceException("WebService direct call failure", e);
             }
-        }else{
+        } else {
             throw new WebServiceException(String.format("WebService direct call to unknown [%s]", pPath));
         }
         return "";
     }
- 
+
     /*********************************************************
      * The public Annotation Interfaces to annotate methods as WebServices.
      *********************************************************/
@@ -258,7 +247,6 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
     protected static Class<?> getServiceResponseClassFrom(Method pMeth) {
         return pMeth.getReturnType();
     }
-
 
     /*********************************************************
      * The internal classes for loading and providing WebService objects.
@@ -336,11 +324,12 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
         }
 
         /**
-         * @throws InvocationTargetException 
-         * @throws IllegalArgumentException 
-         * @throws IllegalAccessException 
+         * @throws InvocationTargetException
+         * @throws IllegalArgumentException
+         * @throws IllegalAccessException
          */
-        protected Object callWith(String pRequestData) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException  {
+        protected Object callWith(String pRequestData)
+                throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
             Object lRet = null;
             Object lParam = null;
 
@@ -381,6 +370,7 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
             super(pMsg);
             httpStatus = pHttpStatus;
         }
+
         WebServiceException(String pMsg, Throwable pCause) {
             super(pMsg, pCause);
             httpStatus = "direct call";
@@ -418,16 +408,16 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
      * The actual JamnServer.ContentProvider Interface Implementation.
      *********************************************************/
     @Override
-    public void createResponseContent(RequestMessage pRequest, ResponseMessage pResponse) {
-
-        String lStatus = SC_200_OK;
+    public void handleContentProcessing(RequestMessage pRequest, ResponseMessage pResponse) {
 
         ServiceObject lService = null;
         Object lResult = null;
         byte[] lData = null;
+
         try {
             if (pRequest.isMethod("GET") || pRequest.isMethod("POST")) {
-                lService = getServiceInstanceFor(pRequest.getPath(), pRequest.getMethod(), pRequest.getContentType());
+                lService = getServiceInstanceFor(pRequest.getPath(), pRequest.getMethod(),
+                        pRequest.getContentType());
 
                 lResult = lService.callWith(pRequest.body());
 
@@ -440,19 +430,23 @@ public class JamnWebServiceProvider implements JamnServer.ContentProvider {
                             String.format("Unsupported WebService API Return Type [%s] [%s]", lResult.getClass(),
                                     lService.getName()));
                 }
+                pResponse.setStatus(SC_200_OK);
+            } else if (pRequest.isMethod("OPTIONS")) {
+                pResponse.setStatus(SC_204_NO_CONTENT);
+            } else {
+                pResponse.setStatus(SC_405_METHOD_NOT_ALLOWED);
             }
         } catch (WebServiceException wse) {
             LOG.fine(() -> String.format("WebService API Error: [%s]", wse.getMessage()));
-            lStatus = wse.getHttpStatus();
+            pResponse.setStatus(wse.getHttpStatus());
         } catch (Exception e) {
             String info = lService != null ? lService.getName() : "";
             info = info + LS + getStackTraceFrom(e);
-            LOG.severe(String.format("WebService Request Handling internal/runtime ERROR: %s %s %s", e.toString(), LS,
-                    info));
-            lStatus = SC_500_INTERNAL_ERROR;
+            LOG.severe(
+                    String.format("WebService Request Handling internal/runtime ERROR: %s %s %s", e.toString(), LS,
+                            info));
+            pResponse.setStatus(SC_500_INTERNAL_ERROR);
         }
-
-        pResponse.setStatus(lStatus);
     }
 
     /**

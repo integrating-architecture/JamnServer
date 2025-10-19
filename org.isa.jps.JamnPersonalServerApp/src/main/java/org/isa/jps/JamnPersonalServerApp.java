@@ -16,6 +16,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +46,7 @@ import org.isa.jps.comp.CommandLineInterface;
 import org.isa.jps.comp.CLICommandInitializer;
 import org.isa.jps.comp.DefaultFileEnricherValueProvider;
 import org.isa.jps.comp.DefaultJavaScriptHostAppAdapter;
-import org.isa.jps.comp.DefaultServerAccessManager;
+import org.isa.jps.comp.DefaultMessagePreprocessor;
 import org.isa.jps.comp.DefaultWebServices;
 import org.isa.jps.comp.DefaultWebSocketMessageProcessor;
 import org.isa.jps.comp.ExtensionHandler;
@@ -150,6 +152,9 @@ public class JamnPersonalServerApp {
     protected ChildProcessManager childManager;
     protected ChildProcessor childProcessor;
 
+    protected Path configFolder;
+    protected Collection<ServerAppNotificationListener> notificationListener = Collections.synchronizedCollection(new ArrayList<>());
+
     /*********************************************************
      * Public methods
      *********************************************************/
@@ -249,6 +254,19 @@ public class JamnPersonalServerApp {
     }
 
     /**
+     */
+    protected synchronized void sendAppNotification(AppEvent pEvent) {
+        notificationListener.forEach((listener)->listener.onServerAppEvent(pEvent));
+    }
+
+    /**
+     */
+    public JamnPersonalServerApp addNotificationListener(ServerAppNotificationListener pListener) {
+        notificationListener.add(pListener);
+        return this;
+    }
+
+    /**
      * Top level Start method - called from main.
      */
     public JamnPersonalServerApp start(String[] pArgs) {
@@ -267,6 +285,7 @@ public class JamnPersonalServerApp {
                 // if Child profile
                 childProcessor.start();
             }
+            sendAppNotification(new AppEvent(this, "started"));
         } catch (Exception e) {
             close();
             throw new UncheckedJPSException(
@@ -374,6 +393,19 @@ public class JamnPersonalServerApp {
         return Paths.get(AppHome.toString(), pSubPathParts);
     }
 
+    /**
+     */
+    public String loadOrCreateConfigFile(String pFileName, String pDefaultContent) throws IOException {
+        String lContent = pDefaultContent;
+        Path lFile = Paths.get(configFolder.toString(), pFileName);
+        if (!Files.exists(lFile)) {
+            Files.writeString(lFile, pDefaultContent, standardEncoding, StandardOpenOption.CREATE);
+            LOG.info(() -> String.format("App Config file created [%s]", lFile));
+        }
+        lContent = new String(Files.readAllBytes(lFile));
+        return lContent;
+    }
+
     /*********************************************************
      * Internal methods
      *********************************************************/
@@ -438,6 +470,8 @@ public class JamnPersonalServerApp {
             Files.writeString(lConfigPath, lDefaultConfig, standardEncoding, StandardOpenOption.CREATE);
             LOG.info(() -> String.format("%s Default-App-Config loaded and saved to [%s]", INIT_LOGPRFX, lConfigPath));
         }
+
+        configFolder = Tool.ensureSubDir(config.getConfigRoot(), AppHome);
     }
 
     /**
@@ -580,16 +614,16 @@ public class JamnPersonalServerApp {
                     throw new UncheckedJsonException(UncheckedJsonException.PRETTIFY_ERROR, e);
                 }
             }
-
         };
         LOG.info(() -> String.format("%s json tool installed [%s]", INIT_LOGPRFX, ObjectMapper.class.getName()));
     }
 
     /**
      */
-    protected void initServer() {
+    protected void initServer() throws IOException {
         server = new JamnServer(config.getProperties());
-        server.setAccessManager(new DefaultServerAccessManager(config));
+
+        server.setMessagePreprocessor(new DefaultMessagePreprocessor(config, jsonTool));
 
         CLICommandInitializer.createServerCliCommands(server);
     }
@@ -692,12 +726,35 @@ public class JamnPersonalServerApp {
     }
 
     /*********************************************************
-     * Static app helper methods
+     * App classes and interfaces
      *********************************************************/
 
-    /*********************************************************
-     * App classes
-     *********************************************************/
+    /**
+     * <pre>
+     * </pre>
+     */
+    public static interface ServerAppNotificationListener {
+        /**
+         */
+        public void onServerAppEvent(AppEvent pEvent);
+    }
+
+    public static class AppEvent {
+        protected JamnPersonalServerApp app;
+        protected String msg = "";
+
+        public AppEvent(JamnPersonalServerApp pApp, String pMsg){
+            app = pApp;
+            msg = pMsg;
+        }
+        public JamnPersonalServerApp app(){
+            return app;
+        }
+        public String msg(){
+            return msg;
+        }
+    }
+
     /**
      */
     public static class Config {
@@ -707,6 +764,7 @@ public class JamnPersonalServerApp {
         private static final String WEB_FILE_ROOT = "http";
         private static final String SCRIPT_ROOT = "scripts";
         private static final String DATA_ROOT = "data";
+        private static final String CONFIG_ROOT = "config";
         private static final String EXTENSION_ROOT = "extensions";
         private static final String EXTENSION_BIN = "bin";
         private static final String EXTENSION_DATA = "data";
@@ -724,6 +782,7 @@ public class JamnPersonalServerApp {
                 "#JPS extensions data folder name", "jps.extension.data=" + EXTENSION_DATA, "",
                 "#JPS workspace root folder", "jps.workspace.root=" + WORKSPACE_ROOT, "",
                 "#JPS data root folder", "jps.data.root=" + DATA_ROOT, "",
+                "#JPS config root folder", "jps.config.root=" + CONFIG_ROOT, "",
                 "#JPS Extensions auto load file name", "jps.extensions.autoload.file=" + EXTENSION_AUTOLOAD_FILE, "",
                 "#WebApp main Page", "webapp.main.page=/workbench.html", "",
                 "#Extensions enabled", "extensions.enabled=false", "",
@@ -793,6 +852,10 @@ public class JamnPersonalServerApp {
 
         public String getDataRoot() {
             return props.getProperty("jps.data.root", DATA_ROOT);
+        }
+
+        public String getConfigRoot() {
+            return props.getProperty("jps.configs.root", CONFIG_ROOT);
         }
 
         public String getExtensionRoot() {

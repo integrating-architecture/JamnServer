@@ -31,7 +31,7 @@ public class RudimentaryContentProvider implements JamnServer.ContentProvider {
     }
 
     @Override
-    public void createResponseContent(RequestMessage pRequest, ResponseMessage pResponse) {
+    public void handleContentProcessing(RequestMessage pRequest, ResponseMessage pResponse) {
 
         String lPath = pRequest.getPath();
 

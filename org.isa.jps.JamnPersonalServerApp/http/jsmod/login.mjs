@@ -122,7 +122,7 @@ function dialogLoginAction(dialog) {
 
 	dialog.showRunning(true);
 	//simulate a time consuming login
-	simulateLoginTime(tries == 0 ? 1500 : 500).then(() => {
+	simulateLoginTime(tries == 0 ? 1000 : 500).then(() => {
 		tries++;
 
 		if (tries < 2) {

@@ -22,12 +22,11 @@ public class WebServiceProviderSampleApp {
 
         // create a Jamn server
         JamnServer lServer = new JamnServer();
-        // required for using Testfiles in a browser
-        lServer.getConfig().setCORSEnabled(true);
+        // enable all CORS - simplification for using Testfiles in a browser
+        lServer.getConfig().setAllowAllCORSEnabled(true);
 
         // create the WebService provider
         JamnWebServiceProvider lWebServiceProvider = new JamnWebServiceProvider()
-                .setConfig(lServer.getConfig())
                 // create a json tool wrapper for the JamnWebServiceProvider
                 .setJsonTool(new JamnServer.JsonToolWrapper() {
                     private final ObjectMapper jack = new ObjectMapper()

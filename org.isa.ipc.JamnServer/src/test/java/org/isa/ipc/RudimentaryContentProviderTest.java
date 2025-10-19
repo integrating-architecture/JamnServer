@@ -58,8 +58,8 @@ class RudimentaryContentProviderTest {
         // add the sample content provider
         Server.addContentProvider("ContentProvider", new RudimentaryContentProvider());
 
-        // enable CORS - required for manually browser js fetch via local html file
-        Server.getConfig().setCORSEnabled(true);
+        // enable all CORS - simplification for manually browser js fetch via local html file
+        Server.getConfig().setAllowAllCORSEnabled(true);
 
         Server.start();
     }

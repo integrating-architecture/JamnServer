@@ -166,7 +166,7 @@ public class JamnWebContentProvider implements JamnServer.ContentProvider {
      * JamnServer.ContentProvider Interface method.
      */
     @Override
-    public void createResponseContent(RequestMessage pRequest, ResponseMessage pResponse) {
+    public void handleContentProcessing(RequestMessage pRequest, ResponseMessage pResponse) {
 
         // be gently by default
         pResponse.setStatus(SC_200_OK);

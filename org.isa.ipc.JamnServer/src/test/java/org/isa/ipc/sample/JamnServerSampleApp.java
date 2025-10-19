@@ -19,8 +19,8 @@ public class JamnServerSampleApp {
 
         lServer.addContentProvider("ContentProvider", new RudimentaryContentProvider());
 
-        // enable CORS - required for manually browser js fetch via local html file
-        lServer.getConfig().setCORSEnabled(true);
+        // enable all CORS - simplification for manually browser js fetch via local html file
+        lServer.getConfig().setAllowAllCORSEnabled(true);
 
         lServer.start();
 

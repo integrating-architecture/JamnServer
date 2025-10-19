@@ -49,11 +49,11 @@ import org.isa.ipc.JamnServer.ResponseMessage;
  * The "business logic" of a connection is implemented in a WsoMessageProcessor
  * associated with one WebSocket-connection-path (resp. handler) supporting n client connections.
  *  
- * One can easily play with this things by using e.g.:
+ * Example:
  * JamnWebSocketProvider\src\test\..\..\sample\browser-js-websocket-call.html
  * </pre>
  */
-public class JamnWebSocketProvider implements JamnServer.ContentProvider.UpgradeHandler {
+public class JamnWebSocketProvider implements JamnServer.ContentProvider {
 
     // default websocket connection url: "ws://host:port/wsoapi"
     public static final String DefaultPath = "/wsoapi";
@@ -146,14 +146,19 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
     }
 
     /**
-     * The JamnServer.ContentProvider.UpgradeHandler Interface method.
+     * The JamnServer.ContentProvider Interface method.
      */
     @Override
-    public String handleRequest(RequestMessage pRequest, Socket pSocket, Map<String, String> pComData)
+    public void handleContentProcessing(RequestMessage pRequest, Socket pSocket, Map<String, String> pComData)
             throws IOException {
-        WebSocketHandler lHandler = new WebSocketHandler(pRequest.getPath(), false, providerAdapter);
+        WebSocketHandler lHandler = new WebSocketHandler(pRequest.getPath(), providerAdapter);
         lHandler.handleRequest(pRequest.header(), pSocket, pComData);
-        return null;
+    }
+
+    @Override
+    public void handleContentProcessing(RequestMessage pRequest, ResponseMessage pResponse) {
+        throw new UnsupportedOperationException(
+                "WebSocket Content Provider requires use of extended (..., pSocket, pComData) method");
     }
 
     /*********************************************************
@@ -335,7 +340,6 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
         protected String connectionId = "";
         protected String initUrlPath = "";
-        protected boolean isCORSEnabled = false;
         protected OutputStream outStream;
         protected WsoAccessController accessCtrl;
         protected WsoConnectionManager connectionManager;
@@ -344,10 +348,9 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
         protected WebSocketHandler() {
         }
 
-        public WebSocketHandler(String pInitUrlPath, boolean pCORSEnabled, ProviderAdapter pAdapter) {
+        public WebSocketHandler(String pInitUrlPath, ProviderAdapter pAdapter) {
             this();
             initUrlPath = pInitUrlPath;
-            isCORSEnabled = pCORSEnabled;
             accessCtrl = pAdapter.getWsoAccessController();
             connectionManager = pAdapter.getWsoConnectionManager();
             maxUpStreamPayloadSize = pAdapter.getMaxUpStreamPayloadSize();
@@ -403,7 +406,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                                     connectionId));
                 }
 
-                processWsoHandshake(connectionId, pRequestHeader);
+                processWsoHandshake(connectionId, pRequestHeader, pComData);
 
                 // from here io is websocket specific
                 // and NO longer bound to the http protocol
@@ -446,17 +449,22 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
 
         /**
          */
-        protected void processWsoHandshake(String pConnectionId, HttpHeader pRequestHeader)
+        protected void processWsoHandshake(String pConnectionId, HttpHeader pRequestHeader,
+                Map<String, String> pComData)
                 throws IOException, NoSuchAlgorithmException {
 
             ResponseMessage lHandshakeResponse = new ResponseMessage(outStream);
             lHandshakeResponse.header()
-                    .setCORSEnabled(isCORSEnabled)
                     .setHttpVersion(HTTP_1_1)
                     .setHttpStatus(SC_101_SWITCH_PROTOCOLS)
                     .setConnection(UPGRADE)
                     .setUpgrade(WEBSOCKET)
                     .set(SEC_WEBSOCKET_ACCEPT, createWebSocketAcceptKey(pRequestHeader.getWebSocketKey()));
+
+            lHandshakeResponse
+                    .addContextData(pComData.get("socket.idtext"))
+                    .addContextData(pConnectionId)
+                    .addContextData(pRequestHeader.toString().trim());
 
             try {
                 lHandshakeResponse.send();
@@ -464,8 +472,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider.Upgrade
                 // register this connection at the WsoConnectionManager
                 connectionManager.connectionEstablished(pConnectionId, this);
 
-                LOG.info(() -> String.format("%sWebSocket connection established [%s]%s%s", LS, pConnectionId, LS,
-                        lHandshakeResponse.header().toString().trim()));
+                LOG.info(() -> String.format("%sWebSocket connection established [%s]%s", LS, pConnectionId, LS));
             } catch (Exception e) {
                 lHandshakeResponse.header().setHttpStatus(SC_500_INTERNAL_ERROR);
                 lHandshakeResponse.send();

@@ -1464,14 +1464,14 @@ public class JamnServer {
         /**
          */
         public void send() throws IOException {
-            writeResponseOut(outStream, getContentBuffer().toByteArray());
+            writeOutResponse(outStream, getContentBuffer().toByteArray());
         }
 
         /**
          */
         public void sendStatus(String pStatus) throws IOException {
             setStatus(pStatus);
-            writeResponseOut(outStream, null);
+            writeOutResponse(outStream, null);
         }
 
         /**
@@ -1483,7 +1483,7 @@ public class JamnServer {
         /**
          * @throws IOException
          */
-        protected void writeResponseOut(OutputStream pOut, byte[] pBody) throws IOException {
+        protected void writeOutResponse(OutputStream pOut, byte[] pBody) throws IOException {
             byte[] lMessageBytes = createMessageBytesWithBody(pBody);
 
             LOG.fine(() -> requestSummary());

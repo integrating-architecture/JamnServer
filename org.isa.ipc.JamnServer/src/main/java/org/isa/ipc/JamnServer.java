@@ -425,7 +425,7 @@ public class JamnServer {
         default void handleContentProcessing(RequestMessage pRequest, Socket pSocket, Map<String, String> pComData)
                 throws IOException {
             throw new UnsupportedOperationException("Call to ContentProvider unimplemented default interface method");
-        };
+        }
 
     }
 
@@ -1495,7 +1495,7 @@ public class JamnServer {
         protected void writeOutResponse(OutputStream pOut, byte[] pBody) throws IOException {
             byte[] lMessageBytes = createMessageBytesWithBody(pBody);
 
-            LOG.fine(() -> requestSummary());
+            LOG.fine(this::requestSummary);
             contextData.add(0, "<-- ALREADY SENT -->");
             pOut.write(lMessageBytes);
             pOut.flush();

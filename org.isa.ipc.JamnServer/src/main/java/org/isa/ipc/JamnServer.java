@@ -205,11 +205,11 @@ public class JamnServer {
         if (pSocket instanceof SSLServerSocket) {
             scheme = "https";
         }
-        try{
+        try {
             this.serverURI = new URI(scheme + "://localhost:" + config.getPort());
-        }catch (URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw new IOException("Error creating server URI", e);
-        }    
+        }
     }
 
     /**
@@ -424,6 +424,7 @@ public class JamnServer {
          */
         default void handleContentProcessing(RequestMessage pRequest, Socket pSocket, Map<String, String> pComData)
                 throws IOException {
+            throw new UnsupportedOperationException("Call to ContentProvider unimplemented default interface method");
         };
 
     }
@@ -1503,7 +1504,7 @@ public class JamnServer {
         /**
          */
         protected String requestSummary() {
-            String lSocketId = contextData.size() > 0 ? contextData.remove(0) : "";
+            String lSocketId = !contextData.isEmpty() ? contextData.remove(0) : "";
             StringBuilder lText = new StringBuilder(LS);
             lText.append("<-- Request --> ").append(lSocketId).append(" - ").append(Thread.currentThread().getName())
                     .append(LS)

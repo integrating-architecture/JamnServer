@@ -59,6 +59,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.net.ServerSocketFactory;
+import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
@@ -175,13 +176,11 @@ public class JamnServer {
     protected ServerSocket createServerSocket() throws IOException {
         int lPort = config.getPort();
         ServerSocket lSocket = null;
-        String scheme = "http";
 
         try {
             if (!System.getProperty("javax.net.ssl.keyStore", "").isEmpty()
                     && !System.getProperty("javax.net.ssl.keyStorePassword", "").isEmpty()) {
                 lSocket = SSLServerSocketFactory.getDefault().createServerSocket(lPort);
-                scheme = "https";
             } else {
                 lSocket = ServerSocketFactory.getDefault().createServerSocket(lPort);
             }
@@ -190,12 +189,6 @@ public class JamnServer {
             if (lPort == 0) {
                 config.setActualPort(lSocket.getLocalPort());
             }
-
-            try {
-                this.serverURI = new URI(scheme + "://localhost:" + lPort);
-            } catch (URISyntaxException ue) {
-                throw new IOException("Error creating server URI", ue);
-            }
         } catch (Exception e) {
             if (lSocket != null) {
                 lSocket.close();
@@ -203,6 +196,20 @@ public class JamnServer {
             throw e;
         }
         return lSocket;
+    }
+
+    /**
+     */
+    protected void determineServerURI(ServerSocket pSocket) throws IOException {
+        String scheme = "http";
+        if (pSocket instanceof SSLServerSocket) {
+            scheme = "https";
+        }
+        try{
+            this.serverURI = new URI(scheme + "://localhost:" + config.getPort());
+        }catch (URISyntaxException e) {
+            throw new IOException("Error creating server URI", e);
+        }    
     }
 
     /**
@@ -218,6 +225,7 @@ public class JamnServer {
         }
         clientSocketTimeout = config.getClientSocketTimeout();
         serverSocket = createServerSocket();
+        determineServerURI(serverSocket);
 
         serverThread = new ServerThread();
         serverThread.setName(getClass().getSimpleName() + " - on Port [" + config.getPort() + "]");

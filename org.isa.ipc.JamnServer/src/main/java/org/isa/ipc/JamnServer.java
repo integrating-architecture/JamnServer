@@ -130,6 +130,7 @@ public class JamnServer {
     public static final String SOCKET_IDTEXT = "socket.idtext";
     public static final String SOCKET_USAGE = "socket.usage";
     public static final String SOCKET_EXCEPTION = "socket.exception";
+    public static final String REQUEST_HEADER_TEXT = "request.header.text";
 
     protected Config config = new Config();
 
@@ -629,6 +630,7 @@ public class JamnServer {
 
                     String lHeaderText = readHeader(lInStream);
                     lResponse.contextData.add(lHeaderText);
+
                     lRequest = new RequestMessage(newHeader(lHeaderText));
                     lRequest.setBody(readBody(lInStream, lRequest.getContentLength(), lRequest.getEncoding()));
 
@@ -646,6 +648,7 @@ public class JamnServer {
                         // check for WebSocket upgrade request
                         if (lRequest.header().isWebSocket()) {
                             // explicit switch to WebSocket processing
+                            pComData.put(JamnServer.REQUEST_HEADER_TEXT, lHeaderText);
                             lContentProvider = getContentProvider(WEBSOCKET_PROVIDER);
                             lContentProvider.handleContentProcessing(lRequest, pSocket, pComData);
                         } else {

@@ -75,6 +75,8 @@ export function setVisibility(elem, flag) {
 	return elem;
 }
 
+/**
+ */
 export function setDisplay(elem, flag) {
 	if (typeof flag == "boolean") {
 		elem.style["display"] = flag ? "block" : "none";
@@ -94,7 +96,7 @@ export async function fetchPlainText(path) {
 		method: "GET",
 		accept: "text/plain",
 		headers: { "Content-Type": "text/plain" },
-		mode: "cors" // required for localhost communication via js fetch
+		mode: "cors"
 	})
 
 	data = await response.text();
@@ -112,7 +114,7 @@ export async function callWebService(path, requestData = "{}") {
 		method: "POST",
 		accept: "application/json",
 		headers: { "Content-Type": "application/json" },
-		mode: "cors", // required for localhost communication via js fetch
+		mode: "cors",
 		body: requestData
 	})
 

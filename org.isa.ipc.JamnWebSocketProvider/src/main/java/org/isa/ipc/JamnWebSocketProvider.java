@@ -94,10 +94,10 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider {
 
     /**
      * <pre>
-     * WebSocket connections base on an one time, initial url path.
+     * WebSocket connections base on a one time, initial url path.
      * After a connection was established - there are NO pathnames involved any more.
      * 
-     * How ever - it can be useful to distinguish different task areas already when connecting.
+     * How ever - it can still be useful to have different namespaces
      * </pre>
      */
     public JamnWebSocketProvider addConnectionPath(String pPath) {
@@ -152,7 +152,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider {
     public void handleContentProcessing(RequestMessage pRequest, Socket pSocket, Map<String, String> pComData)
             throws IOException {
         WebSocketHandler lHandler = new WebSocketHandler(pRequest.getPath(), providerAdapter);
-        lHandler.handleRequest(pRequest.header(), pSocket, pComData);
+        lHandler.handleRequest(pRequest, pSocket, pComData);
     }
 
     @Override
@@ -386,7 +386,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider {
         /**
          * Interface method for (default)request processor.
          */
-        protected void handleRequest(HttpHeader pRequestHeader, Socket pSocket, Map<String, String> pComData)
+        protected void handleRequest(RequestMessage pRequest, Socket pSocket, Map<String, String> pComData)
                 throws IOException {
             // setting a marker for the top level server socket thread
             pComData.put(JamnServer.WEBSOCKET_PROVIDER, "");
@@ -400,13 +400,13 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider {
                 // check accessibility
                 StringBuilder lErrorMsg = new StringBuilder();
                 if (!accessCtrl.isSupportedPath(initUrlPath, lErrorMsg)
-                        || !accessCtrl.isAccessGranted(pRequestHeader.getAttributes(), lErrorMsg)) {
+                        || !accessCtrl.isAccessGranted(pRequest.header().getAttributes(), lErrorMsg)) {
                     throw new WebSocketConnectionRejectedException(
                             String.format("WebSocket connection rejected [%s] [%s] [%s]", getPath(), lErrorMsg,
                                     connectionId));
                 }
 
-                processWsoHandshake(connectionId, pRequestHeader, pComData);
+                processWsoHandshake(connectionId, pRequest, pComData);
 
                 // from here io is websocket specific
                 // and NO longer bound to the http protocol
@@ -449,7 +449,7 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider {
 
         /**
          */
-        protected void processWsoHandshake(String pConnectionId, HttpHeader pRequestHeader,
+        protected void processWsoHandshake(String pConnectionId, RequestMessage pRequest,
                 Map<String, String> pComData)
                 throws IOException, NoSuchAlgorithmException {
 
@@ -459,12 +459,12 @@ public class JamnWebSocketProvider implements JamnServer.ContentProvider {
                     .setHttpStatus(SC_101_SWITCH_PROTOCOLS)
                     .setConnection(UPGRADE)
                     .setUpgrade(WEBSOCKET)
-                    .set(SEC_WEBSOCKET_ACCEPT, createWebSocketAcceptKey(pRequestHeader.getWebSocketKey()));
+                    .set(SEC_WEBSOCKET_ACCEPT, createWebSocketAcceptKey(pRequest.header().getWebSocketKey()));
 
             lHandshakeResponse
-                    .addContextData(pComData.get("socket.idtext"))
+                    .addContextData(pComData.get(JamnServer.SOCKET_IDTEXT))
                     .addContextData(pConnectionId)
-                    .addContextData(pRequestHeader.toString().trim());
+                    .addContextData(pComData.get(JamnServer.REQUEST_HEADER_TEXT));
 
             try {
                 lHandshakeResponse.send();
